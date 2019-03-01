@@ -32,8 +32,8 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 
 ## Social Networks
 
-Rafael Pass' ___A Course in Networks and Markets___
+- Rafael Pass' ___A Course in Networks and Markets___
 
-Mark Newman's ___Networks___
+- Mark Newman's ___Networks___
 
-Easley & Kleinberg's ___Networks, Crowds, and Markets___
+- Easley & Kleinberg's ___Networks, Crowds, and Markets___
