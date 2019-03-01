@@ -1,0 +1,1474 @@
+---
+title: "Introduction"
+output:
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+
+
+## Packages
+library(tidyverse)
+
+## Extra functions and settings
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+make_table <- function(df, digits = 3) {
+  knitr::kable(df, "html", digits = digits) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+```
+
+**Last updated**: `r format(Sys.time(), '%B %d, %Y')`
+
+Taken mainly from Grant Sanderson's [Essence of Linear Algebra](https://www.youtube.com/watch?v=fNk_zzaMoSs&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab)
+
+Linear algebra is defined to be the study of vectors, vector spaces, and mappings between vector spaces. It emerged from the study of systems of linear equations and the realization that these could be solved using matrix operations.
+
+****
+
+## Vectors
+
+****
+
+A **scalar** is any single element of some set, and a **vector** is an *ordered* set of n elements (or *n-tuple*).
+
+There are three distinct ideas about vectors:
+
+1. Physics: Vectors are arrows pointing space, defined by their *length*, and the *direction* they are pointed at.
+
+2. Computer Science: Vectors are *ordered* lists of numbers. 
+
+3. Mathematics: A vector can be anything where there is a sensible notion of *vector addition* and *scaling*. Every topic in Linear Algebra is going to be centered around these two operations.
+
+*Vector Addition*:
+
+To add (or subtract) vectors, they must have the same *dimension*:
+
+$$
+\mathbf{x} + \mathbf{y} = 
+\begin{pmatrix} x_{1}\\ x_{2}\\ \vdots\\ x_{n} \end{pmatrix} +
+\begin{pmatrix} y_{1}\\ y_{2}\\ \vdots\\ y_{n} \end{pmatrix} =
+\begin{pmatrix} x_{1} + y_{1}\\ x_{2} + y_{2}\\ \vdots\\ x_{n} + y_{n}\end{pmatrix}
+$$
+
+*Multiplication by a scalar*:
+
+Multiplying a number $c$ by a vector $\mathbf{x}$ is analogous to "stretching", "squeezing" or "reversing" vectors. This process is known as "scaling". 
+
+$$
+c \times \mathbf{x} = \begin{pmatrix} c \times x_{1}\\ c \times x_{2}\\ \vdots\\ c \times x_{n} \end{pmatrix}
+$$
+
+****
+
+**Extra notation**
+
+*Block or stacked vectors.* 
+
+It is sometimes useful to define vectors by *concatenating* or *stacking* two or more vectors. For example:
+
+$$
+\mathbf{x} = \pmatrix{\mathbf{a} \\ b \\ \mathbf{c}}
+$$
+
+where $\mathbf{a}$ is a vector of size $n$, $\mathbf{c}$ is a vector of size $p$, and $b$ is a scalar. Thus, $\mathbf{x}$ is a vector of size $(n + 1+p)$.
+
+*Subvectors*
+
+In the equation above, we say that $\mathbf{a}$, $b$, and $\mathbf{c}$ are subvectors or *slices* of $\mathbf{x}$. Colon notation is used to denote subvectors. If $\mathbf{x}$ is a vector, then $\mathbf{a}_{r:s}$ is the vector of size $s − r + 1$.
+
+$$
+\mathbf{x}_{r:s} = (x_r, \dots, x_s)
+$$
+
+The subscript $r:s$ is called the *index range*.
+
+Note that colon notation is not completely standard, but it is growing in popularity.
+
+## Linear combinations
+
+**Linear combinations, span, and basis**
+
+****
+
+Let $\boldsymbol{\hat{\imath}} = \pmatrix{1 & 0}^\top$ and $\boldsymbol{\hat{\jmath}} = \pmatrix{0 & 1}^\top$. These are also called *unit vectors* (i.e. vectors with all elements equal to zero, except one element which is equal to one).
+
+Then, $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$ are the **basis vectors** of any $xy$ coordinate system or $\mathbb R^2$. That is, they are what define the common features of a coordinate system, the same way that the interval between each integer in $\mathbb R$ is "one". 
+
+Any vector $\mathbf{x}$ in $\mathbb R^2$ can be interpreted as a **linear combination** of $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$, such that $\mathbf{x} = a \boldsymbol{\hat{\imath}} + b \boldsymbol{\hat{\jmath}}$, for some values of $a$ and $b$.
+
+A **span** is the set of all possible vectors that can be reached with the linear combinations of any *given* vectors. For example, the span of most pairs of two-dimensional vectors is $\mathbb R^2$, unless they are *collinear* (or *linearly dependent*), in which case the span is just $\mathbb R$.
+
+The space spanned by a set of vectors in $\mathbb{R}^K$ has at most $K$ dimensions. if this space has fewer than $K$ dimensions, it is a **subspace**, or *hyperplane.* Every set of vectors spans some space; it may be the entire space in which the vectors reside, or it may be some subspace of it.
+
+****
+
+Note: Every *subspace* $S$ has three properties.
+
+1. It contains the zero vector: $\mathbf{0} \in S$
+
+2. It's closed under addition: $\mathbf{x_1}, \mathbf{x_2} \in S \to \mathbf{x_1} + \mathbf{x_2} \in S$
+
+3. It's closed under multiplication: $c \in \mathbb{R}, \mathbf{x} \in S \to c \mathbf{x} \in S$
+
+**Linear independence**
+
+A vector $\mathbf{u}$ is **linearly independent** of $\mathbf{x}$ and $\mathbf{y}$ *if, and only if* $\mathbf{u} \neq a \mathbf{x} + b \mathbf{y}$ for all values of $a$ and $b$. Alternatively, $\mathbf{u}$ is linearly independent of $\mathbf{x}$ and $\mathbf{y}$ *if, and only if* $\mathbf{u}$ does not lie in the plane spanned by $\mathbf{x}$ and $\mathbf{y}$.
+
+Another definition for linear independence says that vectors $\mathbf{v}$, $\mathbf{w}$, and $\mathbf{u}$ are linearly independent if, and only if the only solution to $a \mathbf{v} + b \mathbf{w} + c \mathbf{u} = \mathbf{0}$ is  $a = b = c = 0$.
+
+The **basis** of a vector space is *the set of linearly independent* vectors that *span* the full space.
+
+## Matrices
+
+**Matrices as linear transformations**
+
+****
+
+A matrix is a rectangular table of numbers or variables that are arranged in a specific order in rows and columns. Just like any other table, matrices consist of columns and rows, and they can vary in size from a few columns and rows to hundreds of thousands of rows and columns.
+
+However, matrices can be better understood as transformations of space: *linear transformations*. Here, "transformation" is a synonym of "function" and "linear" and has the following *visual* interpretation: moving around space such that grid lines remain parallel and evenly spaced, and such that the origin remains fixed. 
+
+The following equation shows how a vector containing $x$ and $y$ is transformed when multiplied by a matrix. 
+
+$$
+\begin{pmatrix} a & b \\ c & d \end{pmatrix} \begin{pmatrix} x \\ y \end{pmatrix} = 
+x \begin{pmatrix} a \\ c \end{pmatrix} + y \begin{pmatrix} b \\ d \end{pmatrix} =
+\begin{pmatrix} ax + by \\ cx + dy \end{pmatrix}
+$$
+
+That being said, linear transformations are just functions with vectors as inputs and vectors as outputs. 
+
+Matrix multiplication can also be conceived as a **composition** of distinct transformations, for example:
+
+$$
+\underbrace{\begin{pmatrix} 1 & 1 \\ 0 & 1 \end{pmatrix}}_\text{Shear} 
+\underbrace{\begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}}_\text{Rotation}
+\begin{pmatrix} x \\ y \end{pmatrix} = 
+\underbrace{\begin{pmatrix} 1 & -1 \\ 1 & 0 \end{pmatrix}}_\text{Composition} 
+\begin{pmatrix} x \\ y \end{pmatrix}
+$$
+
+More generally,
+
+$$
+\begin{pmatrix} a & b \\ c & d \end{pmatrix}
+\begin{pmatrix} e & f \\ g & h \end{pmatrix} = 
+\begin{pmatrix} ae + bg & af+bh \\ ce+dg & cf+dh \end{pmatrix}
+$$
+
+Note that a "rotation" followed by a "shear" is not necessarily the same as a "shear" followed by a "rotation" and, thus, *matrix multiplication is not commutative*.
+
+In sum, we can consider matrices as mathematical objects that operate on vectors (or transform them).
+
+***
+
+**Elementary Row Operations:**
+
+There are *three elementary row operations*:
+
+* Exchange the position of two rows (permutation)
+
+* Multiply each entry in a row by a non zero scalar
+
+* Add a scalar multiple of one row to another one
+
+Suppose you have a matrix $\mathbf{B} = \begin{pmatrix} 1 & 2 & 1 \\ 3 & 8 & 1 \\ 0 & 4 & 1 \end{pmatrix}$ and you want to transform it into an *upper triangular* matrix.
+
+Steps:
+
+1. Multiply the first row by three and subtract it from the second one:
+
+$$\begin{pmatrix} 1 & 2 & 1 \\ 0 & 2 & -2 \\ 0 & 4 & 1 \end{pmatrix}$$
+
+2. Multiply the second row by two and subtract it from the third one:
+
+    $$\begin{pmatrix} 1 & 2 & 1 \\ 0 & 2 & -2 \\ 0 & 0 & 5 \end{pmatrix}$$
+
+    In short:
+
+$$
+\begin{align}
+\underbrace{\begin{pmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & -2 & 1 \end{pmatrix}}_\text{2d Step}
+\underbrace{\begin{pmatrix} 1 & 0 & 0 \\ -3 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}}_\text{1st Step}
+\begin{pmatrix} 1 & 2 & 1 \\ 3 & 8 & 1 \\ 0 & 4 & 1 \end{pmatrix} &=
+\begin{pmatrix} 1 & 2 & 1 \\ 0 & 2 & -2 \\ 0 & 0 & 5 \end{pmatrix} \\
+\underbrace{\begin{pmatrix} 1 & 0 & 0 \\ -3 & 1 & 0 \\ 6 & -2 & 1 \end{pmatrix}}_\text{Composition} \begin{pmatrix} 1 & 2 & 1 \\ 3 & 8 & 1 \\ 0 & 4 & 1 \end{pmatrix} &=
+\begin{pmatrix} 1 & 2 & 1 \\ 0 & 2 & -2 \\ 0 & 0 & 5 \end{pmatrix} \\
+\end{align}
+$$
+
+***
+
+1. *How to change the order of rows in a matrix?* 
+
+    With a **permutation matrix**: 
+
+$$
+\begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix} 
+\begin{pmatrix} a & b \\ c & d \end{pmatrix} =
+\begin{pmatrix} c & d \\ a & b \end{pmatrix} 
+$$
+
+2. *How to change the order of columns of matrix?* 
+
+    With a permutation matrix on the right hand side:
+
+$$
+\begin{pmatrix} a & b \\ c & d \end{pmatrix} 
+\begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix} =
+\begin{pmatrix} b & a \\ d & c \end{pmatrix} 
+$$
+
+3. *How to give a general description of rotations in two-dimensional space?*
+
+    $$
+    \begin{pmatrix} \cos \theta & -\sin \theta \\ \sin \theta & \cos \theta \end{pmatrix} 
+    $$
+
+    **Example**: A rotation of 90º degrees (assuming the angle is drawn counterclockwise)
+    
+$$
+\begin{pmatrix} 0 & - 1 \\ 1 & 0 \end{pmatrix} 
+$$
+
+****
+
+## The Determinant
+
+****
+
+If matrices are transformations of space, then **determinants** measure the factor by which a linear transformation changes any area. (In three dimensions, we speak of changes in volume, and so on). This scaling factor can also be "negative", which means the orientation of spaces is being inverted.
+
+Determinants are also useful in assessing the linear independence of vectors; in solving systems of equations (i.e. if the determinant is zero, it's because the span collapses by one dimension); and in computing eigenvalues.
+
+How are determinants calculated?
+
+* 2 $\times$ 2:     
+
+$$
+\det \begin{pmatrix} \begin{bmatrix} a & b \\ c & d \end{bmatrix} \end{pmatrix}
+= ad-cb
+$$
+
+* 3 $\times$ 3
+
+$$
+\det \begin{pmatrix} \begin{bmatrix} a & b & c \\ d & e & f \\ g & h & i \end{bmatrix} \end{pmatrix}
+= a \det \begin{pmatrix} e & f \\ h & i \end{pmatrix} - b \det \begin{pmatrix} d & f \\ g & i\end{pmatrix} + c \det \begin{pmatrix} d & e \\ g & h \end{pmatrix}
+$$
+
+* Etc.
+
+****
+
+## Inverse's and spaces
+
+**Inverse matrices, column space & null space**
+
+****
+
+Matrix Algebra is most useful when solving *linear* systems of equations, such as:
+
+$$
+\begin{align}
+2x + 4y + -2z &= 3 \\
+4x + 9y + -3z &= 8 \\
+-2x - 3y + 7z &= 10
+\end{align}
+$$
+
+Which turns into:
+
+$$
+\underbrace{\begin{pmatrix} 2 & 4 & -2 \\ 4 & 9 & -3 \\ -2 & -3 & 7 \end{pmatrix}}_{\mathbf{A}}
+\underbrace{\begin{pmatrix} x \\ y \\ z \end{pmatrix}}_{\mathbf{x}} =
+\underbrace{\begin{pmatrix} 2 \\ 8 \\ 10 \end{pmatrix}}_{\mathbf{b}}
+$$
+
+Intuitively, we are looking for a matrix that transforms $\mathbf{b}$ into $\mathbf{x}$. This reverse transformation is called the **inverse** of $\mathbf{A}$ (or $\mathbf{A}^{-1}$). 
+
+Note that $\mathbf{A}^{-1}\mathbf{A} = \mathbf{I}$, where $\mathbf{I}$ is the **identity matrix**:
+
+$$
+\mathbf{I}_{n \times n} =
+\begin{pmatrix} 
+1 & 0 & ... & 0 \\
+0 & 1 & ... & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & ... &1 \\
+\end{pmatrix}
+$$
+
+Such that
+
+$$
+\begin{align}
+\mathbf{A} \mathbf{x} &= \mathbf{b} \\
+\mathbf{A^{-1}}\mathbf{A}\mathbf{x} &= \mathbf{A^{-1}}\mathbf{b} \\
+\mathbf{x} &= \mathbf{A^{-1}}\mathbf{b}
+\end{align}
+$$
+
+However, we must first make sure that the inverse exists, that the transformation of space given by $\mathbf{A}$ is not collapsing the *span* into a lower dimension. In other words, we must make sure that $\det A \ne 0$. 
+
+If a squared matrix has an inverse, it is termed **non-singular**; a square matrix with no inverse is termed **singular**. (Early mathematicians believed matrices without inverses to be remarkable or "singular").
+
+### Rank
+
+When the output of transformation is a *line* (or one-dimensional), we say that the transformation has a **rank** of one; when it is a *plane* (or two-dimensional), we say that the transformation has a rank of two; and so on. *The rank is the number of dimensions in the output*. 
+
+The set of all possible outputs of $\mathbf{A}\mathbf{x}$ is called the **column space** of $\mathbf{A}$. In other words, the column space is the span of the columns in matrix $\mathbf{A}$. 
+
+The **column rank** of a matrix is *the number of dimensions in the column space* or *the number of linearly independent columns* in $\mathbf{A}$. When this rank equals the number of columns (as high as it can be), we call the matrix **full rank**. 
+
+For a full-rank transformation, the only vector that lands at the origin is the zero vector. Otherwise, the set of vectors that lands on the origin is called the **null space** (or **kernel**): *the space of all vectors that become null.*
+
+$$
+\mathbf{Ax} = \mathbf{0} \ \ \ \text{ holds whenever } \ \mathbf{x} \in \mathbf{\text{null space}}
+$$
+
+****
+
+In `R`, we can find the rank of a matrix using the `qr()` function, which performs **QR Decomposition**:
+
+```{r, include=FALSE}
+M1 <- rbind(c(1, 5, 6), c(2, 6, 8), c(7, 1, 8))
+M2 <- cbind(c(1, 5, 6, 3), c(2, 1, 4, 1), c(3, 5, 5, 4))
+```
+
+The following matrix `M1` is an obvious example in which the third column vector is a linear combination of the first two.
+
+```{r}
+t(M1)
+
+## QR Decomposition
+qr(M1)$rank
+
+## Linear Combination
+M1[ , 1] + M1[ , 2] == M1[ , 3]
+```
+
+The following matrix `M2` can be used to demonstrate that we can speak unambiguously of the **rank** of a matrix because the *column* rank will always be equal to the *row* rank.
+
+```{r}
+M2
+
+## QR Decomposition
+qr(M2)$rank     ## column rank
+qr(t(M2))$rank  ## row rank
+
+
+```
+
+Note: It's obvious that the determinant of any matrix will equal zero when it's *not* full-rank.
+
+***
+
+There are many methods for finding the inverse of a non-singular square matrix, e.g. through the process of *Gauss-Jordan elimination*.
+
+However, finding the inverse of a matrix in R is easy with the `solve()` function. 
+
+```{r, include = FALSE}
+A <- rbind(c(2, 4, -2), c(4, 9, -3), c(-2, -3, 7))
+b <- matrix(c(2, 8, 10))
+```
+
+```{r}
+A
+t(b)
+solve(A)
+solve(A) %*% b
+```
+
+****
+
+## Non-square matrices
+
+****
+
+Non-square matrices can be thought of as transformations between different dimensions such that, for example:
+
+* $\mathbf{A} : \mathbb R^2 \to \mathbb R^3$ (a plane embedded in 3D space).
+
+$$
+\begin{pmatrix} a & b \\ c & d \\ e & f \end{pmatrix}
+\underbrace{\begin{pmatrix} x \\ y \end{pmatrix}}_{\mathbb R^2} = 
+\underbrace{\begin{pmatrix} ax + by \\ cx + yd  \\ ex  + fy  \end{pmatrix}}_{\mathbb R^3}
+$$
+
+* $\mathbf{A} : \mathbb R^3 \to \mathbb R^2$
+
+$$
+\begin{pmatrix} a & b & c \\ d & e & f \end{pmatrix}
+\underbrace{\begin{pmatrix} x \\ y \\ z \end{pmatrix}}_{\mathbb R^3} = 
+\underbrace{\begin{pmatrix} ax + by + cz \\ dx + ey + fz \end{pmatrix}}_{\mathbb R^2}
+$$
+
+****
+
+## Dot products
+
+****
+
+The **dot product** (or **inner product**) of two vectors produces a scalar. The notation for this operation is $\mathbf{a} \bullet \mathbf{b}$ (or "a dot b"). This resulting scalar is formed by multiplying and adding the corresponding elements:
+
+$$
+\begin{pmatrix} a_1 \\ a_2 \\ a_3 \\ \vdots \\ a_n\end{pmatrix} \bullet 
+\begin{pmatrix} b_1 \\ b_2 \\ b_3 \\ \vdots \\ b_n\end{pmatrix} =
+a_1b_1 + a_2b_2 + ... +a_nb_n
+$$
+
+It is equivalent to the product of $\mathbf{a}^\top$ and $\mathbf{b}$:
+
+$$
+\mathbf{a} \bullet \mathbf{b} = \mathbf{a}^\top \mathbf{b} = \sum\limits_{i=1}^n a_ib_i
+$$
+
+Remember:
+
+$$
+\begin{pmatrix}a_1 & a_2 & ... & a_n\end{pmatrix} 
+\underbrace{\begin{pmatrix} b_1 \\ b_2  \\ \vdots \\ b_n\end{pmatrix}}_{\mathbb R^n} =
+\underbrace{a_1b_1 + a_2b_2 + ... +a_nb_n}_\mathbb{R}
+$$
+
+**General examples**
+
+- *Unit vector*: $\boldsymbol{\hat{\imath}}^\top \mathbf{a} = a_i$. The inner product of a vector with the $i$th standard unit vector gives (or "picks out") the $i$th element $\mathbf{a}$.
+
+- *Sum*: $\mathbf{1}^\top \mathbf{x}$. The inner product of a vector with the vector of ones gives the sum of the elements of the vector.
+
+- *Average*: $(\mathbf{1}/n)^\top \mathbf{a} = (a_1 +· · ·+a_n)/n = \mu_a$. The inner product of an $n$-vector with the vector ($\mathbf{1}/n$) gives the average or mean of the elements of the vector.
+
+- *Sum of squares*: $\mathbf{a}^\top \mathbf{a} = a^2_1 + \dots + a^2_n$. The inner product of a vector with itself gives the sum of the squares of the elements of the vector.
+
+- *Selective sum.* Let $\mathbf{b}$ be a vector all of whose entries are either 0 or 1. Then $\mathbf{b}^\top \mathbf{a}$ is the sum of the elements in $\mathbf{a}$ for which $b_i = 1$.
+
+- *Co-occurrence.* If $\mathbf{a}$ and $\mathbf{b}$ are $n$-vectors that describe occurrence (i.e., each of their elements is either 0 or 1), then $\mathbf{a}^\top \mathbf{b}$ gives the total number of indices for which $a_i$ and $b_i$ are both one. Also, if we interpret the vectors $\mathbf{a}$ and $\mathbf{b}$ as describing subsets of n objects, then $\mathbf{a}^\top \mathbf{b}$ gives the number of objects in the intersection of the two subsets. 
+
+    For example: 
+    
+    $$
+    \mathbf{a} = (0, 1, \underset{*}{1}, 1, \underset{*}{1}, 1, 1) \hspace{0.5cm} \text{and} \hspace{0.5cm}
+    \mathbf{b} = (1, 0, \underset{*}{1}, 0, \underset{*}{1}, 0, 0) \hspace{0.5cm} \text{and} \hspace{0.5cm}
+    \mathbf{a}^\top \mathbf{b} = 2
+    $$
+
+- *Weights, features, and score.* When the vector $\mathbf{f}$ represents a set of features of an object, and $\mathbf{w}$ is a vector of the same size (often called a weight vector), the inner product $\mathbf{w}^\top \mathbf{f}$ is the sum of the feature values, scaled (or weighted) by the weights, and is sometimes called a score. For example, if the features are associated with a loan applicant (e.g., age, income, ...), we might interpret $\mathbf{s} = \mathbf{w}^\top \mathbf{f}$ as a credit score. In this example we can interpret $w_i$ as the weight given to feature $i$ in forming the score.
+
+- *Price-quantity.* If $\mathbf{p}$ represents a vector of prices of $n$ goods, and $\mathbf{q}$ is a vector of quantities of the $n$ goods, then their inner product $\mathbf{p}^\top \mathbf{q}$ is the total cost of the goods given by the vector $\mathbf{q}$.
+
+
+**Rules**
+
+1. Dot products are commutative:
+
+$$
+\mathbf{a} \bullet \mathbf{b} = \mathbf{b} \bullet \mathbf{a}
+$$
+
+2. Dot products are distributive over vector addition
+
+$$
+\mathbf{a} \bullet (\mathbf{b} + \mathbf{c}) = 
+\mathbf{a} \bullet \mathbf{b} + \mathbf{a} \bullet \mathbf{c}
+$$
+
+3. Dot products are associative over scalar multiplication
+
+$$
+\mathbf{a} \bullet (s \mathbf{b}) = s(\mathbf{a} \bullet \mathbf{b})
+$$
+
+These properties can be combined to obtain other identities. For example, for any vectors $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$, and $\mathbf{d}$ of the same size:
+
+$$
+(\mathbf{a} + \mathbf{b})^\top + (\mathbf{c} + \mathbf{d}) = 
+\mathbf{a}^\top \mathbf{c} + \mathbf{a}^\top \mathbf{d} + \mathbf{b}^\top \mathbf{c} + \mathbf{b}^\top \mathbf{d}
+$$
+
+Note that on the left hand side the addition symbol refers to vector addition, whereas on the right hand side it refers to scalar addition. 
+
+**Matrix multiplication**
+
+Dot products can be seen as a part of matrix multiplication. 
+
+Take the following example: 
+
+$$
+\underset{(m \times p)}{\mathbf{C}} = \underset{(m \times n)}{\mathbf{A}}
+\underset{(n \times p)}{\mathbf{B}}
+$$
+
+Here, each element $c_{ij}$ in $\mathbf{C}$ is a dot product of the row vectors of $\mathbf{A}$ and the column vectors of $\mathbf{B}$:
+
+$$
+\begin{align}
+c_{ij} &= \text{row } i \text{ of } \mathbf{A} \bullet 
+\text{column } j \text{ of } \mathbf{B} \\ &=
+\sum_{k = 1}^n a_{ik} b_{kj}
+\end{align}
+$$
+
+Alternatively, we have:
+
+$$
+\underbrace{\begin{pmatrix} a_1 & a_2 & ... & a_n \\ \vdots & \vdots & \vdots & \vdots\end{pmatrix}}_{\mathbf{A}_{m \times n}}
+\underbrace{\begin{pmatrix} b_1 & ... \\ b_2 & ... \\ \vdots & \vdots \\ b_n & ...\end{pmatrix}}_{\mathbf{B}_{n \times p}} =
+\underbrace{\begin{pmatrix} \sum_{i = 1}^n a_ib_i & ...\\ \vdots & \vdots\end{pmatrix}}_{\mathbf{C}_{m \times p}}
+$$
+
+**Vector length**
+
+The **length** (or **magnitude**) of any vector $\mathbf{a}$ is denoted by $\|\mathbf{a}\|$. This tells us "how big" a vector is. 
+
+- In one dimension, this is straightforward: the scalar 5 has "length 5". 
+
+- If $\mathbf{a}$ is two-dimensional, the length is given by Pythagoras' theorem:
+
+$$
+\mathbf{a} = \begin{pmatrix} a_1 \\ a_2 \end{pmatrix} \hspace{1cm} 
+\text{and } \hspace{0.5cm} \|\mathbf{a}\| = \sqrt{a_1^2 + a_2^2}
+$$
+
+- If $\mathbf{a}$ is $n$-dimensional, the length is given more generally as the square root of the sums of the squares of its components:
+
+    $$\|\mathbf{a}\| = \sqrt{\mathbf{a} \bullet \mathbf{a}}$$
+
+    In other words, the length of $\mathbf{a}$ is given by the square of the dot product with itself.
+
+Some people refer to the length (or size) of a vector as its **modulus**.
+
+Note: The term *length* should be avoided, since it is also often used to refer to the dimension of the vector (the number of elements it contains).
+
+See more about the magnitude of vectors in the section on [**Euclidean norm and distance**](#Euclidean_norm).
+
+### The angle between two vectors {#angle_intro}
+
+Another way of understanding the dot product of $\mathbf{a}$ and $\mathbf{b}$ is with the following formula: 
+
+$$\mathbf{a} \bullet \mathbf{b} = \|\mathbf{a}\|\|\mathbf{b}\| \cos{\theta}$$
+
+The $\cos{\theta}$ accounts for the idea that dot products are the product of some vector's length and the length of another vector's projection. 
+
+- If $\mathbf{a}$ and $\mathbf{b}$ are collinear (i.e. the angle $\theta$ is 0º), then $a \bullet b = \|a\| \|b\|$
+
+- If $\mathbf{a}$ and $\mathbf{b}$ are exactly opposite to each other (i.e. the angle $\theta$ is 180º), then $a \bullet b = -\|a\| \|b\|$
+
+Incidently, we can use the dot product to find the angle between to vectors:
+
+$$
+\cos{\theta} = \frac{\mathbf{a \bullet \mathbf{b}}}{\|\mathbf{a}\| \|\mathbf{b}\|}
+$$
+
+And because $\cos{\theta}$ will never exceed one, dot products also obey the *Cauchy-Schwartz inequality* which states that $|\mathbf{a} \bullet \mathbf{b}| \leq \|\mathbf{a}\|\|\mathbf{b}\|$.
+
+****
+
+**Example**:
+
+Let $\mathbf{a} = (2,1)$ and $\mathbf{b} = (1, 2)$. 
+
+$$
+\mathbf{a} \bullet \mathbf{b}  = 2 + 2 \hspace{1cm} \text{and} \hspace{1cm}
+\|\mathbf{a}\| = \|\mathbf{b}\| = \sqrt{5}
+$$
+
+Therefore: 
+
+$$\cos{\theta} = \frac{4}{5}$$
+
+****
+
+**The law of cosines**:
+
+```{r, fig.width=3, fig.height=2, echo=FALSE}
+ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 7, yend = 7)) +
+  geom_segment(aes(x = 10, y = 0, xend = 7, yend = 7)) +
+  geom_segment(aes(x = 0, y = 0, xend = 10, yend = 0)) +
+  annotate("text", x = 1.5, y = 0.7, label = "theta", size = 5, parse = TRUE) +
+  annotate("text", x = 6, y = -1, label = "a", size = 5) +
+  annotate("text", x = 3, y = 4.5, label = "b", size = 5) +
+  annotate("text", x = 9.5, y = 3.5, label = "c", size = 5) +
+  coord_cartesian(xlim = c(-1, 12), ylim = c(-2, 8)) +
+  theme_void(base_family = "Avenir")
+```
+
+The law of cosines (or cosine rule) relates the lengths of the sides of a triangle to the cosine of the angle $\theta$, as follows:
+
+$$c^2 = a^2 + b^2 - 2ab \cos{\theta}$$
+
+If we replace the sides by two-dimensional vectors, we can obtain the following:
+
+- $a = \mathbf{a}$
+
+- $b = \mathbf{b}$
+
+- $c = \mathbf{a} - \mathbf{b}$
+
+And from there, derive the cosine rule for linear algebra:
+
+1. Modifying the left hand side:
+
+$$
+\begin{align}
+\|\mathbf{a} - \mathbf{b}\|^2 &= (\mathbf{a}-\mathbf{b}) \bullet (\mathbf{a} -\mathbf{b}) \\ &= \mathbf{a} \bullet \mathbf{a} - 2 (\mathbf{a} \bullet \mathbf{b}) + \mathbf{b} \bullet \mathbf{b} \\ &= 
+\|\mathbf{a}\|^2 - 2(\mathbf{a} \bullet \mathbf{b}) + \|\mathbf{b}\|^2
+\end{align}
+$$
+
+2. Making it equal to the right hand side:
+
+$$
+\begin{align}
+\|\mathbf{a}\|^2 - 2(\mathbf{a} \bullet \mathbf{b}) + \|\mathbf{b}\|^2 &= 
+\|\mathbf{a}\|^2 + \|\mathbf{b}\|^2 - 2 \|\mathbf{a}\| \|\mathbf{b}\| \cos{\theta} \\
+\mathbf{a} \bullet \mathbf{b} &= \|\mathbf{a}\| \|\mathbf{b}\| \cos{\theta}
+\end{align}
+$$
+
+3. An solve for $\cos{\theta}$
+
+$$
+\cos{\theta} = \frac{\mathbf{a \bullet \mathbf{b}}}{\|\mathbf{a}\| \|\mathbf{b}\|}
+$$
+
+### Geometrical interpretation 
+
+Dot products also have a different geometrical interpretation. This one is associated to the relationship between cosines and *right triangles*.
+
+$$\cos \theta = \frac{\text{adjacent}}{\text{hypotenuse}}$$
+
+Imagine projecting one vector onto another. Multiplying the **length** of this *<span style = "color:red">projection</span>* times the length of the other vector results in their dot product. When the vectors are perpendicular (the angle $\theta$ between them is 90º) the dot product is zero. When this angle $\theta$ is less than 90º, the dot product is positive. And when $\theta$ is greater than 90º, the dot product is negative. 
+
+```{r, fig.width = 8, fig.height = 3, echo = FALSE}
+a <- ggplot() + 
+  geom_segment(aes(x = -4, y = -4, xend = 4, yend = 4), 
+               linetype = "dotted", color = "grey") +
+  geom_segment(aes(x = 0, y = 0, xend = 3, yend = 3),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 3, yend = 1), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = 2), 
+               arrow = arrow(length = unit(0.2, "cm")), 
+               color = "red") +
+  geom_segment(aes(x = 3, y = 1, xend = 2, yend = 2), 
+               linetype = "dashed", color = "red") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4,4) + ylim(-4,4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "a • b > 0") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+b <- ggplot() + 
+  geom_segment(aes(x = -4, y = -4, xend = 4, yend = 4), 
+               linetype = "dotted", color = "grey") +
+  geom_segment(aes(x = 0, y = 0, xend = 3, yend = 3),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = -2), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4,4) + ylim(-4,4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "a • b = 0") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+c <- ggplot() + 
+  geom_segment(aes(x = -4, y = -4, xend = 4, yend = 4), 
+               linetype = "dotted", color = "grey") +
+  geom_segment(aes(x = 0, y = 0, xend = 3, yend = 3),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 0, yend = -2), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = -1, yend = -1), 
+               arrow = arrow(length = unit(0.2, "cm")), 
+               color = "red") +
+  geom_segment(aes(x = 0, y = -2, xend = -1, yend = -1), 
+               linetype = "dashed", color = "red") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4,4) + ylim(-4,4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "a • b < 0") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+gridExtra::grid.arrange(a, b, c, nrow = 1)
+```
+
+These projections are also called **scalar projections**:
+
+$$
+\mathbf{a} \bullet \mathbf{b} = \|\mathbf{a}\| \underbrace{\|\mathbf{b}\| \cos{\theta}}_{\text{projection of b}}
+$$
+
+Alternatively:
+
+$$
+\mathbf{a} \bullet \mathbf{b} = \|\mathbf{b}\| \underbrace{\|\mathbf{a}\| \cos{\theta}}_{\text{projection of a}}
+$$
+
+Note that if $\mathbf{a}$ and $\mathbf{b}$ are *linearly independent* (i.e. the angle $\theta$ is 90º), then $a \bullet b = 0$
+
+**Vector projections**
+
+Just as $\|\mathbf{a}\| \cos{\theta}$ is the *scalar* projection of $\mathbf{a}$ onto $\mathbf{b}$, we can also define a *vector* projection. 
+
+The vector projection of $\mathbf{a}$ onto $\mathbf{b}$ is defined as follows:
+
+$$
+\frac{\mathbf{a} \bullet \mathbf{b}}{\|\mathbf{b}\| \|\mathbf{b}\|} \times \mathbf{b}
+$$
+
+This is basically the scalar projection of $\mathbf{a}$ (or $\frac{\mathbf{a} \bullet \mathbf{b}}{\|\mathbf{b}\|}$) the multiplied by a standardized vector in the direction of $\mathbf{b}$ (or $\frac{\mathbf{b}}{\|\mathbf{b}\|}$).
+
+### Outer products
+
+The **outer product** (or **rank one product**) of two vectors produces a matrix. The notation for this operation is $\mathbf{a} \otimes \mathbf{b}$.
+
+$$
+\mathbf{a} \otimes \mathbf{b} = \mathbf{a} \mathbf{b}^\top =
+\underset{3 \times 1}{\begin{pmatrix} a_1 \\ a_2 \\ a_3 \end{pmatrix}}
+\underset{1 \times 2}{\begin{pmatrix} b_1 & b_2 \end{pmatrix}} =
+\begin{pmatrix} a_1 b_1 & a_1 b_2 \\ 
+a_2 b_1 & a_2 b_2 \\ a_3 b_1 & a_2 b_2 \end{pmatrix}
+$$
+  
+Matrix multiplication always uses outer products.
+
+$$
+\begin{pmatrix} 2 & 7 \\ 3 & 8 \\ 4 & 9 \end{pmatrix}
+\begin{pmatrix} 1 & 6 \\ 1 & 1 \end{pmatrix} =
+\begin{pmatrix} 2 \\ 3 \\ 4 \end{pmatrix}
+\begin{pmatrix} 1 & 6 \end{pmatrix} +
+\begin{pmatrix} 7 \\ 8 \\ 9 \end{pmatrix}
+\begin{pmatrix} 1 & 1 \end{pmatrix} = 
+\begin{pmatrix} 9 & 19 \\ 11 & 26 \\ 13 & 33 \end{pmatrix} 
+$$
+
+Note: outer products are a special case of the so-called **Kronecker product**
+
+****
+
+## Cross products
+
+****
+
+The **cross product** of two vectors $\mathbf{a}$ and $\mathbf{b}$ produces a vector whose length is the area of the parallelogram defined by $\mathbf{a}$ and $\mathbf{b}$. The direction of $\mathbf{a} \times \mathbf{b}$ is perpendicular to both $\mathbf{a}$ and $\mathbf{b}$.
+
+Visually, the *length* of a cross product $\|\mathbf{a} \times \mathbf{b}\|$ represents the *area* depicted as follows:
+
+```{r, fig.width = 3, fig.height = 3, echo = FALSE}
+ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 1, yend = 4),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = -2), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 1, y = 4, xend = 3, yend = 2),
+               linetype  = "dotted") +
+  geom_segment(aes(x = 2, y = -2, xend = 3, yend = 2),
+               linetype = "dotted") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4,4) + ylim(-4,4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  annotate("text", x = 1.5, y = 1, label = "Area") +
+  coord_fixed()
+
+```
+
+Another way to understand $\| \mathbf{a} \times \mathbf{b} \|$ is with the use of determinants:
+
+$$
+\| \mathbf{a} \times \mathbf{b} \| = \det \begin{pmatrix} \mathbf{a} \mid \mathbf{b} \end{pmatrix} = \det \begin{pmatrix} a_1 & b _1 \\ a_2 & b_2 \end{pmatrix} = a_1b_2 - a_2b_1
+$$
+
+Remember that the **determinant** is a tool for measuring how areas change because of a linear transformation. If you take the square formed by the unit vectors $\boldsymbol{\hat \imath}$ and $\boldsymbol{\hat \jmath}$, then the area of the parallelogram defined by $\mathbf{a}$ and $\mathbf{b}$ is given by the determinant. 
+
+Alternatively, the length of the cross product is given by the following formula:
+
+$$
+\| \mathbf{a} \times \mathbf{b} \| = \|\mathbf{a}\| \|\mathbf{b}\| \sin{\theta}
+$$
+
+How to interpret $\sin \theta$?
+
+It is easy to see that $\| \mathbf{a} \times \mathbf{b} \|$ will be greater when $\theta$ approaches 90º and smaller otherwise:
+
+```{r, fig.width = 8, fig.height = 3, echo = FALSE}
+a <- ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = 2),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = 0.5), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 2, y = 2, xend = 4, yend = 2.5),
+               linetype = "dotted") +
+  geom_segment(aes(x = 2, y = 0.5, xend = 4, yend = 2.5),
+               linetype = "dotted") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4, 4) + ylim(-4, 4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "||a x b|| is smaller") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+
+# rbind(-2 * sqrt(2 / 17), 8 * sqrt(2 / 17)) + rbind(2, 0.5)
+
+b <- ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = -2 * sqrt(2 / 17), 
+                   yend = 8 * sqrt(2 / 17)),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = 0.5), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = -2 * sqrt(2 / 17), y = 8 * sqrt(2 / 17), 
+                   xend = 2 + -2 * sqrt(2 / 17), yend = 0.5 + 8 * sqrt(2 / 17)), 
+               linetype = "dotted") +
+  geom_segment(aes(x = 2, y = 0.5, xend = 2 + -2 * sqrt(2 / 17), yend = 0.5 + 8 * sqrt(2 / 17)), 
+               linetype = "dotted") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4, 4) + ylim(-4, 4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "||a x b|| is greatest") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+c <- ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = -2, yend = -2),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 2, yend = 0.5), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = -2, y = -2, xend = 0, yend = -1.5),
+               linetype = "dotted") +
+  geom_segment(aes(x = 2, y = 0.5, xend = 0, yend = -1.5),
+               linetype = "dotted") +
+  geom_hline(yintercept = 0, alpha = 0.5, size = 1) + 
+  geom_vline(xintercept = 0, alpha = 0.5, size = 1) +
+  xlim(-4, 4) + ylim(-4, 4) + theme_void(base_family = "Avenir") +
+  labs(x = NULL, y = NULL, title = "||a x b|| is smaller and negative") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_fixed()
+
+gridExtra::grid.arrange(a, b, c, nrow = 1)
+```
+
+Note that $\| \mathbf{a} \times \mathbf{b} \|$ will be zero when both vectors are collinear, when $\theta = \{0º, 180º, 270º,  ...\}$.
+
+Finally, the cross product is given by the following (not intuitive) formula:
+
+$$
+\begin{pmatrix} a_1 \\ a_2 \\ a_3 \end{pmatrix} \times 
+\begin{pmatrix} b_1 \\ b_2 \\ b_3 \end{pmatrix} =
+\begin{pmatrix} a_2b_3 - b_2a_3 \\ a_3b_1 - b_3a_1 \\ a_1b_2 - b_1a_2 \end{pmatrix}
+$$
+
+Alternatively, you take the basis vectors and place them *inside* the following matrix, such that:
+
+$$
+\begin{align}
+\mathbf{a} \times \mathbf{b} = \det \begin{pmatrix} \begin{bmatrix} \boldsymbol{\hat{\imath}} & a_1 & b_1\\ \boldsymbol{\hat{\jmath}} & a_2 & b_2 \\ \boldsymbol{\hat{k}} & a_3 & b_3 \end{bmatrix} \end{pmatrix} &= 
+\boldsymbol{\hat{\imath}} (a_2b_3 - b_2a_3) + 
+\boldsymbol{\hat{\jmath}} (a_3b_1 - b_3a_1) + \boldsymbol{\hat{k}} (a_1b_2 - b_1a_2) \\ 
+&= \begin{pmatrix} 1 \\ 0 \\ 0 \end{pmatrix} (a_2b_3 - b_2a_3) +
+\begin{pmatrix} 0 \\ 1 \\ 0 \end{pmatrix}  (a_3b_1 - b_3a_1) +
+\begin{pmatrix} 0 \\ 0 \\ 1\end{pmatrix} (a_1b_2 - b_1a_2)
+\end{align}
+$$
+
+Note that before we had two vectors in $\mathbb R^2$ and the length of their cross product was an area. With two vectors in $\mathbb R^3$, the length of their cross product is a *volume.* 
+
+
+Change of basis
+
+The description of a coordinate system in $\mathbb{R}^2$ in terms of the basis vectors $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$ is a conventional although somewhat arbitrary choice. In other words, the existence of the vector $\mathbf{x}$ is independent of the way in which we choose to describe $\mathbb{R}^2$: the *choice* of basis vectors.
+
+For example, take the following vector $\mathbf{x}$, as described by the unit vectors $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$:
+
+$$
+\mathbf{x} = \begin{pmatrix} x_1 \\ x_2 \end{pmatrix} = x_1 \begin{pmatrix} 1 \\ 0 \end{pmatrix} + x_2 \begin{pmatrix} 0 \\ 1\end{pmatrix}
+$$
+
+Here, $x_1$ and $x_2$ can be best understood as *scalars* that rely on the choice of basis vectors in order to describe vector $\mathbf{x}$.
+
+But if the basis vectors where to be different, then the description of $\mathbf{x}$ would also different. 
+
+$$
+\mathbf{x} = \begin{pmatrix} ? \\ ? \end{pmatrix} = x_1 \begin{pmatrix} ? \\ ? \end{pmatrix} + x_2 \begin{pmatrix} ? \\ ?\end{pmatrix}
+$$
+
+As it turns out, we can use the dot product to find the numbers for $\mathbf{x}$ in the new basis, so long as we know how to describe the new basis vectors in terms of $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$. This is where **vector projections** play an important role. 
+
+****
+
+**Example:** How to translate between different coordinate systems?
+
+Given the vectors
+
+$$
+\mathbf{x} = \begin{pmatrix} 2 \\ 2 \end{pmatrix}, \mathbf{b}_1 = \begin{pmatrix} -3 \\ 1 \end{pmatrix}, \text{and } \mathbf{b}_2 = \begin{pmatrix} 1 \\ 3 \end{pmatrix}
+$$ 
+
+which all described in terms of the standard basis, $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$, *what is $\mathbf{x}$ in the basis defined by $\mathbf{b}_1$ and $\mathbf{b}_2$?*
+
+1. Find the projection of $\mathbf{x}$ onto $\mathbf{b}_1$, and onto $\mathbf{b}_2$:
+
+$$
+\frac{\mathbf{x} \bullet \mathbf{b}_1}{\|\mathbf{b}_1\|^2} \mathbf{b}_1 = 
+\frac{-4}{10} \mathbf{b}_1 \hspace{1cm} \text{and} \hspace{1cm}
+\frac{\mathbf{x} \bullet \mathbf{b}_2}{\|\mathbf{b}_2\|^2} \mathbf{b}_2 = 
+\frac{8}{10} \mathbf{b}_2
+$$
+
+2. Check that these projections provide a correct description of $\mathbf{x}$:
+
+$$
+\mathbf{x} = 
+\frac{-2}{5} \times \begin{pmatrix} -3 \\ 1 \end{pmatrix} + \frac{4}{5} \times \begin{pmatrix} 1 \\ 3 \end{pmatrix} = \begin{pmatrix} 10 \div 5 \\ 10 \div 5\end{pmatrix} = \begin{pmatrix} 2 \\ 2 \end{pmatrix}
+$$
+
+3. Describe $\mathbf{x}$ in terms of $\mathbf{b}_1$ and $\mathbf{b}_2$:
+
+$$
+\mathbf{x_b} = \begin{pmatrix} \frac{-2}{5} \\ \frac{4}{5} \end{pmatrix} = 
+\begin{pmatrix} -0.4 \\ 0.8 \end{pmatrix}
+$$
+
+Note: the new basis vectors *have* to be at 90º degrees of each other for computation to be easy; otherwise, we need matrices to do what's called a "transformation of axes". 
+
+### Matrix multiplication
+
+This same example can be seen through the lense of matrix multiplication:
+
+A matrix whose columns represent different basis vectors can be thought of as a *linear transformation* that allows a change of basis.
+
+Remember that matrixes are just linear transformations, and as such, we can move from $\mathbf{x_b}$ to $\mathbf{x}$ and back again through the uses of inverse matrices:
+
+Let $\mathbf{A}$ equal a matrix whose columns are the new basis vectors $\mathbf{b}_1$ and $\mathbf{b}_2$
+
+$$
+\mathbf{A} \mathbf{x_b} = \mathbf{x} \hspace{1cm} \text{ and } \hspace{1cm}
+\mathbf{x_b} = \mathbf{A}^{-1} \mathbf{x}
+$$
+
+```{r}
+A <- cbind(c(-3, 1), c(1, 3))
+A %*% c(-0.4, 0.8)
+```
+
+Thus, we will take the vector $\mathbf{x}$ as described by $\boldsymbol{\hat{\imath}}$ and $\boldsymbol{\hat{\jmath}}$, and look for the matrix $\mathbf{A}^{-1}$ that will translate $\mathbf{x}$ into the new coordinate system given by $\mathbf{b}_1$ and $\mathbf{b}_2$:
+
+```{r}
+solve(A)
+```
+
+We then multiply vector $\mathbf{x}$ by this matrix to get vector $\mathbf{x}_b$
+
+```{r}
+solve(A) %*% c(2, 2)
+```
+
+Note: Using matrix multiplication does *not* require the new basis vectors have to be at 90º degrees of each other.
+
+
+
+## Eigenvalues and Eigenvectors
+
+The German word *eigen* translates to English as "characteristic", and for a matrix that represents a linear mapping (or transformation), the *eigenvalues* describe the characteristics of that mapping.
+
+Eigenvalues and eigenvectors, can are best understood through the following equation:
+
+$$
+\underset{\text{Matrix transformation}}{\mathbf A \mathbf x} = \underset{\text{Scalar transformation}}{\lambda \mathbf x}
+$$
+
+The $\lambda$'s and $\mathbf{x}$'s that make this expression true are called **eigenvalues** and **eigenvectors**. Here, $\mathbf{x}$ is a vector that, when multiplied by $\mathbf{A}$, ends up as a scalar multiple of itself. This is why eigenvalues ($\lambda$'s) are "characteristic": they describe how certain vectors (i.e. *eigen*vectors) evolve with repeated applications of $\mathbf{A}$.
+
+Another more literal translation of *eigen* is "own": An eigenvector $\mathbf x$ is a scalar multiple of itself ("own") when multiplied by $\mathbf A$!
+
+**Finding eigenvalues**
+
+There are two steps to calculating eigenvalues: (1) find the **characteristic equation** and (2) solve for $\lambda$.
+
+For example:
+
+Let
+
+$$
+\mathbf{A} = \pmatrix{4 & 1 \\ 2 & 5}
+$$
+
+1. Find the characteristic equation. This is a polynomial equation with order $n$, where $n$ is the number of rows and columns of matrix $\mathbf{A}$.
+
+$$
+\begin{align}
+\mathbf{A} - \lambda \mathbf{I} &= \begin{pmatrix} 4 - \lambda & 1 \\ 2 & 5 - \lambda \end{pmatrix} \\ 
+\det (\mathbf{A} - \lambda \mathbf{I}) &= (4 - \lambda)(5-\lambda) - 2 \\ &=
+\lambda^2 - 9\lambda + 18
+\end{align}
+$$
+
+2. Solve for the roots of the characteristic equation.
+
+    $$
+    \begin{align}
+    \det (\mathbf{A} - \lambda \mathbf{I}) &= 0 \\ 
+    \lambda^2 - 9\lambda + 18 &= 0 \\
+    (\lambda - 6)(\lambda - 3) &= 0 \\
+    \end{align}
+    $$
+
+    Therefore:
+
+    $$\lambda = 6 \hspace{0.5cm} \text{and} \hspace{0.5cm} \lambda = 3$$
+
+    Note that for a solution to exist, $\det(\mathbf{A} - \lambda \mathbf{I}) = 0$ must exist.
+
+**Finding eigenvectors**
+
+An **eigenvector** $\mathbf{x}$ is the vector that makes the eigenvalue equation true for a particular eigenvalue. That is, *there will be one eigenvector for each eigenvalue*, and you can find each of them by solving $\mathbf{A}\mathbf{x} = \lambda \mathbf{x}$ for each eigenvalue.
+
+This can de accomplished easily with `R`:
+
+```{r}
+A <- cbind(c(4, 2), c(1, 5))
+
+x1 <- eigen(A)$vectors[ , 1]
+x2 <- eigen(A)$vectors[ , 2]
+
+lambda1 <- eigen(A)$values[1]
+lambda2 <- eigen(A)$values[2]
+```
+
+```{r}
+## First solution
+A %*% x1 %>% as.numeric()
+lambda1 * x1
+
+## Second solution
+A %*% x2 %>% as.numeric() == lambda2 * x2
+```
+
+But finding $\mathbf{x}$ is not trivial. For starters, notice that any eigenvector $\mathbf{x}$ is determined only up to a multiplicative constant. 
+
+```{r}
+## Example: c = 5
+lambda1 * (x1 * 5) == A %*% (x1 * 5) %>% as.numeric
+```
+
+Note that the set of vectors (or $\mathbf{x}$'s) that make the following equation hold is just the **null space** of "$\mathbf{A} - \lambda \mathbf{I}$"
+
+$$
+\begin{align}
+\mathbf{Ax} - \lambda \mathbf{Ix} &= \mathbf{0} \\
+(\mathbf{A} - \lambda \mathbf{I})\mathbf{x} &= \mathbf{0}
+\end{align}
+$$
+
+In the case of $\lambda = 6$, we have the following:
+
+$$
+\pmatrix{0 \\ 0} = \underbrace{\pmatrix{-2 & 1 \\ 2 & -1}}_{\mathbf{A} - \lambda \mathbf{I}} \pmatrix{x_1 \\ x_2} = \pmatrix{0 & 0 \\ 2 & -1} \pmatrix{x_1 \\ x_2}
+$$
+
+Which in turn is:
+
+$$
+\begin{align}
+2x_1 - x_2 &= 0 \\
+2x_1 &= x_2
+\end{align}
+$$
+
+This doesn't have a *unique* solution, but any pair $(x_1, x_2)$ that satisfies this equation will be a valid eigenvector. We can further simplify by saying that the **eigenspace** corresponding to $\lambda = 6$ (i.e. the set of all eigenvectors) as follows:
+
+$$
+\begin{align}
+&\text{Let } x_1 = c \\\\
+&\text{then } \mathbf{x} = \pmatrix{c \\ 2c} = c \pmatrix{1 \\ 2}
+\end{align}
+$$
+
+This solution is difficult to see by just looking at the `R` output:
+
+```{r}
+x1
+```
+
+But this parsimonious expression was there all along:
+
+```{r}
+x1 / x1[1]
+```
+
+****
+
+- An $n$ by $n$ matrix $\mathbf A$ has *at most* $n$ distinct eigenvalues.
+
+- Even if $\mathbf A$ is a matrix consisting entirely of real numbers, some (or all) of its eigenvalues *could* be complex numbers.
+
+If the eigenvalues $\lambda_1, \dots, \lambda_n$ are *distinct*, then the set of associated eigenvectors $\mathbf v_1, \dots, \mathbf v_n$ form a **basis** for the set of $n$-dimensional vectors. That is, every $n$-vector can be expressed as a linear combination of these eigenvectors:
+
+$$
+\mathbf x = c_1 \mathbf v_1 + c_2 \mathbf v_2 + \dots + c_n \mathbf v_n
+$$
+
+Notice the following simple decomposition when we apply the matrix $\mathbf A$ to $\mathbf x$:
+
+$$
+\mathbf{Ax} = c_1 \lambda_1 \mathbf v_1 + c_2 \lambda_2 \mathbf v_2 + \dots + c_n \lambda_n \mathbf v_n
+$$
+
+Thus, eigenpairs $(\lambda_i, \mathbf v_i)$ turn matrix multiplication into a linear combination of scalar multiplications.
+
+We can drive this one step further by noting what happens when we iteratively multiply $\mathbf x$ by matrix $\mathbf A$, as such:
+
+$$
+\begin{align}
+\mathbf{Ax} = c_1 \lambda_1 \mathbf v_1 + c_2 \lambda_2 \mathbf v_2 + \dots + c_n \lambda_n \mathbf v_n \\\\
+\mathbf{AAx} = c_1 \lambda_1^2 \mathbf v_1 + c_2 \lambda_2^2 \mathbf v_2 + \dots + c_n \lambda_n^2 \mathbf v_n \\\\
+\mathbf A^t \mathbf x = c_1 \lambda_1^t \mathbf v_1 + c_2 \lambda_2^t \mathbf v_2 + \dots + c_n \lambda_n^t \mathbf v_n
+\end{align}
+$$
+
+Also, if one of the eigenvalues is larger than all of the others, these differences will be exacerbated as $t$ grows. This fact will serve many purposes (e.g. finding stationary probability distributions using Markov chains or using iterative measures of node centrality for social network analysis). 
+
+For example, suppose we have the following matrix $\mathbf A$:
+
+```{r}
+A <- cbind(
+  c(0.980, 0.005, 0.005, 0.010),
+  c(0.005, 0.980, 0.010, 0.005),
+  c(0.005, 0.010, 0.980, 0.005),
+  c(0.010, 0.005, 0.005, 0.980))
+
+eigen(A)
+```
+
+Because R sorts the eigen values in descending order, we get that the eigenvector associated with the largest eigen value is just:
+
+```{r}
+eigen(A)$vectors[ , 1] ## select first eigenvector
+```
+
+And if we apply $\mathbf A$ to any vector a large number of times, we will eventually see it converge to the largest eigenvector.
+
+For example:
+
+```{r}
+x <- c(1, 0, 0, 0) ## probability distribution
+for (i in seq(1e3)) x <- A %*% x
+print(x)
+```
+
+Note that this is in fact a normalized version of the largest eigenvector
+
+```{r}
+eigen(A)$vectors[ , 1] / sum(eigen(A)$vectors[ , 1])
+```
+
+Another example:
+
+```{r}
+x <- c(0.7, 0, 0.1, 0.2)
+for (i in seq(1e3)) x <- A %*% x
+print(x)
+```
+
+### PCA
+
+Principal Component Analysis (PCA) produces a low-dimensional representation of dataset. It finds a sequence of linear combinations of the variables that have maximal variance, and are mutually uncorrelated. It's useful with *wide* datasets (i.e. lots of columns).
+
+The fist principal component (PC1) explains maximum variation; the second (PC2, uncorrelated to PC1) explains maximum remaining variation in another other (perpendicular or uncorrelated) direction; the third (PC3, uncorrelated to PC1 and PC2) explains maximum remaining variation; and so on.
+
+There are two functions in R that perform PCA.
+
+- `prcomp()`: "The calculation is done by a *singular value decomposition* of the (centered and possibly scaled) data matrix, not by using `eigen()` on the covariance matrix. This is generally the preferred method for numerical accuracy."
+
+- `princomp()`: "The calculation is done using `eigen()` on the correlation or covariance matrix, as determined by `cor()`". 
+
+****
+
+If the dataset is **normalized** (i.e. the mean of each column has been subtracted from each element in any given column), then $\mathbf A$'s covariance matrix is simply:
+
+$$
+\underset{n \times n}{\textsf{var}(\mathbf A)} = \underset{n \times n}{\boldsymbol \Sigma} = \frac{\mathbf A^\top \mathbf A}{n - 1}
+$$
+
+Here, each element of the diagonal represents $\mathbf A[\ ,\ i]$'s variance (i.e. the variance of the $i$th column). 
+
+Note that to achieve this normalization easily in R, we just use the `scale()` function, which has arguments `center = TRUE` and `scale = TRUE` by default. We then pass this new data matrix to either of the PCA functions in R and use the `summary()` function to inspect the resulting object.
+
+Here are some more facts:
+
+- The eigenvalues $\lambda_1, \lambda_2, \dots, \lambda_n$ of $\boldsymbol \Sigma$ are real, and their corresponding eigenvectors are *orthogonal* (or point in distinct directions).
+
+- The *total variance* of the data set is the sum of the eigenvalues of $\boldsymbol \Sigma$.
+
+- The eigenvectors $\mathbf v_1, \dots, \mathbf v_n$ are called the *principal components* of $\mathbf A$.
+
+- The direction in which $\mathbf v_i$ points in can explain $\lambda_i$ of the total variance in the dataset. If $\lambda_i$ of a subset of $\boldsymbol \lambda$ explain a significant amount of the total variance, then there's an opportunity for *dimension reduction*.
+
+****
+
+An example:
+
+```{r}
+prcomp(scale(mtcars))$sdev^2 ## eigenvalues
+prcomp(scale(mtcars))$rotation ## eigenvectors
+summary(prcomp(scale(mtcars)))
+```
+
+
+## Abstract Vector Spaces
+
+When talking about vector spaces we are not merely refering to lists of numbers. We are dealing with a space that exists independently of the coordinates we give use; things like *determinants* and *eigenvectors* don't depend on the particular coordinate system we chose to use.
+
+Strictly speaking, a **vector space** is any set of vectors that is closed under scalar multiplication and addition.
+
+- *Additivity*: $L(\mathbf{v} + \mathbf{w}) = L(\mathbf{v}) + L(\mathbf{w})$
+
+- *Scaling*: $L(c \mathbf{v}) = cL(\mathbf{v})$
+
+These two properties encompass the formal definition of *linearity*.
+
+One of the most important consequences of these properties, which makes matrix multiplication possible, is that a linear transformation is completely described by how it transforms the *basis vectors*. 
+
+Note that in calculus, we always use the fact that derivatives are also additive and have the scaling property. 
+
+- *Additivity*: $\frac{d}{dx} (f(x) + g(x)) = \frac{df(x)}{dx} + \frac{dg(x)}{dx}$
+
+- *Scaling*: $\frac{d}{dx}cf(x) = c \frac{df(x)}{dx}$
+
+We can take this parallel even further and describe derivatives in terms of matrices. For example, let's take the *space of all polynomials*:
+
+1. The first thing we need to do is give coordinates to this space, i.e. choosing a basis.
+
+$$
+\underbrace{x^2 + 3x + 5}_\text{this expression} = 
+\underbrace{1(5) + x(3) + x^2(1) + x^3(0) + ... + x^n(0) + ...}_\text{is already written as a linear combination}
+$$
+
+$$
+\overbrace{
+\pmatrix{b_0(x) \\ b_1(x) \\ b_2 (x) \\ b_3(x) \\ \vdots \\ b_n(x) \\ \vdots} = \pmatrix{1 \\ x \\ x^2 \\ x^3 \\ \vdots \\ x^n \\ \vdots}
+}^\text{Basis functions}
+$$
+
+2. Then we describe the particular derivative with an infinite matrix, which is mostly filled with zeroes.
+
+    For example, this polynomial
+        
+    $$
+    \frac{d}{dx}(x^3 + 5x^2 + 4x + 5) = 3x^2 + 10x + 4 + 0 + ...
+    $$
+    
+    can be expressed as follows:
+    
+    $$
+    \begin{align}
+    \underbrace{\pmatrix{
+      0 & 1 & 0 & 0 & \dots \\ 
+      0 & 0 & 2 & 0 & \dots \\ 
+      0 & 0 & 0 & 3 & \dots \\ 
+      0 & 0 & 0 & 0 & \dots \\ 
+      \vdots & \vdots & \vdots & \vdots & \ddots}}_\text{Linear Transformation}
+    \underbrace{\pmatrix{5 \\ 4 \\ 5 \\ 1 \\ \vdots}}_\mathbf{x} &=
+    \underbrace{\pmatrix{4 \\ 10 \\3 \\ 0 \\ \vdots}}_\mathbf{f(x)}
+    \end{align}
+    $$
+
+    This matrix can be easily constructed by taking the derivative of each basis function and puting the coordinates of the results in each column.
+
+```{r, echo=FALSE}
+Name1 <- c("Linear transformations", "Dot products", "Eigenvectors")
+
+Name2 <- c("Linear operators", "Inner products", "Eigenfunctions")
+
+data_frame(`Linear algebra concepts` = Name1, 
+           `Alternate names applied to functions` = Name2) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+*So what is a vector*? In math there exists many objects that have vector-like attributes: a reasonable notion of scaling and adding. And all of the tools developed in linear algebra should be able to apply to these other objects. The forms that vectors take doesn't really matter: *they can be many things*.
+
+At this very high level of generality, any vector space must satisfy this set of rules:
+
+**Axioms for vector addition and scaling**
+
+$$
+\begin{align}
+&1. \ \ \mathbf{u} + (\mathbf{v} + \mathbf{w}) = (\mathbf{u} + \mathbf{v}) + \mathbf{w} \\
+&2. \ \ \mathbf{v} + \mathbf{w} = \mathbf{w} + \mathbf{v} \\
+&3. \ \ \text{There is a vector } \mathbf{0} \text{ such that } \mathbf{0} + \mathbf{v} = \mathbf{v} \text{ for all } \mathbf{v} \\
+&4. \ \ \text{For every vector } \mathbf{v} \text{ there is a vector } -\mathbf{v} \text{ such that } \mathbf{v} + (-\mathbf{v}) = \mathbf{0} \\
+&5. \ \ a(b\mathbf{v}) = (ab)\mathbf{v} \\
+&6. \ \ 1\mathbf{v} = \mathbf{v} \\
+&7. \ \ a(\mathbf{v} + \mathbf{w}) = a \mathbf{v} + a\mathbf{w} \\
+&8. \ \ (a + b)\mathbf{v} = a\mathbf{v} + b\mathbf{v}
+\end{align}
+$$
+
+## Summary
+
+### R
+
+- **Main Functions**
+
+| Function or Operator        | Description
+|-----------------------------|:-----------------------------------------------|
+| `matrix()`                  | Creates a matrix from the given set of values
+| `dim()`                     | Gives the dimensions of any vector, matrix or array
+| `cbind(A, B, ...)`          | Combine matrices (or vectors) horizontally. Returns a matrix
+| `rbind(A, B, ...)`          | Combine matrices (or vectors) vertically. Returns a matrix
+| `rowMeans(A)`               | Returns vector of row means
+| `rowSums(A)`                | Returns vector of row sums
+| `colMeans(A)`               | Returns vector of column means
+| `colSums(A)`                | Returns vector of column sums
+| `A * B`                     | Element-wise multiplication
+| `A %*% B`                   | Matrix multiplication
+| `A %o% B`                   | Outer-product of `A` and `B`: `A %*% t(B)`
+| `crossprod(A, B)`           | Cross-product of `A` and `B`. Note that  `crossprod()` returns a **matrix** cross product. It will return a dot product if its inputs are vectors: `t(A) %*% B`
+| `crossprod(A)`              | Cross-product of `A` with itself: `t(A) %*% A`
+| `t(A)`                      | Transpose of `A`
+| `solve(A)`                  | Inverse of `A` (where `A` is a square matrix)
+| `solve(A, b)`               | Returns vector `x` in the equation $b = \mathbf{A}x$
+| `diag(x)`                   | Creates diagonal matrix with elements of *vector* `x` in the principal diagonal
+| `diag(A)`                   | Creates a vector containing the elements of the principal diagonal of matrix `A`
+| `diag(k)`	                  | If `k` is a scalar, this creates a $k \times k$ identity matrix. 
+
+
+- **Eigen decomposition**
+
+```{r}
+What <- c("`eigen()`", "`y <- eigen(A)`", "`y$values`",
+          "`y$vectors`")
+
+Description <- c("Computes eigenvalues and eigenvectors",
+                 "Creates a list", "Eigenvalues of `A`", 
+                 "Eigenvectors of `A`")
+
+tibble(Function = What, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+- **Singular Value Decomposition**
+
+```{r}
+What <- c("`svd(A)`", "`y <- svd(A)`", "`y$d`",
+          "`y$u`", "`y$v`")
+
+Description <- c("Computes the singular-value decomposition of `A`",
+                 "Creates a list", "Vector containing the singular values of `A`", 
+                 "A matrix that contains the left singular vectors of `A`",
+                 "A matrix that contains the right singular vectors of `A`")
+
+tibble(Function = What, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+### Properties
+
+- **Matrix and Vector Properties**
+
+```{r, echo=FALSE}
+Property <- c("Associative", "Additive distributive", 
+              "Scalar commutative")
+
+Description <- c("$(\\mathbf{AB})\\mathbf{C} = 
+                 \\mathbf{A}(\\mathbf{BC})$",
+                 "$(\\mathbf{A} + \\mathbf{B})\\mathbf{C} = \\mathbf{AC} 
+                 + \\mathbf{BC}$",
+                 "$c\\mathbf{AB} = (c\\mathbf{A})\\mathbf{B} = 
+                 \\mathbf{A}(c\\mathbf{B}) = \\mathbf{AB}c$")
+
+tibble(Property, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+- **Matrix and Vector Transpose Properties**
+
+```{r, echo=FALSE}
+Property <- c("Inverse", "Additive", "Multiplicative", 
+              "Scalar multiplication", "Inverse transpose",
+              "If $\\mathbf{A}$ is symmetric")
+
+Description <- c("$(\\mathbf{A}^\\top)^\\top = \\mathbf{A}$",
+                 "$(\\mathbf{A} + \\mathbf{B})^\\top = \\mathbf{A}^\\top 
+                 + \\mathbf{B}^\\top$",
+                 "$(\\mathbf{AB})^\\top = \\mathbf{B}^\\top
+                 \\mathbf{A}^\\top$",
+                 "$(c\\mathbf{A})^\\top = c\\mathbf{A}^\\top$",
+                 "$(\\mathbf{A}^{-1})^\\top = (\\mathbf{A}^\\top)^{-1}$",
+                 "$\\mathbf{A}^\\top = \\mathbf{A}$")
+tibble(Property, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+
+```
+
+- **Matrix Inverse Properties (only defined for $n \times n$)**
+
+```{r, echo=FALSE}
+Property <- c("Inverse", "Multiplicative", "Scalar multiplication")
+Description <- c("$(\\mathbf{A}^{-1})^{-1} = \\mathbf{A}$",
+                 "$(\\mathbf{AB})^{-1} = \\mathbf{B}^{-1} 
+                 \\mathbf{A}^{-1}$",
+                 "$(c\\mathbf{A})^{-1} = \\frac{1}{c} \\mathbf{A}^{-1}$")
+
+tibble(Property, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+- **Matrix Determinant Properties (only defined for $n \times n$)**
+
+```{r, echo=FALSE}
+Property <- c("Transpose", "Identity matrix", "Multiplication",
+              "Inverse", "Scalar multiplication", 
+              "If $\\mathbf{A}$ is triangular or diagonal")
+Description <- c("$\\det(\\mathbf{A}) = \\det(\\mathbf{A}^\\top)$",
+                 "$\\det(\\mathbf{I}) = 1$", 
+                 "$\\det(\\mathbf{AB}) = \\det(\\mathbf{A}) \\det(
+                 \\mathbf{B})$",
+                 "$\\det(\\mathbf{A}^{-1}) = \\frac{1}{\\det( 
+                 \\mathbf{A})}$",
+                 "$\\det(c\\mathbf{A}) = c^n \\det(\\mathbf{A})$",
+                 "$\\det(\\mathbf{A}) = \\prod_{i=1}^n a_{ii}$")
+
+tibble(Property, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+- **Trace of a Matrix Properties (only defined for $n \times n$)**
+
+```{r, echo=FALSE}
+Property <- c("Trace", "Trace of a transpose", "Trace of a product")
+Description <- c("$\\text{tr}(\\mathbf{A}) = \\sum_{i = 1}^n a_{ii}$",
+                 "$\\text{tr}(\\mathbf{A}^\\top) = \\text{tr}( 
+                 \\mathbf{A})$",
+                 "$\\text{tr}(\\underset{n \\times n}{\\mathbf{AB})} = 
+                 \\text{tr}(\\underset{p \\times p}{\\mathbf{BA})}$")
+
+tibble(Property, Description) %>% 
+  knitr::kable(format = "html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
