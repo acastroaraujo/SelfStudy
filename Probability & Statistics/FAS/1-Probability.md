@@ -570,14 +570,63 @@ $$
 
 ### Mean Squared Error
 
+MSE is a metric that characterizes how well a random variable $X$ approximates a certain value $c$. 
+
+$$MSE = E\left[(X - c)^2\right]$$
+
+Note that the MSE about zero is the same as the _second raw moment_, and the MSE about $E[X]$ is the same as the _second central moment_, which is also the variance.
+
+- **Root Mean Squared Error**
+
+$$\sqrt{E\left[(X - c)^2\right]}$$
+
+**Note**. This is used as a common measure of accuracy in the context of estimation.
+
+- **Decomposition** 
+
+$$
+\begin{align}
+E\left[(X - c)^2\right] &= E\left[(X^2 - 2cX + c^2\right] \\\\ &=
+E\left[X^2\right] - 2cE[X] + c^2 \\\\ &=
+E\left[X^2\right] \underbrace{- E[X]^2 + E[X]^2}_\text{clever trick} - 2cE[X] + c^2 \\\\ &= 
+\left(E\left[X^2\right] - E[X]^2\right) + \left(E[X]^2 - 2cE[X] + c^2\right) \\\\ &=
+V[X] + (E[X]-c)^2
+\end{align}
+$$
+
+**Note.** In the context of estimation, this is also known as the bias-variance decomposition.
+
+The MSE is also linked to an alternative definition of the mean: the value $c$ that minimizes the MSE of $X$ is $E[X]$.
+
+$$
+\underset{c \in \mathbb R}{\arg \min}\ E\left[(X - c)^2\right] = E[X]
+$$
+
+If we where to choose a different "loss function" besides the MSE, we could come up with different "best" choices for $c$. For example, the value $c$ that minimizes the Mean Absolute Error is the *median*.
+
 ****
 
 ## Summarizing joint distributions
 
 ****
 
+### Covariance
 
+Covariance measures the extent to which two random variables
+"move together." 
 
+$$
+\begin{align}
+\textsf{Cov}[X, Y] &= E\big[(X - E[X])(Y - E[Y])\big] \\\\ &=
+E[XY] - E[X]E[Y]
+\end{align}
+$$
+
+- **Variance Rule** (non-linearity of variances)
+
+$$V[X + Y] = V[X] + \textsf{Cov}[X, Y] + V[Y]$$
+
+- **Properties of Covariance**
 
 ****
 

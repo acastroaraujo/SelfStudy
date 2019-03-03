@@ -6,6 +6,8 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 
 - Gelman et al's forthcoming ___Regression and Other Stories___
 
+- Bob Carpenter's new book on Probability
+
 - Aronow & Miller's ___Foundations of Agnostic Statistics___
 
 - Charles Manski's ___Identification for Prediction and Decision___

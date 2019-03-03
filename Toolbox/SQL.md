@@ -1,0 +1,408 @@
+## Structured Query Language (SQL)
+
+**Relational databases**
+
+`SQL` is a language for interacting with data stored in a relational database. (You can think of a relational database as a collection of tables or spreadsheets). Each table represents exactly one type of entity; e.g., a table might represent employees in a company or purchases made, but not both.
+
+- Each row (or record) of a table contains information about a single entity.
+
+- Each column (or field) of a table contains a single attribute for all rows in the table.
+
+Example of SQL query:
+
+```
+SELECT "field"
+FROM "table"
+WHERE "condition";
+```
+
+Every table contains a **primary key** column, which has a unique entry for each row.
+
+- In the relational model of databases, a primary key is a specific choice of a minimal set of attributes (columns) that uniquely specify a tuple (row) in a relation (table).
+
+- Records are often added to or deleted from databases. Because of this, the property that a domain is a primary key is time-dependent. Consequently, a primary key should be chosen that remains one whenever the database is changed.
+
+- Combinations of domains can also uniquely identify n-tuples in an n-ary relation. When the values of a set of domains determine an n-tuple in a relation, the Cartesian product of these domains is called a **composite key**.
+
+
+****
+
+To use a relational database, you have to create first a **connection** object. 
+
+The connection object will represent the database in Python or in R.
+
+- **In Python**
+
+```
+from sqlalchemy import create_engine
+engine = create_engine('sqlite:///database.sqlite') ## connection string to the SQLite database 
+print(engine.table_names())
+````
+
+We can then open the connection and send an SQL query as follows.
+
+```
+with engine.connect() as con:
+    rs = con.execute("SELECT * FROM table")  ## the query is in this string
+    df = pd.DataFrame(rs.fetchall())
+    df.columns = rs.keys()
+```
+
+- **In R**
+
+```
+library(DBI) 
+con <- dbConnect(RSQLite::SQLite(), "database.sqlite")
+dbListTables(con)
+```
+
+We can then use the opened connection and send an SQL query as follows.
+
+```
+rs <- dbSendQuery(con, "SELECT * FROM table")
+df <- dbFetch(rs)
+dbClearResult(rs)
+dbDisconnect(con)
+```
+
+Or more succintly.
+
+```
+df <- dbGetQuery(con, "SELECT * FROM table")
+dbDisconnect(con)
+```
+
+For more about SQL in R see [**here**](https://db.rstudio.com/).
+
+## Some keywords
+
+**Where**
+
+In SQL, the `WHERE` keyword allows you to filter based on both text and numeric values in a table. There are a few different comparison operators you can use:
+
+- `=` equal
+
+- `<>` not equal
+
+- `<` less than
+
+- `>` greater than
+
+- `<=` less than or equal to
+
+- `>=` greater than or equal to
+
+Use the `AND` and `OR` keywords to establish multiple conditions. When combining `AND` and `OR`, be sure to enclose the individual clauses in parentheses, like so:
+
+```
+SELECT title
+FROM films
+WHERE (release_year = 1994 OR release_year = 1995)
+    AND (certification = 'PG' OR certification = 'R');
+```
+
+Otherwise, due to SQL's precedence rules, you may not get the results you would expect.
+
+Note that the `BETWEEN` keyword provides a useful shorthand for filtering values within a specified range. 
+
+The `IN` operator allows you to specify multiple values in a `WHERE` clause, making it easier and quicker to specify multiple `OR` conditions.
+
+****
+
+**Missing values**
+
+In SQL, `NULL` represents a missing or unknown value. You can check for `NULL` values using the expression `IS NULL`. For example, to count the number of missing birth dates in the people table:
+
+```
+SELECT COUNT(*)
+FROM people
+WHERE birthdate IS NULL;
+```
+
+Sometimes, you'll want to filter out missing values so you only get results which are not `NULL`. To do this, you can use the `IS NOT NULL` operator.
+
+****
+
+The `LIKE` operator can be used in a `WHERE` clause to search for a pattern in a column. To accomplish this, you use something called a *wildcard* as a placeholder for some other values. There are two wildcards you can use with `LIKE`:
+
+1. The `%` wildcard will match zero, one, or many characters in text (e.g. like using `.*` with regular expressions).
+
+2. The `_` wildcard will match a single character (e.g. like using `.` with regular expressions).
+
+For example, to get the names of all people whose names begin with 'B'. The pattern you need is 'B%':
+
+```
+SELECT name
+FROM people
+WHERE name LIKE 'B%';
+```
+
+****
+
+**Aggregate functions**
+
+This is similar to the `summarize` verb in R's `dplyr` package. There are five aggregate functions in SQL:
+
+- `COUNT` counts how many rows are in a particular column.
+
+- `SUM` adds together all the values in a particular column.
+
+- `MIN` and `MAX` return the lowest and highest values in a particular column, respectively.
+
+- `AVG` calculates the average of a group of selected values.
+
+For example, this query gets the average amount grossed by all films whose titles start with the letter 'A':
+
+```
+SELECT AVG(gross)
+FROM films
+WHERE title LIKE 'A%';
+```
+
+
+****
+
+In addition to using aggregate functions, you can perform basic arithmetic with symbols like `+`, `-`, `*`, and `/`.
+
+So, for example, this gives a result of 12:
+
+```
+SELECT (4 * 3);
+```
+
+But the following query gives the result of 1:
+
+```
+SELECT (4 / 3);
+```
+
+Why? SQL assumes that if you divide an integer by an integer, you want to get an integer back. If you want more precision when dividing, you can add decimal places to your numbers. 
+
+For example:
+
+```
+SELECT (4.0 / 3.0) AS result; ## this also creates a new column called "result"
+```
+
+The `AS` keyword does something called *aliasing*. Aliasing simply means you assign a temporary name to something. 
+
+The following query would give the percentage of people who are no longer alive:
+
+```
+SELECT COUNT(deathdate) * 100.0 / COUNT(*) AS percentage_dead
+FROM people;
+```
+
+****
+
+**Ordering**
+
+By default `ORDER BY` will sort in ascending order. If you want to sort the results in descending order, you can use the `DESC` keyword. 
+
+For example:
+
+```
+SELECT title
+FROM films
+ORDER BY release_year DESC;
+```
+
+You can also order by multiple columns!
+
+****
+
+**Grouping**
+
+`GROUP BY` allows you to group a result by one or more columns.
+
+For example:
+
+```
+SELECT sex, count(*)
+FROM employees
+GROUP BY sex;
+```
+
+Commonly, `GROUP BY` is used with aggregate functions like `COUNT()` or `MAX()` *within* groups. Also, note that `GROUP BY` always goes after the `FROM` clause.
+
+**Filtering, and aggregating by groups**
+
+In SQL, aggregate functions can't be used in `WHERE` clauses. This means that if you want to filter based on the result of an aggregate function, you need another way. That's where the `HAVING` clause comes in.
+
+For example, this query shows only those years in which more than 10 films were released:
+
+```
+SELECT release_year
+FROM films
+GROUP BY release_year
+HAVING COUNT(title) > 10;
+```
+
+## Joining Data in SQL
+
+### Inner joins
+
+The basic syntax for an `INNER JOIN` operation is as follows:
+
+```
+SELECT *
+FROM left_table
+INNER JOIN right_table
+ON left_table.id = right_table.id;
+```
+
+Note that in the case different tables have different columns with the same name, an "ambiguous" error will be produced. To fix this, you need to use a `.` to indicate which table you're referring to. 
+
+For example:
+
+```
+SELECT c1.name AS city, c2.name AS country
+FROM cities AS c1
+INNER JOIN countries AS c2
+ON c1.code = c2.code;
+```
+
+Note that aliasing (the `AS` keyword) can be used to indicate tables as well. Also, since `code`  is the same in both tables, we could have used the `USING` operator instead.
+
+For example, this...
+
+```
+SELECT *
+FROM countries
+INNER JOIN economies
+ON countries.code = economies.code
+```
+
+...is equivalent to this:
+
+```
+SELECT *
+FROM countries
+INNER JOIN economies
+USING(code)
+```
+
+****
+
+Use `CASE WHEN` ---- `THEN` constructs to do multiple `ifelse` statements in SQL.
+
+The following query creates a column `geosize_group` using this operation *and* it also creates a new table `countries_plus` using the `INTO` operator:
+
+```
+SELECT name, continent, code, surface_area,
+    CASE WHEN surface_area > 2000000 THEN 'large'
+         WHEN surface_area > 350000 THEN 'medium'
+         ELSE 'small' END
+    AS geosize_group
+INTO countries_plus
+FROM countries;
+```
+
+### Outer joins
+
+Outer joins (like `LEFT JOIN`, `RIGHT JOIN`, AND `FULL JOIN`) will create missing and duplicate values where necessary.
+
+The following image has a very succint summary of the difference between `INNER` and the different types of `OUTER` joins:
+
+<img src="https://sql.sh/wp-content/uploads/2014/06/sql-join-infographie.png" alt="drawing" width="300"/>
+
+
+### Semi and Anti joins
+
+The previous `JOIN` operators are additive, but these ones subtract rows instead (e.g. similar to what could be achieved using a `WHERE` clause).
+
+- A `SEMI JOIN` choose records in the first table, where a condition is met on a second table.
+
+- An `ANTI JOIN` choose records in the first table, where a condition is *not* met on a second table.
+
+
+For example, the following "semi join" query gets all unique languages spoken in the Middle East:
+
+```
+SELECT DISTINCT name
+FROM languages
+WHERE code IN (SELECT code           -- add a 'NOT IN' to get an anti join 
+               FROM countries
+               WHERE region = 'Middle East')
+ORDER BY name;
+```
+
+## More Advanced Stuff
+
+## Miscellaneous
+
+### Crossing
+
+`CROSS` joins work like R's `expand.grid()` or dplyr's `crossing()` function.
+
+For example:
+
+```
+SELECT table1.id AS id1,
+       table2.id AS id2
+FROM table1
+CROSS JOIN table2
+```
+
+### Set Operations
+
+Note that these operations will work on entire rows (or "records") instead of on individual key fields.
+
+- `UNION` 
+
+- `UNION ALL` (includes duplicates)
+
+- `INTERSECT`
+
+- `EXCEPT`
+
+
+### Subqueries
+
+Also known as *nested* queries. A common example of these are "semi" and "anti" joins.
+
+These nested queries exist either within any clause -- `SELECT`, `FROM`, `WHERE`, `GROUP BY` (or even `CASE`).
+
+For example, the next chunk of code determines the number of languages spoken for each country, identified by the country's local name:
+
+```
+SELECT local_name, lang_num
+FROM countries,      -- Adding many tables in a FROM clause is now deprecated, use JOIN instead
+    (SELECT code, COUNT(l.name) AS lang_num
+     FROM languages AS l
+     GROUP BY code) AS subquery
+WHERE countries.code = subquery.code
+ORDER BY lang_num DESC;
+```
+
+*Extracting, structuring, and filtering*
+
+- In sum, subqueries allow you to combine datasets that can't otherwise be combined together with a `JOIN` operator (inside the `SELECT`); 
+
+- filtering information not easily accesible by a `JOIN` (in the `WHERE` clause), or relative to a scalar value calculated via a subquery;
+
+-  You can manipulate the information you extract by placing joins in or using a subquery in the `FROM` clause.
+
+There's no limit to the number of subqueries you can include in a script; you can even include subqueries within subqueries. 
+
+**Correlated subqueries**
+
+Correlated subqueries are subqueries that reference one or more columns in the main query. Correlated subqueries depend on information in the main query to run, and thus, cannot be executed on their own.
+
+But correlated subqueries are evaluated in SQL once per row of data retrieved - a process that takes a lot more computing power and time than a simple subquery.
+
+### Common Table Expressions
+
+CTE's are tables *declared* before the main query. They are named and referenced later in `FROM` statements. Also referred to as *factored subqueries*.
+
+```
+WITH cte AS (
+    SELECT col1, col2
+    FROM table)
+SELECT
+    AVG(col1) AS avg_col
+FROM cte;
+```
+
+CTEs are an excellent way of organizing complex queries.
+
