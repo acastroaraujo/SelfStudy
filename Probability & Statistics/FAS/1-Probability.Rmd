@@ -1,0 +1,1009 @@
+---
+title: "Probability Review"
+output: 
+  html_document:
+    code_folding: hide
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 4, fig.height = 3,
+                      comment = "")
+
+## Packages
+library(tidyverse)
+
+## Utilities
+theme_set(theme_minimal(base_line_size = 0,
+                        base_family = "Palatino"))
+
+make_table <- function(df, digits = 3) {
+  knitr::kable(df, "html", digits = digits) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+
+```
+
+P. Aronow & B. Miller (2019) ___Foundations of Agnostic Statistics___, Cambridge University Press
+
+- "Agnostic statistics" considers what can be learned about the world without assuming that there exists a simple generative model that can be known to be true.
+
+- Credible research is incompatible with _incredible_ modeling assumptions.
+
+****
+
+## Introduction
+
+****
+
+**Frequentist probability**. The probability of an event describes the proportion of times that event can be expected to occur among many realizations of a random generative process. It's all about long-term frequencies.
+
+The mathematical construct of randomness is a _modeling assumption_, not necessarily a fundamental feature of reality. It allows us to model the outcomes of a process, stripping away all the complexities that would otherwise allow us to predict any outcome _with certainty_.
+
+****
+
+There are three formal components that together fully describe a random generative process: $\Omega, S, P$.
+
+The **sample space** ($\Omega$) or the set of all possible outcomes of a random generative process. Individual outcomes (or sets of outcomes) are usually denoted as $w \in \Omega$, and they can take many forms.
+
+For example:
+    
+- A single roll of a six-sided die.
+
+$$\Omega = \{1, 2, 3, 4, 5, 6\}$$
+
+- A single roll of two six-sided dice.
+
+$$
+\Omega = \{(x, y) \in \mathbb Z^2 : 1 \leq x \leq 6,\ 1 \leq y \leq 6 \}
+$$
+
+- A coin flip.
+
+$$\Omega = \{H, T\}$$
+
+An *event* is a well-defined subset of $\Omega$, usually denoted by capital Roman letters (e.g. $A \subseteq \Omega$).
+
+For example:
+
+- Rolling an even number with a six-sided die.
+
+$$A = \{2, 4, 6\}$$
+
+
+A set of subsets of $\Omega$ is an **event space** ($S$) if it satisfies the following properties:
+
+- non-empty 
+
+$$S \neq \varnothing$$
+
+- closed under complements
+
+$$A \in S \to A^C \in S$$
+
+- closed under countable unions
+
+$$A_1, A_2, ... \in S \to A_1 \cup A_2 \cup ... \in S$$
+
+_Each event in an event space will have an associated probability of occurring_, and these properties ensure that certain types of events will always have well-defined probabilities.
+
+A **probability measure** ($P$) is a function $f: S \to [0, 1]$ that assigns a probability to every event in the event space.
+
+To ensure that this function $P$ assigns probabilities to events in a manner that is coherent and in accord with basic intuitions about probabilities, we follow the *Kolmogorov probability axioms*.
+
+***
+
+**Kolmogorov probability axioms**
+
+$(\Omega, S, P)$ form a *probability space* when the following conditions hold:
+
+1. Non-negativity, for any $A \in S$
+
+$$0 \leq P(A) \leq 1$$
+
+2. Unitary (or normalization)
+
+$$P(\Omega) = 1$$
+
+3. Countable additivity, if $A_1, A_2, ... \in S$ are *pairwise disjoint*, then
+
+$$P(A_1 \cup A_2, \cup ...) = P(A_1) + P(A_2) + ... $$
+
+We can represent any random generative process as a probability space $(\Omega,S,P)$.
+
+***
+
+Several other fundamental properties of probability follow directly from the Kolmogorov axioms:
+
+Let $A, B \in S$
+
+- **Monotonicity**
+
+$$A \subseteq B \to P(A) \leq P(B)$$
+
+- **Subtraction rule**
+
+$$A \subseteq B \to P(B \setminus A) = P(B) - P(A)$$ 
+
+- *Some* event in $S$ *must* occur
+
+$$P(\varnothing) = 0$$
+
+- **Complement rule**
+
+$$P(A^C) = 1 - P(A)$$
+
+### Joint and conditional probabilities
+
+The **joint probability** of of $A$ and $B$ (i.e. that both events will ocur in a single draw from $(\Omega, S, P)$) is denoted as $P(A \cap B)$.
+
+For example, the probability of rolling a six-sided die and getting $A = \{\omega \in \Omega: \omega \geq 4\}$ *and* $B = \{\omega \in \Omega: \omega \text{ is even}\}$ is as follows:
+
+$$
+P(A \cap B) = P(\{4, 5, 6\} \cap \{2, 4, 6\}) = \frac{|\{4, 6\}|}{|\Omega|} = \frac{1}{3}
+$$
+
+- **Addition rule**
+
+$$P(A \cup B) = P(A) + P(B) - P(A \cap B)$$
+
+The **conditional probability** of $A$ given $B$ is denoted as
+
+$$P(A \mid B) = \frac{P(A \cap B)}{P(B)}$$
+
+- **Product rule**
+
+$$P(A \mid B) P(B) = P(A \cap B)$$
+
+- **Bayes' rule**
+
+$$P(A \mid B) = \frac{P(B \mid A) P(A)}{P(B)}$$
+
+
+The **law of total probability** states that if $\{A_1, A_2, A_3, ...\}$ is a **partition** of $\Omega$ and $B \in S$, then
+
+$$
+P(B) = \sum_i P(B \cap A_i) = \sum_i \underbrace{P(B \mid A_i) P(A_i)}_\text{product rule}
+$$
+
+In other words, the probability of an event $B$ is effectively a weighted average of the conditional probabilities of that event ($B$).
+
+****
+
+**Events and conditional probabilities**. When writing $\Pr(A\mid E)$, we do *not* mean that $A \mid E$ is an event and that we're taking its probability. 
+
+$$A \mid E \hspace{0.3cm} \text{is not an event!}$$
+
+- $\Pr(A \mid E)$ is a probability function which assigns probabilities in accordance with the knowledge that $E$ has occurred.
+
+- $\Pr(A)$ is a different probability function which assigns probabilities without regard for whether $E$ has occurred or not. 
+
+### Independence
+
+Events $A, B \in S$ are ***independent*** if $P(A \cap B) = P(A)P(B)$. This also implies the following:
+
+$$A \perp B \iff P(A \mid B) = P(A)$$
+
+That is, when $A$ and $B$ are independent, knowing whether or not $B$ has occurred gives us no information about the probability that $A$ has occurred. This is a very strong assumption, but it lies in the heart of many applications in statistics that work with independent and identically distributed (*i.i.d.*) random variables.
+
+- **Conditional independence**
+
+$$A \perp B \mid E \iff P(A \cap B \mid E) = P(A \mid E) P(B \mid E)$$
+
+This is different from saying that $A$ and $B$ are independent themselves.
+
+In general:
+
+- Two events can be conditionally independent given $E$, but not independent. 
+
+- Two events can be independent, but not conditionally independent given $E$. 
+
+- Two events can be conditionally independent given $E$, but not independent given $E^C$. 
+
+****
+
+## Random Variables
+
+****
+
+A **random variable**, $X$, is a function from the sample space, $\Omega$, to some subset of $\mathbb{R}$ with a probability-based rule.
+
+$$X: \Omega \to \mathbb R$$
+
+Recall that each $\omega \in \Omega$ denotes a state of the world. A random variable $X$ will take take on the value $X(\omega)$. 
+
+For example, the event $\{X = 1\}$ should be understood the set of of states of the world such that $X(\omega) = 1$.
+
+$$
+P(\{X = 1\}) = P(\{\omega \in \Omega: X(\omega) = 1\})
+$$
+
+There are two ways in which to apply functions to random variables:
+
+1. **Function of a random variable**. Use the value of $X(\omega)$ as input into another function $g$, with the result being another random variable.
+
+    $$g \circ X: \Omega \to \mathbb R$$
+    
+    For example:
+    
+    $$
+    g(X) = \begin{cases} 1 &\text{if } X>0 \\ 0  &\text{otherwise}
+    \end{cases}
+    $$
+    
+2. **Operator on random variable**. These will summarize the properties of random variables such as *expectations* or *variances*. We use the $[\cdot]$ notation to denote operators.
+
+We use uppercase to denote random variables and lowercase to denote particular realizations (or variables in the regular, algebraic sense).
+
+- A **discrete random variable** can only can take on a finite (or countably infinite) number of different values.
+
+- A **continuous random variable** can take on a continuum of possible values. Loosely speaking, a random variable is continuous if its CDF is continuous.
+
+### PMFs, PDFs, and CDFs
+
+Given a discrete random variable $X$, we can summarize the probability of each outcome $x$ occurring with a **probability mass function** (PMF). A continuous random variable is characterized by its **probability density function** (PDF).
+
+$$
+\underbrace{f(x) = P(X = x)}_\text{PMF} \hspace{1cm} 
+\int_a^b \underbrace{f(x)}_\text{PDF}dx = P(a \leq X \leq b)
+$$
+
+Note that both functions must be non-negative 
+
+$$f(x) \geq 0 \hspace{0.5cm} \text{ for all } x \in \mathbb R$$
+
+These functions tell us *most* of what we need to know about the **distribution** of random variables (i.e. the complete collection of probabilities assigned to events defined in terms of $X$).
+
+The **cumulative distribution function** (CDF) tell us *everything* we need to know about the distribution of random variables. More importantly, a CDF is defined the same way for both discrete *and* continuous random.
+
+The CDF of $X$ is defined as
+
+$$F(x) = P(X \leq x) \hspace{0.5cm} \text{ for all } x \in \mathbb R$$
+
+In other words, the CDF returns the probability that an outcome for a random variable will be less than or equal to a given value.
+
+Any CDF $F$ will have the following properties:
+
+- **$F$ is nondecreasing as $x$ increases**
+
+$$x_1 < x_2 \to F(x_1) < F(x_2)$$
+
+- Limits
+
+$$
+\lim_{x \to +\infty} F(x) = 1 \hspace{0.5cm}
+\lim_{x \to -\infty} F(x) = 0
+$$
+
+- **Complement rule**
+
+$$1-F(x) = P(X > x)$$
+
+- **Continuity from the right**. A CDF is always continuous from the right, even if the random variable is discrete (in which case the CDF is a "step function").
+
+$$\lim_{x \to a^+} F(x) = F(a)$$
+
+In the case of *continuous random variables*, note that the PDF is contained inside the definition of the CDF.
+
+$$
+\overbrace{F(a) = P(X \leq a) = \int_{-\infty}^a \underbrace{f(x)}_\text{PDF}dx}^\text{Cumulative Distribution Function}
+$$
+
+That is a probability **density** is the rate of change in cumulative probability. So where cumulative probability is increasing rapidly, density can easily exceed 1. But if we calculate the area under the density function, it will never exceed 1. In other words, the PDF is a "slope" that is defined according to the Fundamental Theorem of Calculus as follows:
+
+$$\underbrace{f(x) = \frac{dF(u)}{du} \bigg|_{u = x}}_\text{Probability Density Function}$$
+
+****
+
+**Two additional definitions.**
+
+- **Support**. . The set of values at which the PMF (or PDF) is positive is called its support.
+
+$$
+\textsf{supp}(X) = \{x \in \mathbb R: f(x) > 0\}
+$$
+
+- The inverse of a CDF ($Q = F^{-1}$) is called the **quantile function**. 
+
+    For example:
+
+$$
+\underbrace{Q(0.5)}_\text{median} = x \iff P(X \leq x) = 0.5
+$$
+
+****
+
+## Relationships
+
+****
+
+When we say two random variables are equal, we mean that they are *equal as functions*; they assign the same value to every state of the world.
+
+$$
+X = Y \iff X(\omega) = Y(\omega)\hspace{0.5cm} \forall \omega \in \Omega
+$$
+
+**Discrete multivariate distributions** are described by their *joint* CDF, PMF, or PDF.
+
+$$
+\overbrace{F(a, b) = P(X \leq a \cap Y \leq b) = \int_{-\infty}^a \int_{-\infty}^b \underbrace{f(x, y)}_\text{joint PDF}dy dx}^\text{Joint Cumulative Distribution Function}
+$$
+
+The same as before, integrating over a PDF will give us probability statements such as
+
+$$
+P(a \leq X \leq b, c \leq Y \leq d) = \int_a^b \int_c^d f(x, y)dydx
+$$
+
+The same goes for summing over a PMF:
+
+$$
+P(a \leq X \leq b, c \leq Y \leq d) = \sum_{x = a}^b \sum_{y = c}^d f(x, y)
+$$
+
+And the "slope" interpretation extends to multiple variables too:
+
+$$
+\underbrace{f(x, y) = \frac{\partial F(u, v)}{\partial u \partial v} \bigg|_{u = x, v = y}}_\text{Joint Probability Density Function}
+$$
+
+And for the discrete setting:
+
+$$
+\underbrace{f(x, y) = P(X = x, Y = y)}_\text{Joint Probability Mass Function}
+$$
+
+**Marginalization**. We can go from multivariate to univariate distributions with summation (for PMFs) or integration (for PDFs). Both of these follow from the *law of total probability*.
+
+- **Marginal PMF**
+
+$$
+f_Y(y) = P(Y = y) = \sum_{\textsf{supp}[X]} f_{X, Y}(x, y)
+$$
+
+- **Marginal PDF**
+
+$$
+\text{Continuous: }f_Y(y) = \int_{-\infty}^\infty f_{X, Y}(x, y)dx
+$$
+
+**Conditional Distributions**. The *conditional PMF* of $Y$ given $X$ tells us the probability that a given value of $Y$ will occur, given that a certain value of $X$ occurs. In contrast, the conditional PDF of $Y$ given $X$ is just the PDF of $Y$ given that a certain value of $X$ occurs.
+
+- **Conditional PMF**
+
+$$
+\begin{align}
+f_{Y \mid X}(y \mid x) = P(Y = y \mid X = x) = \frac{f(x, y)}{f(x)} \\\\ \forall y \in \mathbb R \text{ and } \underbrace{\forall x \in \textsf{supp}(X)}_{\text{denominator} \neq 0}
+\end{align}
+$$
+
+- **Conditional PDF**
+
+$$
+f_{Y \mid X}(y \mid x)  = \frac{f(x, y)}{f(x)} \hspace{0.5cm} \forall y \in \mathbb R \text{ and } \forall x \in \textsf{supp}[X]
+$$
+
+- **Product rule for PMFs and PDFs**
+
+$$
+f(x \mid y)f(y) = f(x, y)
+$$
+
+- **Independence of random variables** regardless of whether they are discrete or continuous.
+
+$$X \perp Y \iff f(x, y) = f(x) f(y)$$
+
+$$X \perp Y \iff f(x \mid y) = f(x)$$
+
+### Multivariate notation
+
+A **random vector** of length $K$ is a vector whose components are random variables:
+
+$$
+\mathbf X (\omega) = \pmatrix{X_{[1]} (\omega), & \dots, & X_{[K]} (\omega)}
+$$
+
+Here, we use bracketed subscripts to denote distinct random variables because later on we use plain subscripts to denote multiple independent realizations of a single random variable.
+
+The use of boldface will make us be able to express complicated expressions in a simple manner.
+
+For example:
+
+$$
+\underbrace{F(\mathbf x)}_\text{CDF} = P(\mathbf X \leq \mathbf x) = P(X_{[1]} \leq x_{[1]}, X_{[2]} \leq x_{[2]}, \dots, X_{[K]} \leq x_{[K]}) 
+$$
+
+And if we have a continuous random vector, we have the following expression:
+
+$$
+F(\mathbf x) = \int_{-\infty}^{x_{[1]}} \int_{-\infty}^{x_{[2]}} \dots \int_{-\infty}^{x_{[K]}} = f(u_{[1]}, u_{[2]}, \dots, u_{[K]})du_{[K]} \dots du_{[2]}du_{[1]}
+$$
+
+****
+
+## Summarizing distributions
+
+****
+
+### Expectation
+
+The expected value (also known as the *expectation* or *mean*) is the most common measure of the "center" of a probability distribution. 
+
+- Discrete random variables
+
+$$
+E[X] = \sum_{\textsf{supp}(x)} x f(x)
+$$
+
+- Continuous random variables
+
+$$
+E[X] = \int_{-\infty}^\infty x f(x)dx
+$$
+
+- **Properties of expected values**
+
+$$
+\begin{align}
+&E[c] = c &\text{ for all } c \in \mathbb R \\\\
+&E[cX] = c\ E[X]  &\text{ for all } c \in \mathbb R
+\end{align}
+$$
+
+- Expectation of a Bernoulli random variable
+
+$$
+E[X] = P(X = 1) = p
+$$
+
+**Expectation of a function of a random variable** (also known as _LOTUS_). This comes up in many applications (e.g. finding the *variance* of a random variable), but the result is far from obvious (see [here](#lotus)).
+
+- Continuous case
+
+$$E[g(X)] = \int_{-\infty}^\infty g(x) f_X(x) dx$$
+
+- Discrete case
+
+$$E[g(X)] = \sum_{\textsf{supp}(x)} g(x) f_X(x)$$
+
+- **Linearity of expectations**
+
+$$E[aX + bY + c] = aE[X] + bE[Y] + c$$
+
+Note that this property follows from considering the expectation of a function of a bivariate joint distribution.
+
+$$\underbrace{g(X, Y) = aX + bY + c}_\text{function of a bivariate joint distribution}$$
+
+Apply *LOTUS* and *marginalization*:
+
+$$
+\begin{align}
+E[g(X, Y)] &= \sum_x \sum_y g(X, Y) f_{XY}(x,y) \\\\ &= 
+\sum_x \sum_y (ax + by + c) f_{XY}(x,y) \\\\ &=
+a\sum_x \sum_y x f_{XY}(x,y) +  b\sum_x \sum_y y f_{XY}(x,y)+ c\sum_x \sum_y f_{XY}(x,y)
+\end{align}
+$$
+
+### Moments and variances
+
+We can generalize expectations to further characterize the features of a distribution. This is the idea of **raw moments**, among which the expected value is just a special case.
+
+$$
+\underbrace{\mu_j^\prime = E[X^j]}_{j^{th}\text{ raw moment }}
+$$
+
+Raw moments provide summary information about a distribution, describing elements of its *shape* and *location*. 
+
+- **Central moments**
+
+$$\mu_j = E\left[(X - E[X])^j\right]$$
+
+The sole distinction between raw and central moments lies in whether or not the expected value of $X$ is subtracted before calculations.
+
+
+- The **variance** (second central moment)
+
+$$
+V[X] = E\left[(X - E[X])^2\right] = E\left[X^2\right] - E[X]^2
+$$
+
+The variance measures the expected value of the squared difference between the observed value of $X$ and its mean. Note that the first central moment equals zero.
+
+- **Properties of variances**
+
+$$
+\begin{align}
+&V[X + c] = V[X] &\text{ for all } c \in \mathbb R \\\\
+&V[cX] = c^2\ E[X]  &\text{ for all } c \in \mathbb R
+\end{align}
+$$
+
+- **Standard deviation**
+
+$$
+\sigma[X] = \sqrt{V[X]}
+$$
+
+The standard deviation is often preferable to the variance, since it is on the same scale as the random variable of interest.
+
+Knowing these two quantities ($E[X]$ and $\sigma[X]$) tells *everything* about normal distributions.
+
+- **The normal distribution**
+
+$$X \sim \textsf{normal}(\mu, \sigma)$$
+
+$$
+E[X] = \mu \hspace{0.5cm} \text{ and } \hspace{0.5cm}
+\sigma[X] = \sigma
+$$
+
+$$
+f_X(x) = \frac{1}{\sigma \sqrt{2 \pi}} \exp\left(-\frac{1}{2 \sigma^2} (x - \mu)^2\right)
+$$
+
+Any linear combination of any number of mutually independent normal random variables must itself be normal.
+
+$$
+X \perp Y \to X + Y \sim \textsf{normal}\left(\mu_X + \mu_Y, \sqrt{\sigma_X^2 + \sigma_Y^2}\right)
+$$
+
+### Mean Squared Error
+
+MSE is a metric that characterizes how well a random variable $X$ approximates a certain value $c$. 
+
+$$MSE = E\left[(X - c)^2\right]$$
+
+Note that the MSE about zero is the same as the _second raw moment_, and the MSE about $E[X]$ is the same as the _second central moment_, which is also the variance.
+
+- **Root Mean Squared Error**
+
+    $$\sqrt{E\left[(X - c)^2\right]}$$
+
+    Note. This is used as a common measure of accuracy in the context of estimation.
+
+- **Decomposition** 
+
+$$
+\begin{align}
+E\left[(X - c)^2\right] &= E\left[(X^2 - 2cX + c^2\right] \\\\ &=
+E\left[X^2\right] - 2cE[X] + c^2 \\\\ &=
+E\left[X^2\right] \underbrace{- E[X]^2 + E[X]^2}_\text{clever trick} - 2cE[X] + c^2 \\\\ &= 
+\left(E\left[X^2\right] - E[X]^2\right) + \left(E[X]^2 - 2cE[X] + c^2\right) \\\\ &=
+V[X] + (E[X]-c)^2
+\end{align}
+$$
+
+**Note.** In the context of estimation, this is also known as the *bias-variance decomposition*.
+
+The MSE is also linked to an alternative definition of the mean: the value $c$ that minimizes the MSE of $X$ is $E[X]$.
+
+$$
+\underset{c \in \mathbb R}{\arg \min}\ E\left[(X - c)^2\right] = E[X]
+$$
+
+If we where to choose a different "loss function" besides the MSE, we could come up with different "best" choices for $c$. For example, the *median* is the value $c$ that minimizes the Mean Absolute Error ($|X - c|$).
+
+****
+
+## Summarizing joint distributions
+
+****
+
+### Covariance
+
+Covariance measures the extent to which two random variables "move together." 
+
+$$
+\begin{align}
+\text{Cov}[X, Y] &= E\big[(X - E[X])(Y - E[Y])\big] \\\\ &=
+E[XY] - E[X]E[Y]
+\end{align}
+$$
+
+- **Variance Rule** (non-linearity of variances)
+
+$$V[X + Y] = V[X] + 2\text{Cov}[X, Y] + V[Y]$$
+
+- **Variance is a special case of Covariance**
+
+$$\text{Cov}[X, X] = V[X]$$
+
+- **Covariance of sums**
+
+$$
+\text{Cov}[X + W, Y + Z] = \text{Cov}[X, Y] + \text{Cov}[X, Z] + \text{Cov}[W, Y] + \text{Cov}[W, Z]
+$$
+
+Much like standard deviation rescales variance, correlation rescales covariance to make its interpretation clearer. The **correlation** of two random variables is as follows:
+
+$$
+\rho[X, Y] = \frac{\text{Cov}[X, Y]}{\sigma[X] \sigma[Y]}
+$$
+
+The correlation $\rho$ is bounded in $[-1, 1]$, a fact that derives from the *Cauchy-Schwarz inequality*.
+
+**Linear dependence** describes the relationship between two random variables where one can be written as a linear function of the other. And correlation measures the degree of linear dependence between two random variables.
+
+$$
+\begin{align}
+&\rho[X, Y] = 1 \iff Y = a + bX \\\\
+&\rho[X, Y] = -1 \iff Y = a - bX \\\\
+&\text{where } b > 0 \text{ and } a,b \in \mathbb R
+\end{align}
+$$
+
+If two random variables are *linearly* independent, then $\text{Cov}[X, Y] = 0$. This fact follows from the definition of covariance and the application of LOTUS.
+
+$$
+\begin{align}
+E[XY] &= \int_{-\infty}^\infty \int_{-\infty}^\infty x y f(x, y)dydx \\\\ &=
+\int_{-\infty}^\infty \int_{-\infty}^\infty xy f_X(x)f_Y(y)dydx \\\\ &=
+\int_{-\infty}^\infty x f_X(x)dx \int_{-\infty}^\infty y f_Y(y) \\\\ &=
+E[X]E[Y]
+\end{align}
+$$
+
+That is, _no relationship between two random variables implies no linear relationship them._ However, the opposite is not true: lack of correlation does _not_ imply independence.
+
+$$
+X \perp Y \longrightarrow \text{Cov}[X, Y] = 0 
+$$
+
+### Conditional Expectations
+
+Conditional expectations allow us to describe how the "center" of one random variable's distribution changes once we condition on the observed value of another random variable.
+
+- Discrete case ($\forall x \in \textsf{supp}[X]$)
+
+$$
+E[Y \mid X = x] = \sum_y y f_{Y \mid X}(y \mid x)
+$$
+
+- Continuous case ($\forall x \in \textsf{supp}[X]$)
+
+$$
+E[Y \mid X = x] = \int_{-\infty}^\infty y f_{Y \mid X}(y \mid x)dy
+$$
+
+Note that LOTUS can also be applied to conditional expectations of functions of many random variables.
+
+$$
+E[g(X, Y) \mid X = x] = \int_{-\infty}^\infty g(x, y) f_{Y \mid X}(y \mid x)dy
+$$
+
+Unlike unconditional expectations, $E[Y \mid X = x]$ is a *family of operators* on the random vector $(X, Y)$ that is indexed by $x$.
+
+A **conditional expectation function** (CEF) is just a conditional expectation takes is sometimes denoted by $G_Y(x)$ to emphasize the fact that it's a *function* that maps $x$ to $E[Y \mid X = x]$ rather than the value of $E[Y \mid X = x]$ at some particular $x$. This notation also emphasizes the fact that it's a function of $x$, not a function of the random variable $Y$. 
+
+We write $E[X \mid Y]$ to denote $G_Y(X)$ which is a function of the random variable of $X$, and thus it's also a random variable.
+
+The CEF is closely linked to various topics such as *regression*, *missing data*, and *causal inference*.
+
+- **Law of total expectations** (also known as the law of iterated expectations or Adam's law).
+
+    $$E[Y] = E\big[E[Y \mid X]\big]$$
+    
+    It implies that the unconditional expectation can be represented as a weighted average of conditional expectations, where the weights are proportional to the probability distribution of the variable being conditioned on. 
+    
+    *Proof*
+    
+$$
+\begin{align}
+E[Y] &= \sum_y y f_Y(y) \\\\ &=
+\sum_y y \sum_x f_{X, Y}(x, y) \\\\ &= 
+\sum_x \sum_y y f_{X \mid Y}(y \mid x) f_X(x) \\\\ &=
+\underbrace{\sum_x \overbrace{\bigg(\sum_y y f_{Y \mid X} (y \mid x)\bigg)}^{E[Y \mid X = x]} f_X (x)}_{E\big[E[Y \mid X]\big]}
+\end{align}
+$$
+
+- **Law of total variance** (also known as Eve's law).
+
+    $$V[Y] = \underbrace{E\big[V[Y \mid X]\big]}_\text{within-group variation} + \underbrace{V\big[E[Y \mid X]\big]}_\text{between-group variation}$$
+
+    This theorem allows us to decompose the variability of a random variable $Y$ into the average variability "within" values of $X$ and the variability "across" values of $X$. 
+    
+    The ordering of the $E$'s and $V$'s spells out $EVVE$, hence the name "Eve's law".
+    
+    *Proof*.
+    
+    1. $E[Y] = E\big[E[Y \mid X]\big] = E[G_Y(X)]$ (Adam's law)
+    
+    2. $E \big[V[Y \mid X]\big] = E\big[E[Y^2 \mid X] - G_Y(X)^2\big] = E\big[Y^2\big] - E\big[G_Y(X)^2\big]$
+    
+    3. $V[E[Y \mid X]] = E\big[G_Y(X)^2\big] - E[G_Y(X)]^2 = E\big[G_Y(X)^2\big] - E[Y]^2$ 
+    
+    We add (2) and (3) to get back to the original definition of $V[Y] = E\big[Y^2\big] - E[Y]^2$.
+    
+We can also look at Eve's law from a different perspective:
+
+- "Another way to think about Eve’s law is in terms of *prediction*. If we wanted to predict someone’s height ($Y$) based on their age ($X$) alone, the ideal scenario would be if everyone within an age group had exactly the same height, while different age groups had different heights. Then, given someone’s age, we would be able to predict their height perfectly. In other words, the ideal scenario for prediction is *no* within-group variation in height, since the within-group variation cannot be explained by age differences. For this reason, within-group variation is also called _unexplained variation_, and between-group variation is also called _explained variation_. Eve’s law says that the total variance of $Y$ is the sum of unexplained and explained variation" (Blitzstein & Hwang 2014).
+
+### Best Predictors
+
+Suppose we knew the full joint cumulative distribution function (CDF) of $X$ and $Y$, and then someone gave us a randomly drawn value of $X$. What would be the guess of $Y$ that would have the lowest MSE? The function $g(X)$ that best approximates $Y$ is the CEF.
+
+- $E[Y|X]$, is the best (minimum MSE) predictor of $Y$ given $X$.
+
+This makes the CEF a natural target of inquiry: if the CEF is known, much is known about how $X$ relates to $Y$. But in many cases the CEF can turn out to be an extremely complicated function.
+
+What if we were to restrict ourselves to just *linear functions* of the form $g_Y(x) = a + b X$? We could then define the **best linear predictor** (BLP) of $Y$ given $X$ as the set of values $(a, b)$ that minimizes the MSE. 
+
+The BLP is expressed as:
+
+$$
+(\alpha, \beta) = \underset{a, b \in \mathbb R}{\arg \min}\ E\big[(Y - a + b X)^2\big]
+$$
+
+Using some calculus, one can show that these values are:
+
+$$
+\begin{align}
+&\alpha = E[Y] - \frac{\text{Cov}[X, Y]}{V[X]} E[X] \\\\ 
+&\beta =  \frac{\text{Cov}[X, Y]}{V[X]}
+\end{align}
+$$
+
+**Note.** This expression is identical to the one provided by the method of *ordinary least squares* (OLS), which is designed to estimate population parameters from sample data.
+
+There are two important corollaries that follow from this:
+
+1. The BLP is also the best linear approximation of the CEF.
+
+$$
+(\alpha, \beta) = \underset{a, b \in \mathbb R}{\arg \min}\ E\bigg[\big(E[Y \mid X] - (a + b X)\big)^2\bigg]
+$$
+
+2. If the CEF is linear, then the CEF *is* the BLP.
+
+Note that these are some of the implications of **independence** for conditional expectations:
+
+$$
+\begin{align}
+Y \perp X \iff &1.\ E[Y \mid X] = E[Y] \\\\ &2. V[Y \mid X] = V[Y] \\\\ &3. \text{ The BLP of } Y \text{ given } X \text{ is } E[Y] 
+\end{align}
+$$
+
+**Plotting the CEF and BLP**
+
+Suppose we have the following random variables and that we are interested in approximating the CEF $G_Y(x)$ with it's BLP.
+
+$$
+\begin{align}
+&X \sim \text{uniform}(0, 1) \\\\
+&W \sim \text{normal}(0, 1) \\\\
+&Y = 10X^2 + W
+\end{align}
+$$
+
+By linearity of expectations, can conclude that the CEF is just
+
+$$
+E[Y \mid X] =  10 X^2
+$$
+
+And that the BLP (after some algebra) is given by 
+
+$$
+\begin{align}
+&\beta = \frac{10 \big(E\big[X^3\big] - E[X]E\big[X^2\big]\big)}{E\big[X^2\big] - E[X]^2} \\\\
+&\alpha = E[10X^2 + W] - \beta E[X]
+\end{align}
+$$
+
+The final solution is given by integrating over $X \sim \text{uniform}(0, 1)$:
+
+$$
+(\alpha, \beta) = \left(-\frac{5}{3}, 10\right)
+$$
+
+And plotting both functions over $\textsf{supp}[X]$ looks like this:
+
+```{r}
+E <- function(m) {
+  output <- integrate(
+    f = function(x) x^m * fX(x), 
+    lower = -Inf, upper = Inf
+    )$value
+}
+
+slope <- function() {
+  num <- 10 * (E(3) - E(1) * E(2))
+  denom <- E(2) - E(1)^2
+  return(num / denom)
+}
+
+intercept <- function() {
+  10 * E(2) - slope() * E(1)
+}
+
+CEF <- function(x) 10*x^2
+fX <- function(x) dunif(x, min = 0, max = 1)
+
+
+tibble(x = 0:1) %>% 
+  ggplot(aes(x)) +
+  stat_function(fun = CEF, color = "steelblue1") +
+  stat_function(fun = function(x) intercept() + slope()*x, 
+                color = "tomato")
+```
+
+Here, the BLP (in red) approximates the CEF (in blue) reasonably well over the domain of $X$. While this is not always the case, it is very often the case in the social and health sciences. The BLP is thus a good "first approximation" in a very literal sense, in that it is an approximation with a first-order polynomial.
+
+However, when the CEF is not linear, one must take care in interpreting the BLP as equivalent to the CEF. In particular, this may pose a problem when attempting to make inferences where $X$ has _low probability mass_ over some parts of the domain of the CEF. This is because _under nonlinearity, the BLP depends on the distribution of $X$_. 
+
+- More probability mass towards the left: $X \sim \text{beta}(1, 5)$
+
+```{r, fig.height=1}
+fX <- function(x) dbeta(x, 1, 5)
+tibble(x = 0:1) %>% 
+  ggplot(aes(x)) +
+  geom_area(sta = "function", 
+            fun = fX, 
+            fill = "steelblue1") +
+  labs(y = "density") +
+  scale_y_continuous(breaks = seq(0, 5, 2))
+```
+
+```{r}
+tibble(x = 0:1) %>% 
+  ggplot(aes(x)) +
+  stat_function(fun = CEF, color = "steelblue1") +
+  stat_function(fun = function(x) intercept() + slope() * x, 
+                color = "tomato") 
+```
+
+- More probability mass towards the right: $X \sim \text{beta}(5, 1)$
+
+```{r, fig.height=1}
+fX <- function(x) dbeta(x, 5, 1)
+tibble(x = 0:1) %>% 
+  ggplot(aes(x)) +
+  geom_area(sta = "function", 
+            fun = fX, 
+            fill = "steelblue1") +
+  labs(y = "density") +
+  scale_y_continuous(breaks = seq(0, 5, 2))
+```
+
+```{r}
+tibble(x = 0:1) %>% 
+  ggplot(aes(x)) +
+  stat_function(fun = CEF, color = "steelblue1") +
+  stat_function(fun = function(x) intercept() + slope() * x, 
+                color = "tomato") 
+```
+
+
+### Properties of Residuals
+
+We define deviations (or residuals) with the letter $\epsilon$ and note that they have similar properties when considering with respect to either the CEF or the BLP.
+
+__Properties of deviations__
+
+```{r, echo=FALSE}
+CEF <- c("$\\epsilon = Y - E[Y \\mid X]$", "$E[\\epsilon] = 0$",
+         "$E[\\epsilon \\mid X] = 0$", "$\\text{Cov}[\\epsilon, g(X)] = 0$",
+         "$V[\\epsilon \\mid X] = V[Y \\mid X]$", 
+         "$V[\\epsilon] = E\\big[V[Y \\mid X]\\big]$")
+
+BLP <- c("$\\epsilon = Y - (\\alpha + \\beta X)$", "$E[\\epsilon] = 0$", 
+         "$E[\\epsilon X] = 0$ (independence)", "$\\text{Cov}[\\epsilon, X] = 0$",
+         "", "")
+
+make_table(data.frame(CEF, BLP))
+```
+
+
+****
+
+## Bounds using inequalities
+
+Taken from  Blitzstein &  Hwang (2014).
+
+****
+
+A bound on a probability gives a provable guarantee that the probability is in a certain range. These inequalities will often allow us to narrow down the range of possible values for the exact answer, that is, to determine an upper bound and/or lower bound. These bounds may not provide a good approximation of the exact answer, but at least we know the exact answer is *guaranteed* to be inside the bounds.
+
+- **Markov's inequality**. 
+    
+    For any *nonnegative* random variable $X$ and constant $a > 0$:
+
+    $$\Pr(X \geq a) \leq \frac{E[X]}{a}$$
+
+    *Example.* Let $X$ be the income of randomly selected person from a population. If we then say that $a = 2 E[X]$ (or twice the average income in the population), then Markov's inequality tells us that the probability of selecting someone with more than twice the average income is less than or equal to $0.5$. You can't have over half the population earning twice the average income!
+
+    Markov’s inequality is a very crude bound because it requires absolutely no assumptions about $X$.
+
+    *Proof*. 
+
+    We use an indicator function for the event $Y \geq 1$. Recall that taking the expectation of an indicator function gives us a probability. By definition, the following inequality holds:
+
+    $$\mathbb I(Y \geq 1) \leq Y$$
+
+    To get to Markov's inequality we replace $Y$ with $\frac{X}{a}$, and take the expectation on both sides:
+
+$$
+\begin{align}
+\Pr\left(\frac{X}{a} \geq 1\right) &\leq \mathbb E\left(\frac{X}{a}\right) \\ \\
+\Pr(X \geq a) &\leq \frac{\mathbb E(X)}{a}
+\end{align}
+$$
+
+- **Chebyshev's concentration inequality**. 
+
+    We now say that $X$ has mean $\mu$ and variance $\sigma^2$. Then, for any $a > 0$, we have the following inequality:
+
+    $$\Pr(|X - \mu| \geq a) \leq \frac{\sigma^2}{a^2}$$
+
+    If we substitute $a = b\sigma$, we get an upper bound on the probability that *any* $X$ is more than $b$ standard deviations away from its mean. 
+
+    $$\Pr(|X - \mu| \geq b\sigma) \leq \frac{1}{b^2}$$
+
+    *Proof*. 
+    
+    By Markov's inequality, we know the following holds:
+
+    $$
+    \Pr(|X - \mu| \geq a) = \Pr\left((X - \mu)^2 \geq a^2\right) \leq \frac{ E\left[(X-\mu)^2\right]}{a^2} = \frac{\sigma^2}{a^2}
+    $$
+
+    **Note.** $X$ is nonnegative and $a > 0$.
+
+****
+
+## LOTUS {#lotus}
+
+****
+
+The authors don't provide a proof for this result, so instead I'll show here how it plays out. This requires some rudimentary knowledge of **transformations**, which is also omited from the book (see Blitzstein & Hwang 2019).
+
+For simplicity, let's assume that $Y = g(X)$.
+
+$$
+\underbrace{f_Y(y) = f_X(x) \left| \frac{d x}{dy} \right|}_\text{Transformation}
+$$
+
+We can then express $E[Y]$ as follows:
+
+$$
+\begin{align}
+E[Y] &= \int_{-\infty}^\infty y\ f_X(x)\left| \frac{d x}{dy} \right| dy \\\\ &= \int_{-\infty}^\infty g(x)\ f_X(x)dx
+\end{align}
+$$
+
+**Example: The expectation of a standard log-normal distribution**
+
+Suppose we have the following random variables:
+
+- $Y = g(X) = e^X$ and $\frac{dy}{dx} = e^x$
+
+- $X \sim \textsf{normal}(0, 1)$
+
+**Without LOTUS**. Because $f_Y(y)$ is unknown, we need to first figure it out through the use of *transformations*. This step can be immensely complicated in other circumnstances.
+
+$$f_Y(y) = \varphi(x) \left| \frac{d x}{dy} \right| = \varphi(\log y)\frac{1}{y}$$
+
+We then obtain the expectation as follows:
+
+$$
+\begin{align}
+E[Y] &= \int_0^\infty \varphi(\log y) dy \\\\ &=
+\int_0^\infty \frac{1}{\sqrt{2 \pi}} \exp\left(- \frac{1}{2} \log^2 y\right) dy \\\\ &= \sqrt{e}
+\end{align}
+$$
+
+**With LOTUS** we don't have to deal with transformations. Instead, we delve right to it.
+
+$$
+\begin{align}
+E[g(X)] &= \int_{-\infty}^\infty g(x) \varphi(x) dx \\\\ &= \int_{-\infty}^\infty  \frac{1}{\sqrt{2 \pi}} \exp\left(x - \frac{x^2}{2}\right) \\\\ &= \sqrt{e}
+\end{align}
+$$
+
+Thus, LOTUS is quicker because we can ignore *transformations*. More importantly, this method is less prone to mistakes because we don't have to worry about changing the bounds on the integrals!
