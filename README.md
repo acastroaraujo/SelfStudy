@@ -39,3 +39,7 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 - Mark Newman's ___Networks___
 
 - Easley & Kleinberg's ___Networks, Crowds, and Markets___
+
+## Toolbox
+
+This one contains stuff like SQL, Python, and [Shiny](https://acastroaraujo.shinyapps.io/Shiny_Tutorial/) tutorials.
