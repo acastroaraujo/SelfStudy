@@ -1,0 +1,113 @@
+---
+title: "Shiny"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    code_folding: hide
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center",
+                      fig.height = 4, fig.width = 5)
+```
+
+## Introduction
+
+**The anatomy of a Shiny app**
+
+1. **User interface**. It controls the layout and appearance of the app.
+
+```
+ui <- fluidPage()
+```
+
+2. **Server function.** Contains instructions needed to build the app.
+
+```
+server <- function(input, output) {}
+```
+
+3. **`shinyApp()`**. Creates the Shiny app object.
+
+```
+shinyApp(ui, server)
+```
+
+Finally. You can turn any HTML-oriented R Markdown document into a Shiny documents by adding **runtime: shiny** to the YAML metadata as a top-level field.
+
+```
+---
+title: "Document"
+output: html_document
+runtime: shiny
+---
+```
+
+### Hello World
+
+```{r, message=FALSE, warning=FALSE}
+library(shiny)
+library(tidyverse)
+theme_set(theme_minimal(base_family = "Palatino"))
+
+make_pdf <- function(support, lambda) {
+    ggplot(NULL, aes(x = support)) +
+    stat_function(fun = dpois,
+                  args = list(lambda = lambda),
+                  geom = "bar", 
+                  n = support[2] - support[1] + 1,
+                  width = 0.4) +
+    scale_x_continuous(
+      breaks = seq(support[1], support[2], length.out = 11)
+      ) +
+  labs(x = "x", y = "density",
+       title = "Poisson Probability Mass Function")
+}
+
+ui <- fluidPage(
+  
+  # Sidebar layout with a input and output definitions
+  sidebarLayout(
+    
+    # Inputs
+    sidebarPanel(
+      
+      # Select lambda
+      sliderInput(inputId = "lambda",
+                  label = "Lambda",
+                  min = 0, 
+                  max = 100,
+                  value = 5,
+                  step = 0.1),
+      
+      # Select Support
+      sliderInput(inputId = "support", 
+                  label = "Range of x-axis:",
+                  min = 0, 
+                  max = 200, 
+                  value = c(0, 20), 
+                  step = 10)
+      
+    ),
+    
+    # Output
+    mainPanel(plotOutput(outputId = "pdf"))
+  )
+)
+
+server <- function(input, output) {
+  output$pdf <- renderPlot({
+    make_pdf(input$support, input$lambda)
+  })
+}
+
+shinyApp(ui, server)
+```
+
+
