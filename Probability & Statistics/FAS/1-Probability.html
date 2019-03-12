@@ -2475,6 +2475,122 @@ E[g(X)] &amp;= \int_{-\infty}^\infty g(x) \varphi(x) dx \\\\ &amp;= \int_{-\inft
 \end{align}
 \]</span></p>
 <p>Thus, LOTUS is quicker because we can ignore <em>transformations</em>. More importantly, this method is less prone to mistakes because we don’t have to worry about changing the bounds on the integrals!</p>
+<hr />
+</div>
+<div id="combinations-permutations" class="section level2">
+<h2>Combinations &amp; Permutations</h2>
+<p>This is <em>not</em> from Aronow &amp; Miller.</p>
+<hr />
+<p>The probabilities of events can be calculated by counting the number of outcomes in events as a <em>proportion</em> of the number of outcomes in the sample space.</p>
+<p><strong>Counting Methods:</strong></p>
+<p>Suppose one event can occur in <span class="math inline">\(m\)</span> ways and that another can occur in <span class="math inline">\(n\)</span> ways.</p>
+<ol style="list-style-type: decimal">
+<li><p>The <em>sum rule</em>. As with the union of events, if the two events are disjoint, then there are <span class="math inline">\(m + n\)</span> outcomes or possible ways in which <em>either one</em> can happen.</p></li>
+<li><p>The <em>multiplication rule</em>. If the two events happen in succession, then there will be <span class="math inline">\(m \times n\)</span> possible outcomes or ways in which they could happen together. In other words, independent possibilities, when considered conjointly, multiply in number.</p></li>
+<li><p><em>Permutations</em>. When the events are <em>not independent</em>, we use factorial notation. The number of different permutations of <span class="math inline">\(n\)</span> <em>distinct</em> elements in a set is defined using factorial notation <span class="math inline">\(n!\)</span></p>
+<p>When we take a subset <span class="math inline">\(k\)</span> of <em>distinct</em> elements, we use:</p>
+<p><span class="math display">\[\underbrace{P(n, k)}_\text{k-permutation} = \frac{n!}{(n - k)!}\]</span></p>
+<p>Conversely, when a subset <span class="math inline">\(n_1\)</span> of the events in <span class="math inline">\(n\)</span> consists of <em>indistinct</em> elements, we use <span class="math inline">\(\frac{n!}{n_1!}\)</span> instead. Furthermore, we can have many subsets of <em>indistinct</em> elements:</p>
+<p><span class="math display">\[\frac{n!}{n_1!n_2!...n_r!} \hspace{1cm} \text{s.t} \hspace{0.5cm} n = n_1 + n_2 + ... + n_r\]</span></p>
+<p>Note that if all possible outcomes are distinct (i.e. each <span class="math inline">\(n_i = 1\)</span>) then we are back at <span class="math inline">\(n!\)</span></p>
+<p>Any distinct ordering of a set is called a <em>permutation</em> of that set.</p>
+<p><strong>Example</strong>: If the letters <span class="math inline">\(s\)</span>, <span class="math inline">\(s\)</span>, <span class="math inline">\(s\)</span>, <span class="math inline">\(t\)</span>, <span class="math inline">\(t\)</span>, <span class="math inline">\(t\)</span>, <span class="math inline">\(i\)</span>, <span class="math inline">\(i\)</span>, <span class="math inline">\(a\)</span>, <span class="math inline">\(c\)</span> are arranged in a random order, what is the probability that they will spell the word “statistics”?</p>
+<p><span class="math display">\[\frac{10!}{3!3!2!1!1!} = 50400\]</span></p>
+<p>Because there’s only one arrangement in which the letters spell “statistics”, the probability is <span class="math inline">\(\frac{1}{50400}\)</span>.</p></li>
+<li><p><em>Combinations</em>. A combination is an unordered arrangement of <span class="math inline">\(k\)</span> objects taken from a set of <span class="math inline">\(n\)</span> objects. It is defined by the <em>binomial coefficient</em> <span class="math inline">\(\binom{n}{k}\)</span> or the “<span class="math inline">\(n\)</span> choose <span class="math inline">\(k\)</span>” operation.</p>
+<p><span class="math display">\[\binom{n}{k} = \frac{n!}{(n-k)! k!}\]</span></p>
+<p>This turns out to be the number of possible samples of size <span class="math inline">\(k\)</span> drawn <em>without replacement</em> from a population of size <span class="math inline">\(n\)</span>.</p>
+<p>If we wish to divide a set of <span class="math inline">\(n\)</span> distinct elements into <span class="math inline">\(k\)</span> different subsets of size <span class="math inline">\(n_1 + n_2 + ... + n_k = n\)</span>, then the number of given ways in which this can be done is given by the <em>multinomial coefficient</em>. This coefficient has already been used in the “statistics” example.</p>
+<p><span class="math display">\[\binom{n}{n_1, ..., n_k} = \frac{n!}{n_1!n_2!...n_k!}\]</span></p></li>
+</ol>
+<hr />
+<p><strong>The Sampling Table</strong></p>
+<p>The sampling table gives the number of possible samples of size <span class="math inline">\(k\)</span> out of a population of size <span class="math inline">\(n\)</span>, under various assumptions about how the sample is collected.</p>
+<div class="line-block">                        | Ordered | Unordered |</div>
+<p>|:———————- :|:——————-:|:–:| | <strong>With replacement</strong> | <span class="math inline">\(n^k\)</span> | <span class="math inline">\(\binom{n + k - 1}{k}\)</span> | | <strong>Without replacement</strong> | <span class="math inline">\(\frac{n}{(n-k)!}\)</span> | <span class="math inline">\(\binom{n}{k}\)</span> |</p>
+<hr />
+<p><strong>Exercises</strong>:</p>
+<p>As mentioned earlier, the probabilities of events can be calculated by counting the number of outcomes in events as a <em>proportion</em> of the number of outcomes in the sample space.</p>
+<p><em>Example 1.</em> Draw 2 cards from a deck of 52.</p>
+<ul>
+<li><p>The probability that both are aces is</p>
+<p><span class="math inline">\(\frac{\binom{4}{2}}{\binom{52}{2}} = 0.0045\)</span></p></li>
+<li><p>The probability that both are spades is</p>
+<p><span class="math inline">\(\frac{\binom{13}{2}}{\binom{52}{2}} = 0.059\)</span></p></li>
+</ul>
+<p><em>Example 2.</em> Draw five cards from a deck of 52.</p>
+<ul>
+<li><p>The probability that four of them are aces is</p>
+<p><span class="math inline">\(\frac{ \binom{4}{4} \binom{48}{1}}{\binom{52}{2}} = 0.000018\)</span></p>
+<p>Notice that the numerator is calculated using the multiplication rule.</p></li>
+</ul>
+<hr />
+</div>
+<div id="bayes-rule" class="section level2">
+<h2>Bayes’ Rule</h2>
+<p>Taken from Blitzstein &amp; Hwang</p>
+<hr />
+<p><strong>Example: Testing for a rare disease</strong></p>
+<p>A patient is tested for a medical condition that afflicts 1% of the population. Let <span class="math inline">\(D\)</span> be the event that she has the disease and <span class="math inline">\(T\)</span> be the event that she tests positive.</p>
+<p>The test is “95% accurate”, which in this case means that <span class="math inline">\(\Pr(T \mid D) = 0.95\)</span> and that <span class="math inline">\(\Pr(T^c \mid D^c) = 0.95\)</span></p>
+<p>The quantity <span class="math inline">\(\Pr(T \mid D)\)</span> is known as the “sensitivity” or <em>true positive rate</em> of the test, while <span class="math inline">\(\Pr(T^c \mid D^c)\)</span> is known as the “specificity” or <em>true negative rate</em>.</p>
+<p>Find the conditional probability that the patient has the disease, <em>given the fact that she tested positive</em>.</p>
+<p><strong>Solution:</strong></p>
+<p><span class="math display">\[
+\Pr(D \mid T) = \frac{\Pr(T \mid D) \Pr(D)}{\Pr(T \mid D) \Pr(D) + \Pr(T \mid D^c) \Pr(D^c)} =
+\frac{0.95 \times 0.01}{0.95 \times 0.01 + 0.05 \times 0.99} \approx 0.16
+\]</span></p>
+<p>In this equation, we have that:</p>
+<p><span class="math display">\[
+\Pr(D^c) = 1 - \Pr(D) \hspace{0.5cm} \text{and} \hspace{0.5cm} \Pr(T \mid D^c) = 1 - \Pr(T \mid D)
+\]</span></p>
+<p>So there is only a 16% chance that she has that disease, given that she tested positive, even though the test seems to be quite reliable! Many people, including doctors, find it surprising that the conditional probability of having the disease given a positive test result is only 16%, even though the test is 95% accurate. The key to understanding this surprisingly high posterior probability is to realize that there are two factors at play: the <em>evidence</em> from the test, and our <em>prior information</em> about the prevalence of the disease. The conditional probability <span class="math inline">\(\Pr(D \mid T)\)</span> reflects a balance between these two factors, appropriately weighing the rarity of the disease against the rarity of a mistaken test result.</p>
+<p>Note that there’s a way to present this same problem in a more intuitive way. Suppose that, instead of being presented with probabilities, you were told the following information:</p>
+<ol style="list-style-type: decimal">
+<li><p>In a population of 100,000 people, 1000 of them have that rare disease.</p></li>
+<li><p>Of those 1000 people, 950 of them will test positive for the disease.</p></li>
+<li><p>Of the remaining 99,000 people (with <em>no</em> disease), 4950 of them will test positive for the disease.</p></li>
+</ol>
+<p>What proportion of those who test positive actually have the disease?</p>
+<p><span class="math display">\[
+\frac{950}{4950 + 950} \approx 0.16
+\]</span></p>
+<p>The second presentation of the problem, using counts rather than probabilities, is often called the <em>frequency format</em> or <em>natural frequencies</em>. Why a frequency format helps people intuit the correct approach remains contentious. Some people think that human psychology naturally works better when it receives information in the form a person in a natural environment would receive it. In the real world, we encounter counts only. No one has ever seen a probability, the thinking goes. But everyone sees counts (“frequencies”) in their daily lives. Maybe so.</p>
+<div id="coherency" class="section level3">
+<h3>Coherency</h3>
+<p>An important property of Bayes’ rule is that it is <em>coherent</em>: if we receive multiple pieces of information and wish to update our probabilities to incorporate all the information, it does not matter whether we update <em>sequentially</em>, taking each piece of evidence into account one at a time, or <em>simultaneously</em>, using all the evidence at once.</p>
+<hr />
+<p><strong>Example: Testing for a rare disease II</strong></p>
+<p>Suppose that the same patient who tested positive for the rare disease decides to get tested a second time. The new test is independent of the original test (<em>given his disease status</em>) and has the same sensitivity and specificity.</p>
+<p>Find the probability that she has the disease, given that she tests positive a second time.</p>
+<ol style="list-style-type: decimal">
+<li><p><em>Sequential solution</em>:</p>
+<p>We already know that <span class="math inline">\(\Pr(D \mid T_1) \approx 0.16\)</span>, which turns into a our new <em>prior</em>. Therefore:</p>
+<p><span class="math display">\[
+ \Pr(D \mid T_1, T_2) = \frac{\overset{\text{new prior}}{\Pr(D \mid T_1)}   
+ \Pr(T_2 \mid D)}{\Pr(D \mid T_1) \Pr(T_2 \mid D) + \Pr(D^c \mid T_1) \Pr(T_2 
+ \mid D^c)} = \frac{0.16 \times 0.95}{0.16 \times 0.95 + 0.84 \times 0.05}
+ \]</span></p>
+<p>As a result:</p>
+<p><span class="math display">\[\Pr(D \mid T_1, T_2) \approx 0.78\]</span></p></li>
+<li><p><em>Simultaneous solution</em>:</p>
+<p><span class="math display">\[
+ \Pr(D \mid T_1, T_2) = \frac{\Pr(D) \Pr(T_1, T_2 \mid D)}{\Pr(D) 
+ \Pr(T_1, T_2 \mid D) + \Pr(D^c) \Pr(T_1, T_2 \mid D^c)}
+ \]</span></p>
+<p>Note that <span class="math inline">\(T_1\)</span> and <span class="math inline">\(T_2\)</span> are <em>conditionally independent</em>, which turns the equation into:</p>
+<p><span class="math display">\[
+ \Pr(D \mid T_1, T_2) = \frac{\Pr(D) \Pr(T_1 \mid D) \Pr(T_2 \mid D)}{\Pr(D)
+ \Pr(T_1 \mid D) \Pr(T_2 \mid D) + \Pr(D^c) \Pr(T_1 \mid D^c) 
+ \Pr(T_2 \mid D^c)} 
+ \]</span></p>
+<p>Solving for this new equation, we get:</p>
+<p><span class="math display">\[
+ \frac{0.01 \times 0.95^2}{0.01 \times 0.95^2 + 0.99 \times 0.05^2} 
+ \approx 0.78
+ \]</span></p></li>
+</ol>
+</div>
 </div>
 
 

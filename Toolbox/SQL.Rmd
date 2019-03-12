@@ -1,3 +1,20 @@
+---
+title: "SQL"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 ## Structured Query Language (SQL)
 
 **Relational databases**
@@ -74,7 +91,7 @@ dbDisconnect(con)
 
 For more about SQL in R see [**here**](https://db.rstudio.com/).
 
-Note. To create a quick SQLite database, do this:
+**Note.** To create a quick SQLite database in RStudio, set the path to `":memory:"`.
 
 ```{r}
 library(DBI)

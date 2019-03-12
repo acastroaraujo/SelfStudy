@@ -1007,3 +1007,183 @@ E[g(X)] &= \int_{-\infty}^\infty g(x) \varphi(x) dx \\\\ &= \int_{-\infty}^\inft
 $$
 
 Thus, LOTUS is quicker because we can ignore *transformations*. More importantly, this method is less prone to mistakes because we don't have to worry about changing the bounds on the integrals!
+
+****
+
+## Combinations & Permutations
+
+This is *not* from Aronow & Miller.
+
+****
+
+The probabilities of events can be calculated by counting the number of outcomes in events as a *proportion* of the number of outcomes in the sample space.
+
+**Counting Methods:**
+
+Suppose one event can occur in $m$ ways and that another can occur in $n$ ways.
+
+1. The *sum rule*. As with the union of events, if the two events are disjoint, then there are $m + n$ outcomes or possible ways in which *either one* can happen.
+
+2. The *multiplication rule*. If the two events happen in succession, then there will be $m \times n$ possible outcomes or ways in which they could happen together. In other words, independent possibilities, when considered conjointly, multiply in number.
+
+3. *Permutations*. When the events are *not independent*, we use factorial notation. The number of different permutations of $n$ *distinct* elements in a set is defined using factorial notation $n!$
+
+    When we take a subset $k$ of *distinct* elements, we use:
+    
+    $$\underbrace{P(n, k)}_\text{k-permutation} = \frac{n!}{(n - k)!}$$
+    
+    Conversely, when a subset $n_1$ of the events in $n$ consists of *indistinct* elements, we use $\frac{n!}{n_1!}$ instead. Furthermore, we can have many subsets of *indistinct* elements:
+    
+    $$\frac{n!}{n_1!n_2!...n_r!} \hspace{1cm} \text{s.t} \hspace{0.5cm} n = n_1 + n_2 + ... + n_r$$
+    
+    Note that if all possible outcomes are distinct (i.e. each $n_i = 1$) then we are back at $n!$ 
+    
+    Any distinct ordering of a set is called a *permutation* of that set.
+
+    **Example**: If the letters $s$, $s$, $s$, $t$, $t$, $t$, $i$, $i$, $a$, $c$ are arranged in a random order, what is the probability that they will spell the word “statistics”?
+
+    $$\frac{10!}{3!3!2!1!1!} = 50400$$
+
+    Because there's only one arrangement in which the letters spell "statistics", the probability is $\frac{1}{50400}$.
+    
+4. *Combinations*. A combination is an unordered arrangement of $k$ objects taken from a set of $n$ objects. It is defined by the *binomial coefficient* $\binom{n}{k}$ or the "$n$ choose $k$" operation. 
+
+    $$\binom{n}{k} = \frac{n!}{(n-k)! k!}$$
+
+    This turns out to be the number of possible samples of size $k$ drawn *without replacement* from a population of size $n$.
+
+    If we wish to divide a set of $n$ distinct elements into $k$ different subsets of size $n_1 + n_2 + ... + n_k = n$, then the number of given ways in which this can be done is given by the *multinomial coefficient*. This coefficient has already been used in the "statistics" example.
+
+    $$\binom{n}{n_1, ..., n_k} = \frac{n!}{n_1!n_2!...n_k!}$$
+
+****
+
+**The Sampling Table**
+
+The sampling table gives the number of possible samples of size $k$ out of a population of size $n$, under various assumptions about how the sample is collected.
+
+|                         | Ordered             | Unordered |
+|:---------------------- :|:-------------------:|:--:|
+| **With replacement**    |  $n^k$              | $\binom{n + k - 1}{k}$ |
+| **Without replacement** | $\frac{n}{(n-k)!}$  | $\binom{n}{k}$ |
+
+****
+
+**Exercises**:
+
+As mentioned earlier, the probabilities of events can be calculated by counting the number of outcomes in events as a *proportion* of the number of outcomes in the sample space.
+
+*Example 1.* Draw 2 cards from a deck of 52.
+
+* The probability that both are aces is 
+
+    $\frac{\binom{4}{2}}{\binom{52}{2}} = 0.0045$
+
+* The probability that both are spades is 
+
+    $\frac{\binom{13}{2}}{\binom{52}{2}} = 0.059$
+
+*Example 2.* Draw five cards from a deck of 52.
+
+* The probability that four of them are aces is 
+
+    $\frac{ \binom{4}{4} \binom{48}{1}}{\binom{52}{2}} = 0.000018$
+
+    Notice that the numerator is calculated using the multiplication rule.
+    
+****
+
+## Bayes' Rule
+
+Taken from Blitzstein & Hwang
+
+****
+
+**Example: Testing for a rare disease**
+
+A patient is tested for a medical condition that afflicts 1% of the population. Let $D$ be the event that she has the disease and $T$ be the event that she tests positive.
+
+The test is "95% accurate", which in this case means that $\Pr(T \mid D) = 0.95$ and that $\Pr(T^c \mid D^c) = 0.95$
+
+The quantity $\Pr(T \mid D)$ is known as the "sensitivity" or *true positive rate* of the test, while $\Pr(T^c \mid D^c)$ is known as the "specificity" or *true negative rate*.
+
+Find the conditional probability that the patient has the disease, *given the fact that she tested positive*.
+
+**Solution:**
+
+$$
+\Pr(D \mid T) = \frac{\Pr(T \mid D) \Pr(D)}{\Pr(T \mid D) \Pr(D) + \Pr(T \mid D^c) \Pr(D^c)} =
+\frac{0.95 \times 0.01}{0.95 \times 0.01 + 0.05 \times 0.99} \approx 0.16
+$$
+
+In this equation, we have that:
+
+$$
+\Pr(D^c) = 1 - \Pr(D) \hspace{0.5cm} \text{and} \hspace{0.5cm} \Pr(T \mid D^c) = 1 - \Pr(T \mid D)
+$$
+
+So there is only a 16% chance that she has that disease, given that she tested positive, even though the test seems to be quite reliable! Many people, including doctors, find it surprising that the conditional probability of having the disease given a positive test result is only 16%, even though the test is 95% accurate. The key to understanding this surprisingly high posterior probability is to realize that there are two factors at play: the *evidence* from the test, and our *prior information* about the prevalence of the disease. The conditional probability $\Pr(D \mid T)$ reflects a balance between these two factors, appropriately weighing the rarity of the disease against the rarity of a mistaken test result.
+
+Note that there's a way to present this same problem in a more intuitive way. Suppose that, instead of being presented with probabilities, you were told the following information:
+
+1. In a population of 100,000 people, 1000 of them have that rare disease.
+
+2. Of those 1000 people, 950 of them will test positive for the disease.
+
+3. Of the remaining 99,000 people (with *no* disease), 4950 of them will test positive for the disease. 
+
+What proportion of those who test positive actually have the disease? 
+
+$$
+\frac{950}{4950 + 950} \approx 0.16
+$$
+
+The second presentation of the problem, using counts rather than probabilities, is often called the *frequency format* or *natural frequencies*. Why a frequency format helps people intuit the correct approach remains contentious. Some people think that human psychology naturally works better when it receives information in the form a person in a natural environment would receive it. In the real world, we encounter counts only. No one has ever seen a probability, the thinking goes. But everyone sees counts (“frequencies”) in their daily lives. Maybe so.
+
+### Coherency
+
+An important property of Bayes’ rule is that it is *coherent*: if we receive multiple pieces of information and wish to update our probabilities to incorporate all the information, it does not matter whether we update *sequentially*, taking each piece of evidence into account one at a time, or *simultaneously*, using all the evidence at once.
+
+****
+
+**Example: Testing for a rare disease II**
+
+Suppose that the same patient who tested positive for the rare disease decides to get tested a second time. The new test is independent of the original test (*given his disease status*) and has the same sensitivity and specificity. 
+
+Find the probability that she has the disease, given that she tests positive a second time.
+
+1. *Sequential solution*:
+
+    We already know that $\Pr(D \mid T_1) \approx 0.16$, which turns into a our new *prior*. Therefore:
+
+    $$
+    \Pr(D \mid T_1, T_2) = \frac{\overset{\text{new prior}}{\Pr(D \mid T_1)}   
+    \Pr(T_2 \mid D)}{\Pr(D \mid T_1) \Pr(T_2 \mid D) + \Pr(D^c \mid T_1) \Pr(T_2 
+    \mid D^c)} = \frac{0.16 \times 0.95}{0.16 \times 0.95 + 0.84 \times 0.05}
+    $$
+
+    As a result: 
+    
+    $$\Pr(D \mid T_1, T_2) \approx 0.78$$
+
+2. *Simultaneous solution*:
+
+    $$
+    \Pr(D \mid T_1, T_2) = \frac{\Pr(D) \Pr(T_1, T_2 \mid D)}{\Pr(D) 
+    \Pr(T_1, T_2 \mid D) + \Pr(D^c) \Pr(T_1, T_2 \mid D^c)}
+    $$
+
+    Note that $T_1$ and $T_2$ are *conditionally independent*, which turns the equation into:
+
+    $$
+    \Pr(D \mid T_1, T_2) = \frac{\Pr(D) \Pr(T_1 \mid D) \Pr(T_2 \mid D)}{\Pr(D)
+    \Pr(T_1 \mid D) \Pr(T_2 \mid D) + \Pr(D^c) \Pr(T_1 \mid D^c) 
+    \Pr(T_2 \mid D^c)} 
+    $$
+
+    Solving for this new equation, we get:
+
+    $$
+    \frac{0.01 \times 0.95^2}{0.01 \times 0.95^2 + 0.99 \times 0.05^2} 
+    \approx 0.78
+    $$

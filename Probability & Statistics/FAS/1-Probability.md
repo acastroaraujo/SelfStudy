@@ -31,7 +31,7 @@ $$\Omega = \{1, 2, 3, 4, 5, 6\}$$
 - A single roll of two six-sided dice.
 
 $$
-\Omega = \underbrace{\{(x, y) \in \mathbb Z^2 : 1 \leq x \leq 6,\ 1 \leq y \leq 6 \}}_\text{set builder notation}
+\Omega = \{(x, y) \in \mathbb Z^2 : 1 \leq x \leq 6,\ 1 \leq y \leq 6 \}
 $$
 
 - A coin flip.
@@ -294,7 +294,7 @@ $$
 **Discrete multivariate distributions** are described by their *joint* CDF, PMF, or PDF.
 
 $$
-\overbrace{F(a, b) = P(X \leq a \cap Y \leq b) = \int_{-\infty}^a \int_{-\infty}^b \underbrace{f(x, y)}_\text{joint PDF}dy dx}^\text{joint CDF}
+\overbrace{F(a, b) = P(X \leq a \cap Y \leq b) = \int_{-\infty}^a \int_{-\infty}^b \underbrace{f(x, y)}_\text{joint PDF}dy dx}^\text{Joint Cumulative Distribution Function}
 $$
 
 The same as before, integrating over a PDF will give us probability statements such as
@@ -326,7 +326,7 @@ $$
 - **Marginal PMF**
 
 $$
-f_Y(y) = P(Y = y) = \sum_{\textsf{Supp}[X]} f_{X, Y}(x, y)
+f_Y(y) = P(Y = y) = \sum_{\textsf{supp}[X]} f_{X, Y}(x, y)
 $$
 
 - **Marginal PDF**
@@ -348,7 +348,7 @@ $$
 - **Conditional PDF**
 
 $$
-f_{Y \mid X}(y \mid x)  = \frac{f(x, y)}{f(x)} \hspace{0.5cm} \forall y \in \mathbb R \text{ and } \forall x \in \textsf{Supp}[X]
+f_{Y \mid X}(y \mid x)  = \frac{f(x, y)}{f(x)} \hspace{0.5cm} \forall y \in \mathbb R \text{ and } \forall x \in \textsf{supp}[X]
 $$
 
 - **Product rule for PMFs and PDFs**
@@ -578,9 +578,9 @@ Note that the MSE about zero is the same as the _second raw moment_, and the MSE
 
 - **Root Mean Squared Error**
 
-$$\sqrt{E\left[(X - c)^2\right]}$$
+    $$\sqrt{E\left[(X - c)^2\right]}$$
 
-**Note**. This is used as a common measure of accuracy in the context of estimation.
+    Note. This is used as a common measure of accuracy in the context of estimation.
 
 - **Decomposition** 
 
@@ -594,7 +594,7 @@ V[X] + (E[X]-c)^2
 \end{align}
 $$
 
-**Note.** In the context of estimation, this is also known as the bias-variance decomposition.
+**Note.** In the context of estimation, this is also known as the *bias-variance decomposition*.
 
 The MSE is also linked to an alternative definition of the mean: the value $c$ that minimizes the MSE of $X$ is $E[X]$.
 
@@ -602,7 +602,7 @@ $$
 \underset{c \in \mathbb R}{\arg \min}\ E\left[(X - c)^2\right] = E[X]
 $$
 
-If we where to choose a different "loss function" besides the MSE, we could come up with different "best" choices for $c$. For example, the value $c$ that minimizes the Mean Absolute Error is the *median*.
+If we where to choose a different "loss function" besides the MSE, we could come up with different "best" choices for $c$. For example, the *median* is the value $c$ that minimizes the Mean Absolute Error ($|X - c|$).
 
 ****
 
@@ -612,28 +612,250 @@ If we where to choose a different "loss function" besides the MSE, we could come
 
 ### Covariance
 
-Covariance measures the extent to which two random variables
-"move together." 
+Covariance measures the extent to which two random variables "move together." 
 
 $$
 \begin{align}
-\textsf{Cov}[X, Y] &= E\big[(X - E[X])(Y - E[Y])\big] \\\\ &=
+\text{Cov}[X, Y] &= E\big[(X - E[X])(Y - E[Y])\big] \\\\ &=
 E[XY] - E[X]E[Y]
 \end{align}
 $$
 
 - **Variance Rule** (non-linearity of variances)
 
-$$V[X + Y] = V[X] + \textsf{Cov}[X, Y] + V[Y]$$
+$$V[X + Y] = V[X] + 2\text{Cov}[X, Y] + V[Y]$$
 
-- **Properties of Covariance**
+- **Variance is a special case of Covariance**
+
+$$\text{Cov}[X, X] = V[X]$$
+
+- **Covariance of sums**
+
+$$
+\text{Cov}[X + W, Y + Z] = \text{Cov}[X, Y] + \text{Cov}[X, Z] + \text{Cov}[W, Y] + \text{Cov}[W, Z]
+$$
+
+Much like standard deviation rescales variance, correlation rescales covariance to make its interpretation clearer. The **correlation** of two random variables is as follows:
+
+$$
+\rho[X, Y] = \frac{\text{Cov}[X, Y]}{\sigma[X] \sigma[Y]}
+$$
+
+The correlation $\rho$ is bounded in $[-1, 1]$, a fact that derives from the *Cauchy-Schwarz inequality*.
+
+**Linear dependence** describes the relationship between two random variables where one can be written as a linear function of the other. And correlation measures the degree of linear dependence between two random variables.
+
+$$
+\begin{align}
+&\rho[X, Y] = 1 \iff Y = a + bX \\\\
+&\rho[X, Y] = -1 \iff Y = a - bX \\\\
+&\text{where } b > 0 \text{ and } a,b \in \mathbb R
+\end{align}
+$$
+
+If two random variables are *linearly* independent, then $\text{Cov[X, Y] = 0$. This fact follows from the definition of covariance and the application of LOTUS.
+
+$$
+\begin{align}
+E[XY] &= \int_{-\infty}^\infty \int_{-\infty}^\infty x y f(x, y)dydx \\\\ &=
+\int_{-\infty}^\infty \int_{-\infty}^\infty xy f_X(x)f_Y(y)dydx \\\\ &=
+\int_{-\infty}^\infty x f_X(x)dx \int_{-\infty}^\infty y f_Y(y) \\\\ &=
+E[X]E[Y]
+\end{align}
+$$
+
+That is, _no relationship between two random variables implies no linear relationship them._ However, the opposite is not true: lack of correlation does _not_ imply independence.
+
+$$
+X \perp Y \longrightarrow \text{Cov}[X, Y] = 0 
+$$
+
+### Conditional Expectations
+
+Conditional expectations allow us to describe how the "center" of one random variable's distribution changes once we condition on the observed value of another random variable.
+
+- Discrete case ($\forall x \in \textsf{supp}[X]$)
+
+$$
+E[Y \mid X = x] = \sum_y y f_{Y \mid X}(y \mid x)
+$$
+
+- Continuous case ($\forall x \in \textsf{supp}[X]$)
+
+$$
+E[Y \mid X = x] = \int_{-\infty}^\infty y f_{Y \mid X}(y \mid x)dy
+$$
+
+Note that LOTUS can also be applied to conditional expectations of functions of many random variables.
+
+$$
+E[g(X, Y) \mid X = x] = \int_{-\infty}^\infty g(x, y) f_{Y \mid X}(y \mid x)dy
+$$
+
+Unlike unconditional expectations, $E[Y \mid X = x]$ is a *family of operators* on the random vector $(X, Y)$ that is indexed by $x$.
+
+A **conditional expectation function** (CEF) is just a conditional expectation takes is sometimes denoted by $G_Y(x)$ to emphasize the fact that it's a *function* that maps $x$ to $E[Y \mid X = x]$ rather than the value of $E[Y \mid X = x]$ at some particular $x$. This notation also emphasizes the fact that it's a function of $x$, not a function of the random variable $Y$. 
+
+We write $E[X \mid Y]$ to denote $G_Y(X)$ which is a function of the random variable of $X$, and thus it's also a random variable.
+
+The CEF is closely linked to various topics such as *regression*, *missing data*, and *causal inference*.
+
+- **Law of total expectations** (also known as the law of iterated expectations or Adam's law).
+
+    $$E[Y] = E\big[E[Y \mid X]\big]$$
+    
+    It implies that the unconditional expectation can be represented as a weighted average of conditional expectations, where the weights are proportional to the probability distribution of the variable being conditioned on. 
+    
+    *Proof*
+    
+$$
+\begin{align}
+E[Y] &= \sum_y y f_Y(y) \\\\ &=
+\sum_y y \sum_x f_{X, Y}(x, y) \\\\ &= 
+\sum_x \sum_y y f_{X \mid Y}(y \mid x) f_X(x) \\\\ &=
+\underbrace{\sum_x \overbrace{\bigg(\sum_y y f_{Y \mid X} (y \mid x)\bigg)}^{E[Y \mid X = x]} f_X (x)}_{E\big[E[Y \mid X]\big]}
+\end{align}
+$$
+
+- **Law of total variance** (also known as Eve's law).
+
+    $$V[Y] = \underbrace{E\big[V[Y \mid X]\big]}_\text{within-group variation} + \underbrace{V\big[E[Y \mid X]\big]}_\text{between-group variation}$$
+
+    This theorem allows us to decompose the variability of a random variable $Y$ into the average variability "within" values of $X$ and the variability "across" values of $X$. 
+    
+    The ordering of the $E$'s and $V$'s spells out $EVVE$, hence the name "Eve's law".
+    
+    *Proof*.
+    
+    1. $E[Y] = E\big[E[Y \mid X]\big] = E[G_Y(X)]$ (Adam's law)
+    
+    2. $E \big[V[Y \mid X]\big] = E\big[E[Y^2 \mid X] - G_Y(X)^2\big] = E\big[Y^2\big] - E\big[G_Y(X)^2\big]$
+    
+    3. $V[E[Y \mid X]] = E\big[G_Y(X)^2\big] - E[G_Y(X)]^2 = E\big[G_Y(X)^2\big] - E[Y]^2$ 
+    
+    We add (2) and (3) to get back to the original definition of $V[Y] = E\big[Y^2\big] - E[Y]^2$.
+    
+From Blitzstein & Hwang:
+
+> Another way to think about Eve’s law is in terms of *prediction*. If we wanted to predict someone’s height ($Y$) based on their age ($X$) alone, the ideal scenario would be if everyone within an age group had exactly the same height, while different age groups had different heights. Then, given someone’s age, we would be able to predict their height perfectly. In other words, the ideal scenario for prediction is *no* within-group variation in height, since the within-group variation cannot be explained by age differences. For this reason, within-group variation is also called _unexplained variation_, and between-group variation is also called _explained variation_. Eve’s law says that the total variance of $Y$ is the sum of unexplained and explained variation.
+
+### Best Predictors
+
+Suppose we knew the full joint cumulative distribution function (CDF) of $X$ and $Y$, and then someone gave us a randomly drawn value of $X$. What would be the guess of $Y$ that would have the lowest MSE? The function $g(X)$ that best approximates $Y$ is the CEF.
+
+- $E[Y|X]$, is the best (minimum MSE) predictor of $Y$ given $X$.
+
+This makes the CEF a natural target of inquiry: if the CEF is known, much is known about how $X$ relates to $Y$. But in many cases the CEF can turn out to be an extremely complicated function.
+
+What if we were to restrict ourselves to just *linear functions* of the form $g_Y(x) = a + b X$? We could then define the **best linear predictor** (BLP) of $Y$ given $X$ as the set of values $(a, b)$ that minimizes the MSE. 
+
+The BLP is expressed as:
+
+$$
+(\alpha, \beta) = \underset{a, b \in \mathbb R}{\arg \min}\ E\big[(Y - a + b X)^2\big]
+$$
+
+Using some calculus, one can show that these values are:
+
+$$
+\begin{align}
+&\alpha = E[Y] - \frac{\text{Cov}[X, Y]}{V[X]} E[X] \\\\ 
+&\beta =  \frac{\text{Cov}[X, Y]}{V[X]}
+\end{align}
+$$
+
+**Note.** This expression is identical to the one provided by the method of *ordinary least squares* (OLS), which is designed to estimate population parameters from sample data.
+
+There are two important corollaries that follow from this:
+
+1. The BLP is also the best linear approximation of the CEF.
+
+$$
+(\alpha, \beta) = \underset{a, b \in \mathbb R}{\arg \min}\ E\bigg[\big(E[Y \mid X] - (a + b X)\big)^2\bigg]
+$$
+
+2. If the CEF is linear, then the CEF *is* the BLP.
+
+We define deviations (or residuals) with the letter $\epsilon$ and note that they have similar properties when considering either the CEF or the BLP.
+
+| Conditional Expectation Function (CEF) 	| Best Linear Predictor (BLP)         	|
+|----------------------------------------	|-------------------------------------	|
+| $\epsilon = Y - E[Y \mid X]$           	| $\epsilon = Y - (\alpha + \beta X)$ 	|
+| $E[\epsilon] = 0$                      	| $E[\epsilon] = 0$                   	|
+| $E[\epsilon \mid X] = 0$               	| $E[\epsilon X] = 0$ (independence)  	|
+| $\text{Cov}[\epsilon, g(X)] = 0$       	| $\text{Cov}[\epsilon, X] = 0$       	|
+| $V[\epsilon \mid X] = V[Y \mid X]$     	|                                     	|
+| $V[\epsilon] = E\big[V[Y \mid X]\big]$ 	|                                     	|
+Table: ___Properties of deviations___
+
+PUT EXAMPLE FROM FIGURE 2.2.1 AND FIGURE 2.2.2
+
+
+Finally, these are the implications of **independence** for conditional expectations:
+
+$$
+\begin{align}
+Y \perp X \iff &1.\ E[Y \mid X] = E[Y] \\\\ &2. V[Y \mid X] = V[Y] \\\\ &3. \text{ The BLP of } Y \text{ given } X \text{ is } E[Y] 
+\end{align}
+$$
 
 ****
 
-## Bounds
 
-From SN notes.
 
-- **Markov's inequality**
+## Bounds using inequalities
 
-- **Chebyshev's inequality**
+Taken from  Blitzstein &  Hwang (2014).
+
+****
+
+A bound on a probability gives a provable guarantee that the probability is in a certain range. These inequalities will often allow us to narrow down the range of possible values for the exact answer, that is, to determine an upper bound and/or lower bound. These bounds may not provide a good approximation of the exact answer, but at least we know the exact answer is *guaranteed* to be inside the bounds.
+
+- **Markov's inequality**. 
+    
+    For any *nonnegative* random variable $X$ and constant $a > 0$:
+
+    $$\Pr(X \geq a) \leq \frac{\mathbb E(X)}{a}$$
+
+    *Example.* Let $X$ be the income of randomly selected person from a population. If we then say that $a = \mathbb 2 E(X)$ (or twice the average income in the population), then Markov's inequality tells us that the probability of selecting someone with more than twice the average income is less than or equal to $0.5$. You can't have over half the population earning twice the average income!
+
+    Markov’s inequality is a very crude bound because it requires absolutely no assumptions about $X$.
+
+    *Proof*. 
+
+    We use an indicator function for the event $Y \geq 1$. Recall that taking the expectation of an indicator function gives us a probability. By definition, the following inequality holds:
+
+    $$\mathbb I(Y \geq 1) \leq Y$$
+
+    To get to Markov's inequality we replace $Y$ with $\frac{X}{a}$, and take the expectation on both sides:
+
+$$
+\begin{align}
+\Pr\left(\frac{X}{a} \geq 1\right) &\leq \mathbb E\left(\frac{X}{a}\right) \\ \\
+\Pr(X \geq a) &\leq \frac{\mathbb E(X)}{a}
+\end{align}
+$$
+
+- **Chebyshev's concentration inequality**. 
+
+    We now say that $X$ has mean $\mu$ and variance $\sigma^2$. Then, for any $a > 0$, we have the following inequality:
+
+    $$\Pr(|X - \mu| \geq a) \leq \frac{\sigma^2}{a^2}$$
+
+    If we substitute $a = b\sigma$, we get an upper bound on the probability that *any* $X$ is more than $b$ standard deviations away from its mean. 
+
+    $$\Pr(|X - \mu| \geq b\sigma) \leq \frac{1}{b^2}$$
+
+    *Proof*. 
+    
+    By Markov's inequality, we know the following holds:
+
+    $$
+    \Pr(|X - \mu| \geq a) = \Pr\left((X - \mu)^2 \geq a^2\right) \leq \frac{\mathbb E\left((X-\mu)^2\right)}{a^2} = \frac{\sigma^2}{a^2}
+    $$
+
+    **Note.** $X$ is nonnegative and $a > 0$.
+
+
+
+
