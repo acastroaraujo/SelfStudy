@@ -32,6 +32,10 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 
 - Aurélien Géron ___Hands-on Machine Learning with Scikit-Learn, Keras, and TensorFlow___
 
+- Kleinberg & Tardos' ___Algorithm Design___
+
+- Lewis & Zax's ___Essential Discrete Mathematics for Computer Science___
+
 ## Social Networks
 
 - Rafael Pass' ___A Course in Networks and Markets___

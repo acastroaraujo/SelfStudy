@@ -837,47 +837,7 @@ Here, the BLP (in red) approximates the CEF (in blue) reasonably well over the d
 
 However, when the CEF is not linear, one must take care in interpreting the BLP as equivalent to the CEF. In particular, this may pose a problem when attempting to make inferences where $X$ has _low probability mass_ over some parts of the domain of the CEF. This is because _under nonlinearity, the BLP depends on the distribution of $X$_. 
 
-- More probability mass towards the left: $X \sim \text{beta}(1, 5)$
-
-```{r, fig.height=1}
-fX <- function(x) dbeta(x, 1, 5)
-tibble(x = 0:1) %>% 
-  ggplot(aes(x)) +
-  geom_area(sta = "function", 
-            fun = fX, 
-            fill = "steelblue1") +
-  labs(y = "density") +
-  scale_y_continuous(breaks = seq(0, 5, 2))
-```
-
-```{r}
-tibble(x = 0:1) %>% 
-  ggplot(aes(x)) +
-  stat_function(fun = CEF, color = "steelblue1") +
-  stat_function(fun = function(x) intercept() + slope() * x, 
-                color = "tomato") 
-```
-
-- More probability mass towards the right: $X \sim \text{beta}(5, 1)$
-
-```{r, fig.height=1}
-fX <- function(x) dbeta(x, 5, 1)
-tibble(x = 0:1) %>% 
-  ggplot(aes(x)) +
-  geom_area(sta = "function", 
-            fun = fX, 
-            fill = "steelblue1") +
-  labs(y = "density") +
-  scale_y_continuous(breaks = seq(0, 5, 2))
-```
-
-```{r}
-tibble(x = 0:1) %>% 
-  ggplot(aes(x)) +
-  stat_function(fun = CEF, color = "steelblue1") +
-  stat_function(fun = function(x) intercept() + slope() * x, 
-                color = "tomato") 
-```
+See [**here**](https://acastroaraujo.shinyapps.io/CEF-BLP/) for an interactive demonstration.
 
 
 ### Properties of Residuals
