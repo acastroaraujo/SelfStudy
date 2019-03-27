@@ -50,11 +50,14 @@ runtime: shiny
 
 ### Hello World
 
-```{r, message=FALSE, warning=FALSE, eval = FALSE}
+```{r}
 library(shiny)
 library(tidyverse)
 theme_set(theme_minimal(base_family = "Palatino"))
+```
 
+
+```{r, message=FALSE, warning=FALSE, eval = FALSE}
 make_pdf <- function(support, lambda) {
     ggplot(NULL, aes(x = support)) +
     stat_function(fun = dpois,
