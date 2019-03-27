@@ -6,7 +6,7 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 
 - Gelman et al's forthcoming ___Regression and Other Stories___
 
-- Bob Carpenter's new book on Probability
+- Bob Carpenter's forthcoming book on Probability
 
 - Aronow & Miller's ___Foundations of Agnostic Statistics___
 
@@ -23,6 +23,8 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 - Boyd & Vandenberghe's ___Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares___ 
 
 - Jurafsky & Martin's ___Speech and Language Processing___
+
+- Eugene Charniak's ___Statistical Language Learning___
 
 - Gilbert Strang's ___Linear Algebra and Learning from Data___
 
