@@ -3,12 +3,11 @@ title: "Shiny Tutorial"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
   html_document:
-    code_folding: hide
+    code_folding: show
     theme: paper
     toc: yes
     toc_float: 
       collapsed: no
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -51,7 +50,7 @@ runtime: shiny
 
 ### Hello World
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, eval = FALSE}
 library(shiny)
 library(tidyverse)
 theme_set(theme_minimal(base_family = "Palatino"))
@@ -231,4 +230,13 @@ See [**here**](https://shiny.rstudio.com/articles/tag-glossary.html) for more in
 
 The `wellPanel()` function is used to group similar kinds of inputs, in order to make it easier for the user to understand the app.
 
-We use `tabPanel()` to create stackable panels, and `navlistPanel()` or `tabsetPanel()` to arrange them vertically or horizontally.
+We use `tabPanel()` to create stackable panels, and `navlistPanel()` or `tabsetPanel()` to arrange them vertically or horizontally. 
+
+For example:
+
+```
+tabsetPanel(type = "tabs",
+    tabPanel(),
+    tabPanel()
+)
+```
