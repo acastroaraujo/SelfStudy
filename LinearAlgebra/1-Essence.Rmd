@@ -9,7 +9,8 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center",
+                      comments = "")
 
 
 ## Packages
@@ -1227,9 +1228,12 @@ Here are some more facts:
 An example:
 
 ```{r}
-prcomp(scale(mtcars))$sdev^2 ## eigenvalues
-prcomp(scale(mtcars))$rotation ## eigenvectors
-summary(prcomp(scale(mtcars)))
+prcomp(scale(mtcars))$sdev^2 %>%  ## eigenvalues
+  round(2)
+prcomp(scale(mtcars))$rotation %>% ## eigenvectors
+  round(2)
+summary(prcomp(scale(mtcars))) %>% 
+  print(digits = 2)
 ```
 
 
@@ -1354,7 +1358,7 @@ $$
 
 - **Eigen decomposition**
 
-```{r}
+```{r, echo=FALSE}
 What <- c("`eigen()`", "`y <- eigen(A)`", "`y$values`",
           "`y$vectors`")
 
@@ -1369,7 +1373,7 @@ tibble(Function = What, Description) %>%
 
 - **Singular Value Decomposition**
 
-```{r}
+```{r, echo=FALSE}
 What <- c("`svd(A)`", "`y <- svd(A)`", "`y$d`",
           "`y$u`", "`y$v`")
 
