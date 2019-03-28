@@ -10,7 +10,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, fig.align = "center",
-                      comments = "")
+                      comment = "")
 
 
 ## Packages
@@ -1359,7 +1359,7 @@ $$
 - **Eigen decomposition**
 
 ```{r, echo=FALSE}
-What <- c("`eigen()`", "`y <- eigen(A)`", "`y$values`",
+What <- c("`eigen()`", "`y` <- `eigen(A)`", "`y$values`",
           "`y$vectors`")
 
 Description <- c("Computes eigenvalues and eigenvectors",
@@ -1374,7 +1374,7 @@ tibble(Function = What, Description) %>%
 - **Singular Value Decomposition**
 
 ```{r, echo=FALSE}
-What <- c("`svd(A)`", "`y <- svd(A)`", "`y$d`",
+What <- c("`svd(A)`", "`y` <- `svd(A)`", "`y$d`",
           "`y$u`", "`y$v`")
 
 Description <- c("Computes the singular-value decomposition of `A`",

@@ -1808,50 +1808,50 @@ x \begin{pmatrix} a \\ c \end{pmatrix} + y \begin{pmatrix} b \\ d \end{pmatrix} 
 <p>In <code>R</code>, we can find the rank of a matrix using the <code>qr()</code> function, which performs <strong>QR Decomposition</strong>:</p>
 <p>The following matrix <code>M1</code> is an obvious example in which the third column vector is a linear combination of the first two.</p>
 <pre class="r"><code>t(M1)</code></pre>
-<pre><code>##      [,1] [,2] [,3]
-## [1,]    1    2    7
-## [2,]    5    6    1
-## [3,]    6    8    8</code></pre>
+<pre><code>     [,1] [,2] [,3]
+[1,]    1    2    7
+[2,]    5    6    1
+[3,]    6    8    8</code></pre>
 <pre class="r"><code>## QR Decomposition
 qr(M1)$rank</code></pre>
-<pre><code>## [1] 2</code></pre>
+<pre><code>[1] 2</code></pre>
 <pre class="r"><code>## Linear Combination
 M1[ , 1] + M1[ , 2] == M1[ , 3]</code></pre>
-<pre><code>## [1] TRUE TRUE TRUE</code></pre>
+<pre><code>[1] TRUE TRUE TRUE</code></pre>
 <p>The following matrix <code>M2</code> can be used to demonstrate that we can speak unambiguously of the <strong>rank</strong> of a matrix because the <em>column</em> rank will always be equal to the <em>row</em> rank.</p>
 <pre class="r"><code>M2</code></pre>
-<pre><code>##      [,1] [,2] [,3]
-## [1,]    1    2    3
-## [2,]    5    1    5
-## [3,]    6    4    5
-## [4,]    3    1    4</code></pre>
+<pre><code>     [,1] [,2] [,3]
+[1,]    1    2    3
+[2,]    5    1    5
+[3,]    6    4    5
+[4,]    3    1    4</code></pre>
 <pre class="r"><code>## QR Decomposition
 qr(M2)$rank     ## column rank</code></pre>
-<pre><code>## [1] 3</code></pre>
+<pre><code>[1] 3</code></pre>
 <pre class="r"><code>qr(t(M2))$rank  ## row rank</code></pre>
-<pre><code>## [1] 3</code></pre>
+<pre><code>[1] 3</code></pre>
 <p>Note: It’s obvious that the determinant of any matrix will equal zero when it’s <em>not</em> full-rank.</p>
 <hr />
 <p>There are many methods for finding the inverse of a non-singular square matrix, e.g. through the process of <em>Gauss-Jordan elimination</em>.</p>
 <p>However, finding the inverse of a matrix in R is easy with the <code>solve()</code> function.</p>
 <pre class="r"><code>A</code></pre>
-<pre><code>##      [,1] [,2] [,3]
-## [1,]    2    4   -2
-## [2,]    4    9   -3
-## [3,]   -2   -3    7</code></pre>
+<pre><code>     [,1] [,2] [,3]
+[1,]    2    4   -2
+[2,]    4    9   -3
+[3,]   -2   -3    7</code></pre>
 <pre class="r"><code>t(b)</code></pre>
-<pre><code>##      [,1] [,2] [,3]
-## [1,]    2    8   10</code></pre>
+<pre><code>     [,1] [,2] [,3]
+[1,]    2    8   10</code></pre>
 <pre class="r"><code>solve(A)</code></pre>
-<pre><code>##       [,1]  [,2]  [,3]
-## [1,]  6.75 -2.75  0.75
-## [2,] -2.75  1.25 -0.25
-## [3,]  0.75 -0.25  0.25</code></pre>
+<pre><code>      [,1]  [,2]  [,3]
+[1,]  6.75 -2.75  0.75
+[2,] -2.75  1.25 -0.25
+[3,]  0.75 -0.25  0.25</code></pre>
 <pre class="r"><code>solve(A) %*% b</code></pre>
-<pre><code>##      [,1]
-## [1,]   -1
-## [2,]    2
-## [3,]    2</code></pre>
+<pre><code>     [,1]
+[1,]   -1
+[2,]    2
+[3,]    2</code></pre>
 <hr />
 </div>
 </div>
@@ -2178,19 +2178,19 @@ a_2 b_1 &amp; a_2 b_2 \\ a_3 b_1 &amp; a_2 b_2 \end{pmatrix}
 \]</span></p>
 <pre class="r"><code>A &lt;- cbind(c(-3, 1), c(1, 3))
 A %*% c(-0.4, 0.8)</code></pre>
-<pre><code>##      [,1]
-## [1,]    2
-## [2,]    2</code></pre>
+<pre><code>     [,1]
+[1,]    2
+[2,]    2</code></pre>
 <p>Thus, we will take the vector <span class="math inline">\(\mathbf{x}\)</span> as described by <span class="math inline">\(\boldsymbol{\hat{\imath}}\)</span> and <span class="math inline">\(\boldsymbol{\hat{\jmath}}\)</span>, and look for the matrix <span class="math inline">\(\mathbf{A}^{-1}\)</span> that will translate <span class="math inline">\(\mathbf{x}\)</span> into the new coordinate system given by <span class="math inline">\(\mathbf{b}_1\)</span> and <span class="math inline">\(\mathbf{b}_2\)</span>:</p>
 <pre class="r"><code>solve(A)</code></pre>
-<pre><code>##      [,1] [,2]
-## [1,] -0.3  0.1
-## [2,]  0.1  0.3</code></pre>
+<pre><code>     [,1] [,2]
+[1,] -0.3  0.1
+[2,]  0.1  0.3</code></pre>
 <p>We then multiply vector <span class="math inline">\(\mathbf{x}\)</span> by this matrix to get vector <span class="math inline">\(\mathbf{x}_b\)</span></p>
 <pre class="r"><code>solve(A) %*% c(2, 2)</code></pre>
-<pre><code>##      [,1]
-## [1,] -0.4
-## [2,]  0.8</code></pre>
+<pre><code>     [,1]
+[1,] -0.4
+[2,]  0.8</code></pre>
 <p>Note: Using matrix multiplication does <em>not</em> require the new basis vectors have to be at 90º degrees of each other.</p>
 </div>
 </div>
@@ -2245,16 +2245,16 @@ lambda1 &lt;- eigen(A)$values[1]
 lambda2 &lt;- eigen(A)$values[2]</code></pre>
 <pre class="r"><code>## First solution
 A %*% x1 %&gt;% as.numeric()</code></pre>
-<pre><code>## [1] -2.683282 -5.366563</code></pre>
+<pre><code>[1] -2.683282 -5.366563</code></pre>
 <pre class="r"><code>lambda1 * x1</code></pre>
-<pre><code>## [1] -2.683282 -5.366563</code></pre>
+<pre><code>[1] -2.683282 -5.366563</code></pre>
 <pre class="r"><code>## Second solution
 A %*% x2 %&gt;% as.numeric() == lambda2 * x2</code></pre>
-<pre><code>## [1] TRUE TRUE</code></pre>
+<pre><code>[1] TRUE TRUE</code></pre>
 <p>But finding <span class="math inline">\(\mathbf{x}\)</span> is not trivial. For starters, notice that any eigenvector <span class="math inline">\(\mathbf{x}\)</span> is determined only up to a multiplicative constant.</p>
 <pre class="r"><code>## Example: c = 5
 lambda1 * (x1 * 5) == A %*% (x1 * 5) %&gt;% as.numeric</code></pre>
-<pre><code>## [1] TRUE TRUE</code></pre>
+<pre><code>[1] TRUE TRUE</code></pre>
 <p>Note that the set of vectors (or <span class="math inline">\(\mathbf{x}\)</span>’s) that make the following equation hold is just the <strong>null space</strong> of “<span class="math inline">\(\mathbf{A} - \lambda \mathbf{I}\)</span>”</p>
 <p><span class="math display">\[
 \begin{align}
@@ -2282,10 +2282,10 @@ lambda1 * (x1 * 5) == A %*% (x1 * 5) %&gt;% as.numeric</code></pre>
 \]</span></p>
 <p>This solution is difficult to see by just looking at the <code>R</code> output:</p>
 <pre class="r"><code>x1</code></pre>
-<pre><code>## [1] -0.4472136 -0.8944272</code></pre>
+<pre><code>[1] -0.4472136 -0.8944272</code></pre>
 <p>But this parsimonious expression was there all along:</p>
 <pre class="r"><code>x1 / x1[1]</code></pre>
-<pre><code>## [1] 1 2</code></pre>
+<pre><code>[1] 1 2</code></pre>
 <hr />
 <ul>
 <li><p>An <span class="math inline">\(n\)</span> by <span class="math inline">\(n\)</span> matrix <span class="math inline">\(\mathbf A\)</span> has <em>at most</em> <span class="math inline">\(n\)</span> distinct eigenvalues.</p></li>
@@ -2317,41 +2317,41 @@ lambda1 * (x1 * 5) == A %*% (x1 * 5) %&gt;% as.numeric</code></pre>
   c(0.010, 0.005, 0.005, 0.980))
 
 eigen(A)</code></pre>
-<pre><code>## eigen() decomposition
-## $values
-## [1] 1.00 0.98 0.97 0.97
-## 
-## $vectors
-##      [,1] [,2]          [,3]          [,4]
-## [1,] -0.5  0.5  0.000000e+00  7.071068e-01
-## [2,] -0.5 -0.5 -7.071068e-01  1.132427e-14
-## [3,] -0.5 -0.5  7.071068e-01 -2.442491e-15
-## [4,] -0.5  0.5 -1.382228e-14 -7.071068e-01</code></pre>
+<pre><code>eigen() decomposition
+$values
+[1] 1.00 0.98 0.97 0.97
+
+$vectors
+     [,1] [,2]          [,3]          [,4]
+[1,] -0.5  0.5  0.000000e+00  7.071068e-01
+[2,] -0.5 -0.5 -7.071068e-01  1.132427e-14
+[3,] -0.5 -0.5  7.071068e-01 -2.442491e-15
+[4,] -0.5  0.5 -1.382228e-14 -7.071068e-01</code></pre>
 <p>Because R sorts the eigen values in descending order, we get that the eigenvector associated with the largest eigen value is just:</p>
 <pre class="r"><code>eigen(A)$vectors[ , 1] ## select first eigenvector</code></pre>
-<pre><code>## [1] -0.5 -0.5 -0.5 -0.5</code></pre>
+<pre><code>[1] -0.5 -0.5 -0.5 -0.5</code></pre>
 <p>And if we apply <span class="math inline">\(\mathbf A\)</span> to any vector a large number of times, we will eventually see it converge to the largest eigenvector.</p>
 <p>For example:</p>
 <pre class="r"><code>x &lt;- c(1, 0, 0, 0) ## probability distribution
 for (i in seq(1e3)) x &lt;- A %*% x
 print(x)</code></pre>
-<pre><code>##      [,1]
-## [1,] 0.25
-## [2,] 0.25
-## [3,] 0.25
-## [4,] 0.25</code></pre>
+<pre><code>     [,1]
+[1,] 0.25
+[2,] 0.25
+[3,] 0.25
+[4,] 0.25</code></pre>
 <p>Note that this is in fact a normalized version of the largest eigenvector</p>
 <pre class="r"><code>eigen(A)$vectors[ , 1] / sum(eigen(A)$vectors[ , 1])</code></pre>
-<pre><code>## [1] 0.25 0.25 0.25 0.25</code></pre>
+<pre><code>[1] 0.25 0.25 0.25 0.25</code></pre>
 <p>Another example:</p>
 <pre class="r"><code>x &lt;- c(0.7, 0, 0.1, 0.2)
 for (i in seq(1e3)) x &lt;- A %*% x
 print(x)</code></pre>
-<pre><code>##      [,1]
-## [1,] 0.25
-## [2,] 0.25
-## [3,] 0.25
-## [4,] 0.25</code></pre>
+<pre><code>     [,1]
+[1,] 0.25
+[2,] 0.25
+[3,] 0.25
+[4,] 0.25</code></pre>
 <div id="pca" class="section level3">
 <h3>PCA</h3>
 <p>Principal Component Analysis (PCA) produces a low-dimensional representation of dataset. It finds a sequence of linear combinations of the variables that have maximal variance, and are mutually uncorrelated. It’s useful with <em>wide</em> datasets (i.e. lots of columns).</p>
@@ -2379,32 +2379,32 @@ print(x)</code></pre>
 <p>An example:</p>
 <pre class="r"><code>prcomp(scale(mtcars))$sdev^2 %&gt;%  ## eigenvalues
   round(2)</code></pre>
-<pre><code>##  [1] 6.61 2.65 0.63 0.27 0.22 0.21 0.14 0.12 0.08 0.05 0.02</code></pre>
+<pre><code> [1] 6.61 2.65 0.63 0.27 0.22 0.21 0.14 0.12 0.08 0.05 0.02</code></pre>
 <pre class="r"><code>prcomp(scale(mtcars))$rotation %&gt;% ## eigenvectors
   round(2)</code></pre>
-<pre><code>##        PC1   PC2   PC3   PC4   PC5   PC6   PC7   PC8   PC9  PC10  PC11
-## mpg  -0.36  0.02 -0.23 -0.02  0.10 -0.11  0.37 -0.75  0.24  0.14 -0.12
-## cyl   0.37  0.04 -0.18  0.00  0.06  0.17  0.06 -0.23  0.05 -0.85 -0.14
-## disp  0.37 -0.05 -0.06  0.26  0.39 -0.34  0.21  0.00  0.20  0.05  0.66
-## hp    0.33  0.25  0.14 -0.07  0.54  0.07  0.00 -0.22 -0.58  0.25 -0.26
-## drat -0.29  0.27  0.16  0.85  0.08  0.24  0.02  0.03 -0.05 -0.10 -0.04
-## wt    0.35 -0.14  0.34  0.25 -0.08 -0.46 -0.02 -0.01  0.36  0.09 -0.57
-## qsec -0.20 -0.46  0.40  0.07 -0.16 -0.33  0.05 -0.23 -0.53 -0.27  0.18
-## vs   -0.31 -0.23  0.43 -0.21  0.60  0.19 -0.27  0.03  0.36 -0.16  0.01
-## am   -0.23  0.43 -0.21 -0.03  0.09 -0.57 -0.59 -0.06 -0.05 -0.18  0.03
-## gear -0.21  0.46  0.29 -0.26  0.05 -0.24  0.61  0.34  0.00 -0.21 -0.05
-## carb  0.21  0.41  0.53 -0.13 -0.36  0.18 -0.17 -0.40  0.17  0.07  0.32</code></pre>
+<pre><code>       PC1   PC2   PC3   PC4   PC5   PC6   PC7   PC8   PC9  PC10  PC11
+mpg  -0.36  0.02 -0.23 -0.02  0.10 -0.11  0.37 -0.75  0.24  0.14 -0.12
+cyl   0.37  0.04 -0.18  0.00  0.06  0.17  0.06 -0.23  0.05 -0.85 -0.14
+disp  0.37 -0.05 -0.06  0.26  0.39 -0.34  0.21  0.00  0.20  0.05  0.66
+hp    0.33  0.25  0.14 -0.07  0.54  0.07  0.00 -0.22 -0.58  0.25 -0.26
+drat -0.29  0.27  0.16  0.85  0.08  0.24  0.02  0.03 -0.05 -0.10 -0.04
+wt    0.35 -0.14  0.34  0.25 -0.08 -0.46 -0.02 -0.01  0.36  0.09 -0.57
+qsec -0.20 -0.46  0.40  0.07 -0.16 -0.33  0.05 -0.23 -0.53 -0.27  0.18
+vs   -0.31 -0.23  0.43 -0.21  0.60  0.19 -0.27  0.03  0.36 -0.16  0.01
+am   -0.23  0.43 -0.21 -0.03  0.09 -0.57 -0.59 -0.06 -0.05 -0.18  0.03
+gear -0.21  0.46  0.29 -0.26  0.05 -0.24  0.61  0.34  0.00 -0.21 -0.05
+carb  0.21  0.41  0.53 -0.13 -0.36  0.18 -0.17 -0.40  0.17  0.07  0.32</code></pre>
 <pre class="r"><code>summary(prcomp(scale(mtcars))) %&gt;% 
   print(digits = 2)</code></pre>
-<pre><code>## Importance of components:
-##                        PC1  PC2   PC3   PC4  PC5   PC6   PC7   PC8   PC9
-## Standard deviation     2.6 1.63 0.792 0.519 0.47 0.460 0.368 0.351 0.278
-## Proportion of Variance 0.6 0.24 0.057 0.025 0.02 0.019 0.012 0.011 0.007
-## Cumulative Proportion  0.6 0.84 0.899 0.923 0.94 0.963 0.975 0.986 0.993
-##                          PC10  PC11
-## Standard deviation     0.2281 0.148
-## Proportion of Variance 0.0047 0.002
-## Cumulative Proportion  0.9980 1.000</code></pre>
+<pre><code>Importance of components:
+                       PC1  PC2   PC3   PC4  PC5   PC6   PC7   PC8   PC9
+Standard deviation     2.6 1.63 0.792 0.519 0.47 0.460 0.368 0.351 0.278
+Proportion of Variance 0.6 0.24 0.057 0.025 0.02 0.019 0.012 0.011 0.007
+Cumulative Proportion  0.6 0.84 0.899 0.923 0.94 0.963 0.975 0.986 0.993
+                         PC10  PC11
+Standard deviation     0.2281 0.148
+Proportion of Variance 0.0047 0.002
+Cumulative Proportion  0.9980 1.000</code></pre>
 </div>
 </div>
 <div id="abstract-vector-spaces" class="section level2">
@@ -2456,8 +2456,8 @@ print(x)</code></pre>
  \]</span></p>
 <p>This matrix can be easily constructed by taking the derivative of each basis function and puting the coordinates of the results in each column.</p></li>
 </ol>
-<pre><code>## Warning: `data_frame()` is deprecated, use `tibble()`.
-## This warning is displayed once per session.</code></pre>
+<pre><code>Warning: `data_frame()` is deprecated, use `tibble()`.
+This warning is displayed once per session.</code></pre>
 <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -2634,7 +2634,7 @@ Computes eigenvalues and eigenvectors
 </tr>
 <tr>
 <td style="text-align:left;">
-<code>y &amp;lt;- eigen(A)</code>
+<code>y</code> &lt;- <code>eigen(A)</code>
 </td>
 <td style="text-align:left;">
 Creates a list
@@ -2683,7 +2683,7 @@ Computes the singular-value decomposition of <code>A</code>
 </tr>
 <tr>
 <td style="text-align:left;">
-<code>y &amp;lt;- svd(A)</code>
+<code>y</code> &lt;- <code>svd(A)</code>
 </td>
 <td style="text-align:left;">
 Creates a list

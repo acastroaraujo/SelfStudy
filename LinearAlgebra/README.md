@@ -1,1 +1,1 @@
-See `3blue1brown`'s amazing Essence of Linear Algebra for a quick start. My notes for these videos are contained [**here**](https://acastroaraujo.github.io/SelfStudy/LinearAlgebra/1-Essence.html).
+- [**Essence of Linear Algebra**](https://acastroaraujo.github.io/SelfStudy/LinearAlgebra/1-Essence.html), taken _mostly_ from [here](https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab)
