@@ -1,5 +1,7 @@
 Here you'll find materials I've used for self-studying over the years. Eventually, I'll get through all of them. I don't know how I'll organize these though, and I'll probably add an asortment of technical notebooks on various specific topics along the way.
 
+I claim no authorship for any of the documents collected in this repository!
+
 ## Probability and Statistics
 
 - Cosma Shalizi's forthcoming ___Advanced Data Analysis from an Elementary Point of View___
