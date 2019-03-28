@@ -48,4 +48,4 @@ Here you'll find materials I've used for self-studying over the years. Eventuall
 
 ## Toolbox
 
-This one contains stuff like SQL, Python, and [Shiny](https://acastroaraujo.shinyapps.io/Shiny_Tutorial/) tutorials.
+This one contains stuff like SQL, Python, and Shiny.
