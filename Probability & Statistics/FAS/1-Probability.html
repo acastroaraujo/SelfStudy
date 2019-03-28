@@ -2385,8 +2385,8 @@ BLP
 </ul>
 <p><span class="math display">\[
 \begin{align}
-\Pr\left(\frac{X}{a} \geq 1\right) &amp;\leq \mathbb E\left(\frac{X}{a}\right) \\ \\
-\Pr(X \geq a) &amp;\leq \frac{\mathbb E(X)}{a}
+\Pr\left(\frac{X}{a} \geq 1\right) &amp;\leq E\left[\frac{X}{a}\right] \\ \\
+\Pr(X \geq a) &amp;\leq \frac{E[X]}{a}
 \end{align}
 \]</span></p>
 <ul>
@@ -2469,10 +2469,47 @@ E[g(X)] &amp;= \int_{-\infty}^\infty g(x) \varphi(x) dx \\\\ &amp;= \int_{-\inft
 <p><span class="math display">\[\binom{n}{n_1, ..., n_k} = \frac{n!}{n_1!n_2!...n_k!}\]</span></p></li>
 </ol>
 <hr />
-<p><strong>The Sampling Table</strong></p>
+<div id="the-sampling-table" class="section level3">
+<h3>The Sampling Table</h3>
 <p>The sampling table gives the number of possible samples of size <span class="math inline">\(k\)</span> out of a population of size <span class="math inline">\(n\)</span>, under various assumptions about how the sample is collected.</p>
-<div class="line-block">                        | Ordered | Unordered |</div>
-<p>|:———————- :|:——————-:|:–:| | <strong>With replacement</strong> | <span class="math inline">\(n^k\)</span> | <span class="math inline">\(\binom{n + k - 1}{k}\)</span> | | <strong>Without replacement</strong> | <span class="math inline">\(\frac{n}{(n-k)!}\)</span> | <span class="math inline">\(\binom{n}{k}\)</span> |</p>
+<table class="table table-bordered" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+Ordered
+</th>
+<th style="text-align:left;">
+Unordered
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+With replacement
+</td>
+<td style="text-align:left;">
+<span class="math inline">\(n^k\)</span>
+</td>
+<td style="text-align:left;">
+<span class="math inline">\(\binom{n + k - 1}{k}\)</span>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Without replacement
+</td>
+<td style="text-align:left;">
+<span class="math inline">\(\frac{n}{(n-k)!}\)</span>
+</td>
+<td style="text-align:left;">
+<span class="math inline">\(\binom{n}{k}\)</span>
+</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <p><strong>Exercises</strong>:</p>
 <p>As mentioned earlier, the probabilities of events can be calculated by counting the number of outcomes in events as a <em>proportion</em> of the number of outcomes in the sample space.</p>
@@ -2490,6 +2527,7 @@ E[g(X)] &amp;= \int_{-\infty}^\infty g(x) \varphi(x) dx \\\\ &amp;= \int_{-\inft
 <p>Notice that the numerator is calculated using the multiplication rule.</p></li>
 </ul>
 <hr />
+</div>
 </div>
 <div id="bayes-rule" class="section level2">
 <h2>Bayes’ Rule</h2>

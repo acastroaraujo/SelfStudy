@@ -839,7 +839,6 @@ However, when the CEF is not linear, one must take care in interpreting the BLP 
 
 See [**here**](https://acastroaraujo.shinyapps.io/CEF-BLP/) for an interactive demonstration.
 
-
 ### Properties of Residuals
 
 We define deviations (or residuals) with the letter $\epsilon$ and note that they have similar properties when considering with respect to either the CEF or the BLP.
@@ -890,8 +889,8 @@ A bound on a probability gives a provable guarantee that the probability is in a
 
 $$
 \begin{align}
-\Pr\left(\frac{X}{a} \geq 1\right) &\leq \mathbb E\left(\frac{X}{a}\right) \\ \\
-\Pr(X \geq a) &\leq \frac{\mathbb E(X)}{a}
+\Pr\left(\frac{X}{a} \geq 1\right) &\leq E\left[\frac{X}{a}\right] \\ \\
+\Pr(X \geq a) &\leq \frac{E[X]}{a}
 \end{align}
 $$
 
@@ -1018,14 +1017,19 @@ Suppose one event can occur in $m$ ways and that another can occur in $n$ ways.
 
 ****
 
-**The Sampling Table**
+### The Sampling Table
 
 The sampling table gives the number of possible samples of size $k$ out of a population of size $n$, under various assumptions about how the sample is collected.
 
-|                         | Ordered             | Unordered |
-|:---------------------- :|:-------------------:|:--:|
-| **With replacement**    |  $n^k$              | $\binom{n + k - 1}{k}$ |
-| **Without replacement** | $\frac{n}{(n-k)!}$  | $\binom{n}{k}$ |
+```{r, echo=FALSE}
+Ordered <- c("$n^k$", "$\\frac{n}{(n-k)!}$")
+Unordered <- c("$\\binom{n + k - 1}{k}$", "$\\binom{n}{k}$")
+output <- data.frame(Ordered, Unordered)
+rownames(output) <- c("With replacement", "Without replacement")
+
+make_table(output)
+```
+
 
 ****
 

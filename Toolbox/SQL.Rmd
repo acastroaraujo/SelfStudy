@@ -1,5 +1,5 @@
 ---
-title: "SQL"
+title: "Structured Query Language (SQL)"
 author: "Andrés Castro Araújo"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
@@ -14,7 +14,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
 ```
 
-## Structured Query Language (SQL)
+## Introduction
 
 **Relational databases**
 
@@ -335,7 +335,10 @@ Outer joins (like `LEFT JOIN`, `RIGHT JOIN`, AND `FULL JOIN`) will create missin
 
 The following image has a very succint summary of the difference between `INNER` and the different types of `OUTER` joins:
 
-<img src="https://sql.sh/wp-content/uploads/2014/06/sql-join-infographie.png" alt="drawing" width="300"/>
+```{r, out.width="50%", echo=FALSE}
+knitr::include_graphics("https://sql.sh/wp-content/uploads/2014/06/sql-join-infographie.png")
+```
+
 
 
 ### Semi and Anti joins

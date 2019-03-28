@@ -1,0 +1,349 @@
+---
+title: "Using ___rstanarm___"
+output: 
+  html_document:
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{css, include=FALSE}
+pre code, pre, code {
+  white-space: pre !important;
+  overflow-x: scroll !important;
+  word-break: keep-all !important;
+  word-wrap: initial !important;
+}
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center",
+                      fig.width = 5, fig.height = 4,
+                      comment = "")
+
+## Packages
+library(tidyverse)
+library(rstanarm)
+options(mc.cores = parallel::detectCores())
+
+## Plot settings
+theme_set(
+  theme_minimal(base_family = "Avenir")
+  )
+```
+
+<font size="2"> See [___here___](http://mc-stan.org/rstanarm/) for the official documentation. <br> See [___here___](https://mc-stan.org/users/documentation/case-studies/pool-binary-trials-rstanarm.html) for a complete case study.</font> 
+
+## Introduction
+
+- In frequentist inference, we care more about the probability of observing some random sample, given some fixed parameters.
+
+$$
+p(\mathbf y \mid \boldsymbol \theta)
+$$
+
+- In Bayesian inference, we care more about the probability of parameters, given some fixed data.
+
+    $$p(\boldsymbol \theta \mid \mathbf y)$$
+
+    Furthermore, Bayesian inferences include prior information to get more stable estimates and predictions. And uncertainty is characterized using simulations from probability distributions (instead of relying on standard errors or bootstrap approximations).
+
+****
+
+### Hello World (Sampling)
+
+```{r, echo=FALSE}
+URL <- "http://www.stat.columbia.edu/~gelman/arm/examples/ElectionsEconomy/hibbs.dat"
+hibbs <- read.table(URL, header = TRUE)
+```
+
+This is how the output of normal OLS regression will look like: 
+
+```{r}
+f_mod <- lm(inc.party.vote ~ growth, data = hibbs)
+f_mod %>% 
+  arm::display(digits = 2)
+```
+
+```{r}
+hibbs %>% 
+  ggplot(aes(growth, inc.party.vote)) +
+  geom_point() +
+  geom_smooth(method = lm, color = "steelblue1")
+```
+
+And this is how the output of the same regression, fitted through `rstanarm`, looks like:
+
+```{r, results = "hide"}
+b_mod <- stan_glm(inc.party.vote ~ growth, data = hibbs)
+```
+```{r}
+b_mod %>% 
+  summary(digits = 2)
+```
+
+The contents of this object include things that are usually unavailable for regular `lm()` or `glm()` objects. For example:
+
+```{r}
+draws <- as_tibble(b_mod)
+
+draws %>% 
+  gather(key = parameters, value = draw) %>% 
+  group_by(parameters) %>% 
+  summarise(
+    Median = median(draw),
+    MAD_SD = mad(draw)
+    )
+
+
+g <- draws %>%
+  rename(intercept = `(Intercept)`) %>% 
+  ggplot(aes(intercept, growth)) +
+  geom_point(alpha = 0.2)
+
+g
+```
+
+```{r}
+b_mod$coefficients
+b_mod$covmat
+```
+
+```{r}
+df <- crossing(  ## parameter grid
+  a = seq(40, 52, length.out = 100), 
+  b = seq(0, 6, length.out = 100)) %>% 
+  mutate(  ## joint density
+    dens = map2(a, b, cbind) %>% 
+      map_dbl(mvtnorm::dmvnorm, 
+              mean = b_mod$coefficients,
+              sigma = b_mod$covmat)
+    )
+
+g + geom_contour(data = df, 
+                 aes(a, b, z = dens),
+                 color = "steelblue1", bins = 10, size = 1) 
+      
+```
+
+```{r, fig.width=8, fig.height=3, message=FALSE}
+draws %>% 
+  rename(intercept = `(Intercept)`) %>% 
+  bayesplot::mcmc_dens(
+    pars = c("intercept", "growth", "sigma"),
+    facet_args = list(nrow = 1))
+
+draws %>% 
+  rename(intercept = `(Intercept)`) %>% 
+  gather(key = pars, value = draw) %>% 
+  ggplot(aes(x = draw)) +
+  geom_density(fill = "steelblue1", alpha = 0.5) +
+  facet_wrap(~pars, scales = "free")
+
+draws %>% 
+  rename(intercept = `(Intercept)`) %>% 
+  gather(key = pars, value = draw) %>% 
+  ggplot(aes(x = pars, y = draw)) +
+  geom_jitter(alpha = 0.1) +
+  geom_boxplot(outlier.color = NA) +
+  facet_wrap(~pars, scales = "free")
+
+draws %>% 
+  rename(intercept = `(Intercept)`) %>% 
+  gather(key = pars, value = draw) %>% 
+  ggplot(aes(x = draw, y = pars)) +
+  ggridges::geom_density_ridges()
+
+```
+
+```{r}
+b_mod$algorithm
+```
+
+```{r, fig.width=8, fig.height=2, message=FALSE}
+ggplot(NULL, aes(x = b_mod$stanfit@sim$samples[[1]]$mean_PPD)) +
+  geom_histogram(fill = "steelblue1", color = "black") +
+  geom_vline(xintercept = mean(hibbs$inc.party.vote), size = 3, color = "tomato") +
+  labs(x = "mean_PPD")
+```
+
+**Note**.
+
+- `posterior_linpred()` yields simulations of the possible values of $\boldsymbol \eta = \alpha + \beta \mathbf x$, with variation coming from the posterior uncertainty of the coefficients.
+
+- `posterior_predict()` yields simulations of the possible values of $\mathbf y^\text{rep} = \alpha + \beta \mathbf x + \epsilon$. This is also known as the _posterior predictive distribution_ of the data.
+
+```{r, fig.width=8, fig.height=2, message=FALSE}
+bayesplot::ppc_stat(y = hibbs$inc.party.vote, 
+                    yrep = posterior_predict(b_mod), stat = mean)
+```
+
+The `posterior_predict()` function is simply a short hand for the following procedure:
+
+```{r}
+draws <- draws %>% 
+  rename(a = `(Intercept)`, b = growth)
+
+n_sims <- nrow(draws)
+n_obs <- nrow(hibbs)
+
+yrep <- array(NA, dim = c(n_sims, n_obs))
+for (i in 1:n_obs) {
+  yrep[ , i] <- rnorm(
+    n = n_sims, 
+    mean = draws$a + draws$b * hibbs$growth[i], 
+    sd = draws$sigma)
+}
+
+dim(yrep)
+dim(posterior_predict(b_mod))
+```
+
+```{r, fig.width=8, fig.height=2, message=FALSE}
+ggplot(NULL, aes(x = apply(yrep, 1, mean))) +
+  geom_histogram(color = "black", fill = "steelblue1") +
+  geom_vline(xintercept = mean(hibbs$inc.party.vote), 
+             size = 3, color = "tomato") +
+  labs(x = "mean_PPD")
+```
+
+```{r}
+hibbs %>% 
+  ggplot(aes(growth, inc.party.vote)) +
+  geom_abline(
+    data = draws,
+    mapping = aes(intercept = a, slope = b),
+    alpha = 0.01, color = "steelblue1") +
+  geom_abline(
+    intercept = b_mod$coefficients[1],
+    slope = b_mod$coefficients[2],
+    linetype = "dashed") +
+  geom_point()
+```
+
+#### Forecasts!
+
+Suppose we are interested in predicting the election outcomes when growth is 2%. We simply do as follows:
+
+```{r}
+new_df <- tibble(growth = 2)
+ypred <- posterior_predict(b_mod, newdata = new_df)
+
+cat("Predicted Clinton percentage of 2-party vote: ", median(ypred), 
+    ", with s.e. ", sd(ypred), "\n\nPr(Clinton Win) = ", 
+    mean(ypred > 50), sep = "")
+```
+
+Then again, it's hard to believe a 2% growth estimate without any uncertainty attached.
+
+Suppose that our best estimate of economic growth was 2%, but with some uncertainty that will be expressed as a normal distribution with standard deviation 0.3%. We can then _propagate the uncertainty_ in this predictor to obtain a forecast distribution that more completely expresses our uncertainty:
+
+```{r}
+draws <- draws %>% 
+  mutate(x = rnorm(n_sims, mean = 2, sd = 0.3)) %>% 
+  mutate(ypred = rnorm(n_sims, a + b*x, sigma))
+
+with(draws,
+cat("Predicted Clinton percentage of 2-party vote: ", median(ypred), 
+    ", with s.e. ", sd(ypred), "\n\nPr(Clinton Win) = ", 
+    mean(ypred > 50), sep = ""))
+```
+
+Note that the standard error is slightly higher and thus, the probability of a win is slightly lower.
+
+****
+
+```{r}
+prior_summary(b_mod)
+```
+
+Where do these adjusted scales come from?
+
+```{r}
+cat("Intercept\n", 10 * sd(hibbs$inc.party.vote))
+cat("Slope\n", (2.5 / sd(hibbs$growth)) * sd(hibbs$inc.party.vote))
+```
+
+See more information [here](http://mc-stan.org/rstanarm/reference/prior_summary.stanreg.html) and [here](http://mc-stan.org/rstanarm/reference/priors.html).
+
+
+```{r, results="hide"}
+g <- posterior_vs_prior(b_mod)
+```
+```{r, fig.width=8, fig.height=3}
+g
+```
+
+Ultimately, these are very generic weakly informative priors. If we want to exert more control over them, we need to set up additional arguments, such as:
+
+```
+stan_glm(...
+  prior_intercept = normal(0, 1, autoscale = FALSE),
+  prior = student_t(df = 1, 0, 1, autoscale = FALSE),
+  prior_aux = cauchy(autoscale = TRUE))
+```
+
+
+
+****
+
+### Hello World (MAP)
+
+The following example gets rid of this quantity by setting `mean_PPD = FALSE`. It also sets uniform prior for all coefficients, and uses the "optimizing" algorithm instead of "sampling". 
+
+The "optimizing" algorithm produces a MAP estimate or a _normal approximation centered at the posterior mode._ The idea is to take the Bayesian posterior distribution, and instead of sampling from it, which can be slow when the number of regression coefficients is large, we use an optimization algorithm to find its mode, and then use the curvature of the posterior density to construct a normal approximation.
+
+This normal approximation is not perfect, especially for small datasets where there’s necessarily more uncertainty in the inference. But it can be used for speeding computations in "big data" applications.
+
+```{r, results="hide"}
+map_mod <- stan_glm(inc.party.vote ~ growth, data = hibbs,
+                    prior = NULL,
+                    prior_intercept = NULL,
+                    prior_aux = NULL,
+                    mean_PPD = FALSE, 
+                    algorithm = "optimizing")
+```
+```{r}
+map_mod %>% 
+  summary(digits = 2)
+```
+
+```{r}
+prior_summary(map_mod)
+```
+
+## Diagnostic plots
+
+```{r, message=FALSE, warning=FALSE}
+library(bayesplot)
+bayesplot_theme_set(theme_minimal(base_family = "Avenir"))
+color_scheme_set("viridis")
+
+n_pars <- nuts_params(b_mod)
+```
+
+```{r}
+rhat(b_mod)
+```
+
+```{r}
+b_mod %>% 
+  as.array() %>% 
+  mcmc_trace(facet_args = list(ncol = 1),
+             np = n_pars)
+```
+
+```{r}
+b_mod %>% 
+  as.array() %>% 
+  mcmc_pairs(off_diag_args = list(size = 1, alpha = 0.2), 
+             np = n_pars)
+```
+
+## Model Fit
+
+https://campus.datacamp.com/courses/bayesian-regression-modeling-with-rstanarm/assessing-model-fit
+
+
