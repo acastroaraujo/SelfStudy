@@ -1,7 +1,5 @@
-More to come:
+1. [RStanarm](https://acastroaraujo.github.io/SelfStudy/Toolbox/RStanarm.html)
 
-1. (rstanarm)[https://acastroaraujo.github.io/SelfStudy/Toolbox/RStanarm.html]
+2. [SQL](https://acastroaraujo.github.io/SelfStudy/Toolbox/SQL.html)
 
-2. SQL
-
-3. Shiny
+3. [Shiny](https://acastroaraujo.github.io/SelfStudy/Toolbox/Shiny.html)
