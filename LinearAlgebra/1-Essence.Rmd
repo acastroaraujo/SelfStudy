@@ -1302,8 +1302,8 @@ Name1 <- c("Linear transformations", "Dot products", "Eigenvectors")
 
 Name2 <- c("Linear operators", "Inner products", "Eigenfunctions")
 
-data_frame(`Linear algebra concepts` = Name1, 
-           `Alternate names applied to functions` = Name2) %>% 
+tibble(`Linear algebra concepts` = Name1, 
+       `Alternate names applied to functions` = Name2) %>% 
   knitr::kable(format = "html") %>% 
   kableExtra::kable_styling(full_width = FALSE)
 ```
