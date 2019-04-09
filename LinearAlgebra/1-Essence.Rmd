@@ -1316,13 +1316,13 @@ At this very high level of generality, any vector space must satisfy this set of
 
 $$
 \begin{align}
-&1. \ \ \mathbf{u} + (\mathbf{v} + \mathbf{w}) = (\mathbf{u} + \mathbf{v}) + \mathbf{w} \\
-&2. \ \ \mathbf{v} + \mathbf{w} = \mathbf{w} + \mathbf{v} \\
-&3. \ \ \text{There is a vector } \mathbf{0} \text{ such that } \mathbf{0} + \mathbf{v} = \mathbf{v} \text{ for all } \mathbf{v} \\
-&4. \ \ \text{For every vector } \mathbf{v} \text{ there is a vector } -\mathbf{v} \text{ such that } \mathbf{v} + (-\mathbf{v}) = \mathbf{0} \\
-&5. \ \ a(b\mathbf{v}) = (ab)\mathbf{v} \\
-&6. \ \ 1\mathbf{v} = \mathbf{v} \\
-&7. \ \ a(\mathbf{v} + \mathbf{w}) = a \mathbf{v} + a\mathbf{w} \\
+&1. \ \ \mathbf{u} + (\mathbf{v} + \mathbf{w}) = (\mathbf{u} + \mathbf{v}) + \mathbf{w} \\\\
+&2. \ \ \mathbf{v} + \mathbf{w} = \mathbf{w} + \mathbf{v} \\\\
+&3. \ \ \text{There is a vector } \mathbf{0} \text{ such that } \mathbf{0} + \mathbf{v} = \mathbf{v} \text{ for all } \mathbf{v} \\\\
+&4. \ \ \text{For every vector } \mathbf{v} \text{ there is a vector } -\mathbf{v} \text{ such that } \mathbf{v} + (-\mathbf{v}) = \mathbf{0} \\\\
+&5. \ \ a(b\mathbf{v}) = (ab)\mathbf{v} \\\\
+&6. \ \ 1\mathbf{v} = \mathbf{v} \\\\
+&7. \ \ a(\mathbf{v} + \mathbf{w}) = a \mathbf{v} + a\mathbf{w} \\\\
 &8. \ \ (a + b)\mathbf{v} = a\mathbf{v} + b\mathbf{v}
 \end{align}
 $$
