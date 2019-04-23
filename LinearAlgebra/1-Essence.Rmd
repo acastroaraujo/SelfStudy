@@ -45,7 +45,7 @@ A **scalar** is any single element of some set, and a **vector** is an *ordered*
 
 There are three distinct ideas about vectors:
 
-1. Physics: Vectors are arrows pointing space, defined by their *length*, and the *direction* they are pointed at.
+1. Physics: Vectors are arrows pointing space, defined by their *magnitude*, and the *direction* they are pointed at.
 
 2. Computer Science: Vectors are *ordered* lists of numbers. 
 
@@ -53,7 +53,7 @@ There are three distinct ideas about vectors:
 
 *Vector Addition*:
 
-To add (or subtract) vectors, they must have the same *dimension*:
+To add (or subtract) vectors, they must have the same *dimension* (or "length"):
 
 $$
 \mathbf{x} + \mathbf{y} = 
@@ -92,7 +92,7 @@ $$
 \mathbf{x}_{r:s} = (x_r, \dots, x_s)
 $$
 
-The subscript $r:s$ is called the *index range*.
+The subscript $\text{r:s}$ is called the *index range*.
 
 Note that colon notation is not completely standard, but it is growing in popularity.
 

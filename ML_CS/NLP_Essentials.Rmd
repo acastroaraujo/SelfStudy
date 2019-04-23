@@ -1,0 +1,22 @@
+---
+title: "NLP Essentials"
+output: 
+  html_document:
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Resources:
+
+1. [Silge](https://juliasilge.com/blog/tidy-word-vectors/)
+
+2. [Keras](https://blogs.rstudio.com/tensorflow/posts/2017-12-22-word-embeddings-with-keras/)
+
+## Introduction
