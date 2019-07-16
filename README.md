@@ -18,7 +18,7 @@ I claim no authorship for any of the documents collected in this repository!
 
 - Gelman et al's ___Bayesian Data Analysis 3___
 
-- Rasmussen & William's ___Gaussian Processes for Machine Learning___
+- ~~Rasmussen & William's ___Gaussian Processes for Machine Learning___~~
 
 ## Machine Learning and Computer Science
 
@@ -26,9 +26,9 @@ I claim no authorship for any of the documents collected in this repository!
 
 - Jurafsky & Martin's ___Speech and Language Processing___
 
-- Eugene Charniak's ___Statistical Language Learning___
+- ~~Eugene Charniak's ___Statistical Language Learning___~~
 
-- Gilbert Strang's ___Linear Algebra and Learning from Data___
+- ~~Gilbert Strang's ___Linear Algebra and Learning from Data___~~
 
 - Francois Chollet's ___Deep Learning with Python___
 
@@ -50,4 +50,4 @@ I claim no authorship for any of the documents collected in this repository!
 
 ## Toolbox
 
-This one contains stuff like SQL, Python, and Shiny.
+This one contains stuff about SQL, Shiny, and specific packages used for webscraping and statistics (`rstanarm`, `sf`, `parsnip`, etc.).
