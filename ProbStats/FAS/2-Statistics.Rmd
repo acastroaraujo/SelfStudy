@@ -1,0 +1,60 @@
+---
+title: "Probability Review"
+output: 
+  html_document:
+    code_folding: hide
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      fig.width = 4, fig.height = 3,
+                      comment = "")
+
+## Packages
+library(tidyverse)
+
+## Utilities
+theme_set(theme_minimal(base_line_size = 0,
+                        base_family = "Palatino"))
+
+make_table <- function(df, digits = 3) {
+  knitr::kable(df, "html", digits = digits) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+
+```
+
+****
+
+## Learning from random samples
+
+****
+
+asdfasdf
+
+
+
+****
+
+## Regression
+
+****
+
+
+
+
+****
+
+## Parametric Models
+
+****
+
+
+
+

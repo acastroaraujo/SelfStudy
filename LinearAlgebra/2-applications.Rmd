@@ -1,0 +1,1531 @@
+---
+title: "Applications"
+output:
+  html_document:
+    theme: paper
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+## Chunk settings
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+
+## Packages
+library(tidyverse)
+
+## Extra functions and settings
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+
+
+make_table <- function(df, digits = 3) {
+  knitr::kable(df, "html", digits = digits) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+```
+
+This is taken mainly from [Boyd & Vandenberghe (2018)](http://web.stanford.edu/~boyd/vmls/).
+
+
+# Vectors
+
+## Linear Functions
+
+****
+
+This section contains a discussion on *linear* functions, *affine* functions, *Taylor approximations*, and the *regression model*. Note that all linear functions can be represented as an inner product between two vectors.
+
+****
+
+**Functions** The notation $f : \mathbb{R}^n \to \mathbb{R}$ means that $f$ is a function that maps real $n$-vectors to real numbers (i.e. $f$ is a scalar-valued function of $n$-vectors).
+
+$$
+f(\mathbf{x}) = \underbrace{f(x_1, x_2, x_3, \dots, x_n)}_\text{arguments}
+$$
+
+For example, suppose we have a fixed $n$-vector $\mathbf{a}$ and we define the following function:
+
+$$
+f(\mathbf{x}) = \underset{\text{inner product}}{\mathbf{a}^\top \mathbf{x}} = \sum_{i=1}^n a_i x_i
+$$
+
+This function satisfies the *superposition* equality:
+
+$$
+\begin{align}
+f(\alpha \mathbf{x} + \beta \mathbf{y})  &= \mathbf{a}^\top (\alpha \mathbf{x} + \beta \mathbf{y}) \\ &= \mathbf{a}^\top (\alpha \mathbf{x}) + \mathbf{a}^\top (\beta \mathbf{y}) \\ &=
+\alpha (\mathbf{a}^\top \mathbf{x}) + \beta (\mathbf{a}^\top \mathbf{y}) \\ &=
+\alpha f(\mathbf{x}) + \beta f(\mathbf{y})
+\end{align}
+$$
+
+Where the left-hand side involves *scalar-vector multiplication* and *vector addition*; and the right-hand side involves *scalar multiplication* and *scalar addition*.
+
+More generally, we have that a function is **linear** when it satisfies the *superposition* property, which extends to linear combinations of any
+number of vectors:
+
+$$
+f(a_1 \mathbf{x}_1, a_2 \mathbf{x}_2, \dots a_k \mathbf{x}_k) = 
+a_1 f(\mathbf{x}_1) + a_2 f(\mathbf{x}_2) + \dots + a_k f(\mathbf{x}_k)
+$$
+
+The superposition propoerty is sometimes broken down into two properties, one involving the scalar-vector product and one involving vector addition in
+the argument. Thus, a function $f : \mathbb{R}^n \to \mathbb{R}$ is linear if it satisfies the following two properties:
+
+- *Homogeneity.* For any $n$-vector $\mathbf{x}$ and any scalar $\alpha$, $f(\alpha \mathbf{x}) = \alpha f(\mathbf{x})$.
+
+- *Additivity.* For any $n$-vectors $\mathbf{x}$ and $\mathbf{y}$, $f(\mathbf{x} + \mathbf{y}) = f(\mathbf{x}) + f(\mathbf{y})$.
+
+Homogeneity states that scaling the (vector) argument is the same as scaling the
+function value; and additivity says that adding (vector) arguments is the same as adding the function values.
+
+If a function defined as the inner product of its argument with some fixed vector is linear, the converse is also true. *If a function is linear, then it can be expressed as the inner product of its argument with some other fixed vector.* Suppose $f$ is a scalar-valued function of $n$-vectors, and that it is linear (i.e. the superposition property holds). Then there is an $n$-vector a such that
+$f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x}$ for all $\mathbf{x}$. We call $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x}$ the *inner product representation of $f$.*
+
+To see this, we use the fact that any $n$-vector $\mathbf{x}$ can be written as a linear combination of the standard unit vectors (i.e. a vector $\mathbf{e}_i$ that has all elements equal to zero, except one element $i$ which is equal to one). If $f$ is linear, then by multi-term superposition we have:
+
+$$
+\begin{align}
+f(\mathbf{x}) &= f(x_1 \mathbf{e}_1 + x_2 \mathbf{e}_2 + \dots + x_n \mathbf{e}_n)
+\\ &= x_1f(\mathbf{e}_1) + \dots + x_n f(\mathbf{e}_n) \\ &=
+\mathbf{a}^\top \mathbf{x}
+\end{align}
+$$
+
+where $\mathbf{a} = (f(\mathbf{e}_1), f(\mathbf{e}_2), \dots, f(\mathbf{e}_n))$
+
+This formula, which holds for any linear scalar-valued function $f$, has several interesting implications. Basically, once we figure out $f(\mathbf{e}_1), \dots, f(\mathbf{e}_n)$, by n calls to the, we can predict (or simulate) what $f(\mathbf{x})$ will be, for *any* vector $\mathbf{x}$. Also, the representation of a linear function $f$ as $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x}$ is unique, which means that there is only one vector $\mathbf{a}$ for which $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x}$ holds for all $\mathbf{x}$.
+
+**Affine functions.** A linear function plus a constant is called an affine function. A function $f : \mathbb{R}^n \to \mathbb{R}$ is affine if and only if it can be expressed as $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x} + b$ for some $n$-vector $\mathbf{a}$ and scalar $b$, which is sometimes called the *offset.* 
+
+For example:
+
+$$
+f(\mathbf{x}) = \underbrace{-2 x_1 + 1.3x_2 - x_3}_{\mathbf{a}^\top \mathbf{x}} + \underbrace{2.3}_b
+$$
+
+Affine functions are linear functions (where superposition holds) whose coefficients $a_1, \dots, a_k$ sum to one. To see that the restricted superposition property holds for an affine function $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x} + b$, we note that, for any vectors $\mathbf{x}$, $\mathbf{y}$ and scalars $\alpha$ and $\beta$ that satisfy $\alpha + \beta = 1$, the following is true:
+
+$$
+\begin{align}
+f(\alpha \mathbf{x} + \beta \mathbf{y}) &= \mathbf{a}^\top (\alpha \mathbf{x} + \beta \mathbf{y}) + b \\ &=
+\alpha \mathbf{a}^\top \mathbf{x} + \beta \mathbf{a}^\top \mathbf{y} + (\alpha + \beta)b \\ &=
+\alpha (\mathbf{a}^\top \mathbf{x} + b) + \beta (\mathbf{a}^\top \mathbf{y} + b) \\ &=
+\alpha f(\mathbf{x}) + \beta f(\mathbf{y})
+\end{align}
+$$
+
+Note that the converse is also true: Any scalar-valued function that satisfies the restricted superposition property is affine.
+
+Thus, we can identify a *linear function* using the following formula:
+
+$$
+f(\mathbf{x}) = x_1f(\mathbf{e}_1) + \dots + x_n f(\mathbf{e}_n)
+$$
+
+And in an analogous way, we can identify an *affine function* using the similar function: 
+
+$$
+f(\mathbf{x}) = f(\mathbf{0}) + x_1 (f(\mathbf{e}_1) - f(\mathbf{0})) + x_2 (f(\mathbf{e}_2) - f(\mathbf{0})) + \dots + x_n(f(\mathbf{e}_n - f(\mathbf{0}))
+$$
+
+This formula shows that for an affine function, once we know the $n+1$ numbers $f(\mathbf{0})$, $f(\mathbf{e}_1)$, ..., $f(\mathbf{e}_n)$, we can predict (or reconstruct or evaluate) $f(\mathbf{x})$ for any $n$-vector $\mathbf{x}$. It also
+shows how the vector $\mathbf{a}$ and constant $b$ in the representation $f(\mathbf{x}) = \mathbf{a}^\top \mathbf{x} + b$ can be found from the function $f: a_i = f(\mathbf{e}_i) − f(\mathbf{0})$, and $b = f(\mathbf{0})$.
+
+### Taylor approximation
+
+In many applications, scalar-valued functions of $n$ variables, or relations between $n$ variables and a scalar one, can be *approximated* as linear or affine functions. In these cases we sometimes approximation as a *model*, to remind us that the relation is not exact.
+
+Differential calculus gives us an organized way to find an approximate affine model. Suppose that $f : \mathbb R^n \to \mathbb R$ is *differentiable* (which means that its partial derivatives exist). Let $\mathbf z$ be an $n$-vector. Then, the (first-order) Taylor approximation of $f$ near (or at) the point $\mathbf z$ is the function $\hat f (\mathbf x)$ of x defined as
+
+$$
+\hat f(\mathbf x) = f(\mathbf z) + \frac{\partial f}{\partial x_1}(\mathbf z) (x_1 - z_1) + \dots + \frac{\partial f}{\partial x_n}(\mathbf z) (x_n - z_n)
+$$
+
+where $\frac{\partial f}{\partial x_i}(\mathbf z)$ denotes the partial derivative of $f$ with respect to its $i$th argument, evaluated at the $n$-vector $\mathbf z$.
+
+The first term in the Taylor approximation is a constant; the other terms can be
+interpreted as the contributions to the (approximate) change in the function value
+(from $f(\mathbf z)$) due to the changes in the components of $\mathbf x$ (from $\mathbf z$).
+
+Also note that $\hat f$ is an *affine function* of $\mathbf x$. Thus, it can be
+written compactly using inner product notation as
+
+$$
+\hat f(\mathbf x) = f(\mathbf z) + \nabla f(\mathbf z)^\top (\mathbf x - \mathbf z)
+$$
+
+where $\nabla f (\mathbf z)$ is an $n$-vector, the *gradient* of $f$ (at the point $\mathbf z$). 
+
+$$
+\nabla f (\mathbf z) = \left(\frac{\partial f}{\partial x_1}(\mathbf z), \frac{\partial f}{\partial x_2}(\mathbf z), \dots, \frac{\partial f}{\partial x_n}(\mathbf z) \right)
+$$
+
+The first term in the Taylor approximation is the *constant* $f(\mathbf z)$, the value of the function when $x = z$. The second term is the inner product of the gradient of $f$ at $\mathbf z$ and the deviation or perturbation of $\mathbf x$ from $\mathbf z$.
+
+*Example*
+
+Consider the function $f : \mathbb R^2 \to \mathbb R$ given by $f(\mathbf x) = x_1 + e^{(x_2 − x_1)}$, which is not linear or affine. 
+
+To find the Taylor approximation $\hat f$ near the point $\mathbf z = (1, 2)$, we take partial derivatives to obtain
+
+$$
+\nabla f (\mathbf z) = \pmatrix{1 - e^{(z_2 − z_1)} \\ e^{(z_2 − z_1)}} \approx 
+\pmatrix{-1.72 \\ 2.72}
+$$
+
+The *constant* is given by 
+
+$$
+f(\mathbf z) = 1 + e^{2 - 1} \approx 3.72
+$$
+
+Thus, the Taylor approximation at $\mathbf z$ is:
+
+$$
+\begin{align}
+\hat f(\mathbf x) &= 3.72 + (-1.72, 2.72)^\top (\mathbf x - (1, 2)) \\ &=
+3.72 - 1.72(x_1 - 1) + 2.72(x_2 - 2)
+\end{align}
+$$
+
+This $\hat f$ will be a very good approximation of $f$, especially when $\mathbf x$ is near $\mathbf z$.
+
+### Regression
+
+The regression model is a very commonly used affine function, especially when the $n$-vector $\mathbf{x}$ represents a feature vector.
+
+$$
+\hat y = \mathbf x^\top \boldsymbol \beta + v 
+$$
+
+Here, $\boldsymbol \beta$ is an $n$-vector and $v$ is a scalar. In this context,
+the entries of $\mathbf x$ are called the *regressors* (or covariates), and $\hat y$ is called the *prediction*, since the regression model is typically an approximation or prediction of some true value $y$, which is called the *dependent variable*, *outcome*, or *label*.
+
+The vector $\boldsymbol \beta$ is called the *weight* vector or coefficient vector, and the scalar $v$ is called the *offset* or *intercept* in the regression model. Together, $\boldsymbol \beta$ and $v$ are called the parameters in the regression model. The symbol $\hat y$ is used in the regression model to emphasize that it is an estimate or prediction of $y$.
+
+The entries in the weight vector have a simple interpretation: $\beta_i$ is the amount by which $\hat y$ increases (if $\beta_i > 0$) when feature $i$ increases by one (with all other features the same). If $\beta_i$ is small, the prediction $\hat y$ doesn’t depend too strongly on feature $i$. The offset $v$ is the value of $\hat y$ when all features have the value 0.
+
+Note that *vector stacking* can be used to lump the weights and offset in the regression model into a single parameter vector, which simplifies the regression model notation a bit. We create a new regressor vector $\mathbf {\tilde x}$, with $n + 1$ entries, as  $\mathbf {\tilde x} = (1, \mathbf x)$. And we define the parameter vector $\boldsymbol {\tilde \beta}  = (v, \boldsymbol \beta)$.
+
+Thus, the regression model can have the simple inner product form:
+
+$$
+\hat y = \mathbf x^\top \boldsymbol \beta + v = \pmatrix{1 \\ \mathbf x}^\top \pmatrix{v \\ \boldsymbol \beta} = \tilde {\mathbf x}^\top \tilde {\boldsymbol \beta}
+$$
+
+Often we omit the tildes, and simply write this as $\hat y = \mathbf x^\top \boldsymbol \beta$, where we assume that the first feature in $\mathbf{x}$ is the constant 1. A feature that always has the value 1 is not particularly informative or interesting, but it does simplify the notation in a regression model.
+
+### Exercises
+
+**2.1** *Linear or not?*. Determine whether each of the following scalar-valued functions of $n$-vectors is linear. If it is a linear function, give its inner product representation. If it is not linear, give specific $\mathbf x$, $\mathbf y$, $\alpha$, and $\beta$ for which superposition fails.
+
+- The spread of values of the vector, defined as $f(\mathbf x) = \text{max}_k x_k − \text{min}_k x_k$.
+
+
+- The difference of the last element and the first, f(x) = xn − x1.
+
+
+
+- The median 
+
+- The average of the entries with odd indices, minus the average of the entries with even indices. You can assume that $n = 2k$ is even.
+
+- Vector extrapolation
+
+
+Add more...
+
+
+2.4, 2.8, and 2.11
+
+## Norm and distance {#Euclidean_norm}
+
+****
+
+This section focuses on the *norm* of a vector, a measure of its magnitude, and on related concepts like *distance*, *angle*, *standard deviation*, and *correlation.*
+
+****
+
+The *Euclidean norm* of an $n$-vector $\mathbf x$, denoted $\| \mathbf x \|$, is the square-root of the sum of the squares of its elements (or the square-root of the inner product of the $\mathbf x$ vector with itself).
+
+$$
+\| \mathbf x \| = \sqrt{x_1^2 + x_2^2 + \dots + x_n^2} = \sqrt{\mathbf x^\top \mathbf x}
+$$
+
+When $x$ is a scalar, i.e., a $1$-vector, the Euclidean norm is the same as the absolute value of $x$. Indeed, the Euclidean norm can be considered a generalization or extension of the absolute value or magnitude, that applies to vectors. The double bar notation is meant to suggest this. Like the absolute value of a number, the norm of a vector is a (numerical) measure of its magnitude. We say a vector is small if its norm is a small number, and we say it is large if its norm is a large number. 
+
+Other less widely used terms for the Euclidean norm of a vector are the *magnitude* (or *length*) of a vector. (The term length should be avoided, since it is also often used to refer to the dimension $n$ of the vector.)
+
+**Properties of the Euclidean norm**
+
+- *Nonnegative homogeneity*: $\| \beta \mathbf x \| = | \beta | \| \mathbf x \|$. Multiplying a vector by a scalar multiplies the norm by the absolute value of the scalar.
+
+- *Triangle inequality*: $\| \mathbf x + \mathbf y \| \leq \| \mathbf x \| + \| \mathbf y \|$. The Euclidean norm of a sum of two vectors is no more than the sum of their norms. Another name for this inequality is *subadditivity.*
+
+- *Positive definiteness*: the combination of two other properties.
+
+    + *Nonnegativity*: $\| \mathbf x \| \geq 0$
+
+    + *Definiteness*: $\| \mathbf x \| = 0$ only if $\mathbf x = \mathbf 0$.
+
+Note: any real-valued function of an $n$-vector that satisfies the four
+properties listed above is called a (general) norm. But here we focus only on the *Euclidean norm*, which is the most common.
+
+**Root-mean-square value.** The norm is related to the *root-mean-square* (RMS) value of an $n$-vector $\mathbf{x}$, defined as
+
+$$
+\text{rms}(\mathbf x) = \sqrt{\frac{x_1^2 + \dots + x_n^2}{n}} = \frac{\| \mathbf x \|}{\sqrt{n}}
+$$
+
+The RMS value of a vector $\mathbf x$ is useful when comparing norms of vectors
+with different dimensions; the RMS value tells us what a "typical"" value of $|x_i |$ is. For example, the norm of $\mathbf 1$, the $n$-vector of all ones, is $\sqrt{n}$, but its RMS value is $1$, independent of $n$. More generally, if all the entries of a vector are the same, e.g. $\alpha$, then the RMS value of the vector is $|\alpha|$.
+
+**Norm of a sum.** A useful formula for the norm of the sum of two vectors $\mathbf x$ and $\mathbf y$ is derived as follows:
+
+$$
+\begin{align}
+\| \mathbf x + \mathbf y \|^2 &= 
+(\mathbf x + \mathbf y)^\top (\mathbf x + \mathbf y) \\ &=
+\mathbf x^\top \mathbf x + \mathbf x^\top \mathbf y + \mathbf y^\top \mathbf x + \mathbf y^\top \mathbf y \\ &=
+\| \mathbf x \|^2 + 2 \mathbf x^\top \mathbf y + \| \mathbf y \|^2
+\end{align}
+$$
+
+Taking the squareroot of both sides yields the formula:
+
+$$
+\| \mathbf x + \mathbf y \| = \sqrt{\| \mathbf x \|^2 + 2 \mathbf x^\top \mathbf y + \| \mathbf y \|^2}
+$$
+
+**Norm of block vectors.** The norm-squared of a stacked vector is the sum of the
+norm-squared values of its subvectors. For example, with $\mathbf d = (\mathbf a, \mathbf b, \mathbf c)$, we have
+
+$$
+\| \mathbf d \|^2 = \mathbf d^\top \mathbf d = \mathbf a^\top \mathbf a +
+\mathbf b^\top \mathbf b + \mathbf c^\top \mathbf c = 
+\| \mathbf a \|^2 + \| \mathbf b \|^2 + \| \mathbf c \|^2
+$$
+
+(This idea is often used in reverse, to express the sum of the norm-squared values
+of some vectors as the norm-square value of a block vector formed from them.)
+
+In other words, the norm of a stacked vector is the norm of the vector formed from
+the norms of the subvectors. 
+
+$$
+\underbrace{\| (\mathbf a, \mathbf b, \mathbf c) \|}_\text{These are vectors} = \sqrt{\| \mathbf a \|^2 + \| \mathbf b \|^2 + \| \mathbf c \|^2} = \| \underbrace{(\| \mathbf a \|, \| \mathbf b \|, \| \mathbf c \|)}_\text{These are scalars} \|
+$$
+
+**Chebyshev's inequality.**
+
+Suppose that $\mathbf x$ is an $n$-vector, and that $k$ of its entries satisfy $| x_i | \geq a$, where $a > 0$. Then $k$ of its entries satisfy $x^2_i \geq a^2$. It follows that
+
+$$
+\| \mathbf{x} \|^2 = x_1^2 + \dots + x_n^2 \geq ka^2
+$$
+
+Since $k$ of the numbers in the sum are at least $a^2$, and the other $n − k$ numbers are nonnegative. We can conclude the following:
+
+$$
+k \leq \frac{\| \mathbf x \|^2}{a^2}
+$$
+
+which is called the *Chebyshev inequality*. 
+
+When $\| \mathbf x \|^2/ a^2 \geq n$, the inequality tells us nothing, since we always have $k \leq n$. 
+
+In other cases it limits the number of entries in a vector that can be large. For $a > \| \mathbf x \|$, the inequality is $k \leq \| \mathbf x \|^2 / a^2 < 1$, so we conclude that $k = 0$ (since $k$ is an integer). In other words, no entry of a vector can be larger in magnitude than the norm of the vector.
+
+The Chebyshev inequality is easier to interpret in terms of the RMS value of a
+vector (after dividing by $n$). We can write it as follows:
+
+$$
+\frac{k}{n} \leq \left( \frac{\text{rms}(\mathbf x)}{a} \right)^2
+$$
+
+where $k$ is, as above, the number of entries of $\mathbf x$ with absolute value at least $a$. 
+
+The left-hand side is the fraction of entries of the vector that are at least $a$ in absolute value. The right-hand side is the inverse square of the ratio of $a$ to $\text{RMS}(\mathbf x)$. It says, for example, that no more than $\frac{1}{25} = 4\%$ of the entries of a vector can exceed its RMS value by more than a factor of $a = 5$. The Chebyshev inequality partially justifies the idea that the RMS value of a vector gives an idea of the size of a typical entry: It states that not too many of the entries of a vector can be much bigger (in absolute value) than its RMS value. 
+
+### Distance
+
+**Euclidean distance.** We can use the norm to define the *Euclidean distance* between two vectors $\mathbf a$ and $\mathbf b$ as the norm of their difference:
+
+$$
+d(\mathbf a, \mathbf b) = \| \mathbf a - \mathbf b \|
+$$
+
+For one, two, and three dimensions, this distance is exactly the usual distance between points with coordinates $\mathbf a$ and $\mathbf b$. But the Euclidean distance is defined for vectors of any dimension; for example, we can refer to the distance between two vectors of dimension 100.
+
+*Example*
+
+```{r}
+u <- c(1.8, 2, -3.7, 4.7)
+v <- c(0.6, 2.1, 1.9, -1.4)
+w <- c(2, 1.9, -4, 4.6)
+
+euclidean_distance <- function(x, y) sqrt(t(x - y) %*% (x - y))
+
+euclidean_distance(v, u)
+euclidean_distance(v, w)
+euclidean_distance(u, w)
+
+## Alternatively, we can use R's built-in dist() function
+dist(rbind(u, v, w), method = "euclidean", diag = TRUE)
+```
+
+So we can say that $\mathbf u$ is much nearer (or closer) to $\mathbf w$ than it is to $\mathbf v$.
+
+Note: If $\mathbf a$ and $\mathbf b$ are $n$-vectors, we refer to the RMS value of the difference, $\| \mathbf a − \mathbf b \| / \sqrt{n}$ as the *RMS deviation between* the two vectors.
+
+**Triangle inequality**. We can now explain where the triangle inequality gets its name. Consider a triangle in two or three dimensions, whose vertices have coordinates $\mathbf a$, $\mathbf b$, and $\mathbf c$. The lengths of the sides are the distances between the vertices,
+
+$$
+d(\mathbf a, \mathbf b) = \| \mathbf a - \mathbf b\| \hspace{1cm}
+d(\mathbf b, \mathbf c) = \| \mathbf b - \mathbf c \| \hspace{1cm}
+d(\mathbf a, \mathbf c) = \| \mathbf a - \mathbf c \| 
+$$
+
+Geometric intuition tells us that the length of any side of a triangle cannot exceed the sum of the lengths of the other two sides. 
+
+```{r, fig.width=3, fig.height=2, echo=FALSE}
+ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 7, yend = 7)) +
+  geom_segment(aes(x = 10, y = 0, xend = 7, yend = 7)) +
+  geom_segment(aes(x = 0, y = 0, xend = 10, yend = 0)) +
+  annotate("text", x = -0.5, y = 0, label = "a", size = 5) +
+  annotate("text", x = 10.5, y = 0, label = "b", size = 5) +
+  annotate("text", x = 7, y = 7.8, label = "c", size = 5) + 
+  annotate("text", x = 5.5, y = -1, label = "d(a, b)", size = 4) +
+  annotate("text", x = 2.5, y = 4.5, label = "d(a, c)", size = 4) +
+  annotate("text", x = 10, y = 3.5, label = "d(b, c)", size = 4) +
+  coord_cartesian(xlim = c(-1, 12), ylim = c(-2, 8)) +
+  theme_void(base_family = "Avenir")
+```
+
+For example:
+
+$$
+\| \mathbf a - \mathbf c \| \leq \underbrace{\| \mathbf a - \mathbf b \| + \| \mathbf b - \mathbf c \|}_{\| (\mathbf a - \mathbf b) + (\mathbf b - \mathbf c) \|}
+$$
+
+**Examples**
+
+- *Feature distance.* If x and y represent vectors of n features of two objects (e.g. two individuals), the quantity kx − yk is called the feature distance, and gives a measure of how different the objects are (in terms of their feature values).
+
+- *Prediction error*. Suppose that the $n$-vector $\mathbf y$ represents a time series of some quantity (e.g. hourly temperature at some location), and $\hat{\mathbf y}$ is another $n$-vector that represents an estimate or prediction of the time series $\mathbf y$, based on other information. The difference $\mathbf y - \hat{\mathbf y}$ is called the prediction error, and $\text{RMS}(\mathbf y− \hat{\mathbf y})$ is called the RMS prediction error. 
+
+- *Nearest neighbor.* Suppose $\mathbf z_1, \dots, \mathbf z_m$ is a collection of $m$ $n$-vectors, and that $\mathbf x$ is another $n$-vector. We say that $\mathbf z_j$ is the nearest neighbor of $\mathbf x$ if
+
+    $$\| \mathbf x  − \mathbf z_j \| \leq \| \mathbf x − \mathbf z_i \| \hspace{1cm} \text{for } i = 1, \dots, m$$
+
+    In words: $\mathbf z_j$ is the closest vector to $\mathbf x$ among the vectors $\mathbf z_1, \dots, \mathbf z_m$.
+    
+- *Document dissimilarity.* Suppose $n$-vectors $\mathbf x$ and $\mathbf y$ represent the histograms of word occurrences for two documents. Then $\| \mathbf x − \mathbf y \|$ represents a measure of the dissimilarity of the two documents. We might expect the dissimilarity to be smaller when the two documents have the same genre, topic, or author.
+
+Note: When the entries of a vector represent different types of quantities (e.g. when the vector entries represent different types of features associated with an object) we must be careful about *choosing* the units used to represent the numerical values of the entries. If we want the different entries to have approximately equal status in determining distance, their numerical values should be approximately of the same magnitude. For this reason units for different entries in vectors are often chosen in such a way that their typical numerical values are similar in magnitude, so that the different entries play similar roles in determining distance. Thus, we usually turn to *standardization* and other forms of *feature engineering*.
+
+### Standard deviation
+
+For any vector $\mathbf x$, the vector $\tilde{\mathbf x} = \mathbf{x} − \mu_{\mathbf x} \mathbf 1$ is called the associated de-meaned vector, obtained by subtracting from each entry of $\mathbf x$ the mean value of the entries.
+
+```{r, eval=FALSE}
+new_x <- x - mean(x)
+```
+
+This ensures that the mean value of the entries of $\tilde{\mathbf x}$ is zero. On the other hand, this explains why $\tilde{\mathbf x}$ is called the de-meaned version of $\mathbf x$; it's just $\mathbf x$ with its mean removed. 
+
+The **standard deviation** of an $n$-vector $\mathbf x$ is defined as the RMS value of the de-meaned vector $\tilde{\mathbf x}$:
+
+$$
+\text{std}(\mathbf x) = \sqrt{\frac{(x_1 - \mu_x)^2 + \dots + (x_n - \mu_x)^2}{n}}
+$$
+
+```{r, eval=FALSE}
+sd_x <- sqrt( sum(new_x^2) / length(new_x) )
+```
+
+This is the same as the *RMS deviation* between a vector $\mathbf x$ and a vector all of whose entries are $\mu_x$. It can be written using the inner product and norm as follows:
+
+$$
+\text{std}(\mathbf x) = \frac{\| \mathbf x - (\mathbf 1^\top \mathbf x /n) \mathbf 1 \|}{\sqrt{n}} = \frac{\| \mathbf x - \mu_x \mathbf 1\|}{\sqrt{n}}
+$$
+
+The standard deviation of a vector $\mathbf x$ tells us the typical amount by which its entries deviate from their average value. 
+
+Note, we usually use the symbols $\mu$ and $\sigma$ to refer to the mean and the standard deviation, respectively:
+
+$$
+\mu_x = \text{avg}(\mathbf x) = \frac{\mathbf 1^\top \mathbf x}{n} \hspace{2cm}
+\sigma_x = \text{std}(\mathbf x) = \frac{\| \mathbf x - \mathbf \mu 1 \|}{\sqrt{n}}
+$$
+
+The average, RMS value, and standard deviation of a vector are related by the formula:
+
+$$
+\text{rms}(\mathbf x) = \text{avg}(\mathbf x)^2 + \underbrace{\text{std}(\mathbf x)^2}_\text{variance}
+$$
+
+This formula makes sense: $\text{rms}(\mathbf x)^2$ is the mean square value of the entries of $\mathbf x$, plus the mean square fluctuation of the entries of x around their mean value. We can derive this formula from our vector notation formula for $\sigma_x$ given above. 
+
+$$
+\begin{align}
+\text{std}(\mathbf x)^2 &= \left(\frac{1}{n}\right)\| \mathbf x - (\mathbf 1^\top \mathbf x /n) \mathbf 1 \|^2 \\ \\ &=
+\left(\frac{1}{n}\right) \left( \mathbf x^\top \mathbf x - 2 \mathbf x^\top (\mathbf 1^\top \mathbf x/n) \mathbf 1 + ((\mathbf 1^\top \mathbf x /n)\mathbf1)^\top ((\mathbf 1^\top \mathbf x /n)\mathbf 1) \right)\\ \\ &=
+\left(\frac{1}{n}\right)\left( \mathbf x^\top \mathbf x - \left(\frac{2}{n}\right)(\mathbf 1^\top \mathbf x)^2 + n (\mathbf 1^\top \mathbf x /n)^2) \right) \\ \\ &=
+\frac{\mathbf x^\top \mathbf x}{n} - \left(\frac{\mathbf 1^\top \mathbf x}{n}\right)^2 \\ \\ &=
+\text{rms}(\mathbf x)^2 - \text{avg}(\mathbf x)^2
+\end{align}
+$$
+
+- In the second line, we use the formula for the *norm of a sum* derived earlier to expand the norm-square.
+
+- In the third line, we use the commutative property of scalar-vector multiplication, moving scalars such as $(\mathbf 1^\top \mathbf x / n)$ to the front of each term, and also the fact that $\mathbf 1^\top \mathbf 1 = n$.
+
+- In the fourth line we factor in the $\frac{1}{n}$.
+
+**Properties of the standard deviation**
+
+- *Adding a constant*. Adding a constant to every entry of a vector does not change its standard deviation.
+
+$$
+\text{std}(\mathbf x + \alpha \mathbf 1) = \text{std}(\mathbf x)
+$$
+
+- *Multiplying by a scalar*. Multiplying a vector by a scalar multiplies the standard deviation by the absolute value of the scalar.
+
+$$
+\text{std}(\alpha \mathbf x) = |\alpha| \text{ std}(\mathbf x)
+$$
+
+**Standardization**.
+
+If we divide the de-meaned version of $\mathbf x$ by $\text{std}(\mathbf x)$, we obtain the following vector of $z$-scores:
+
+$$
+\mathbf z = \frac{\mathbf x - \text{avg}(\mathbf x) \mathbf 1}{\text{std}(\mathbf x)}
+$$
+
+This vector is called the *standardized* version of $\mathbf x$. It has mean zero, and standard deviation one. The standardized values for a vector give a simple way to interpret the original values in the vectors. For example, if an $n$-vector $\mathbf x$ gives the values of some medical test of n patients admitted to a hospital, the standardized values or $z$-scores tell us how high or low, compared to the population, that patient's value is.
+
+
+### Angle
+
+An important inequality that relates norms and inner products is the *Cauchy-Schwarz inequality*, which stems from the notion of [an angle between two vectors](#angle_intro):
+
+$$
+|\mathbf a^\top \mathbf b| \leq \|\mathbf a\| \|\mathbf b\|
+$$
+
+Here, $\mathbf a$ and $\mathbf b$ satisfy the Cauchy-Schwarz inequality with equality only when one of the vectors is a multiple of the other; in all other cases, it holds with strict inequality.
+
+**Angle between vectors.**
+
+The *angle* between two nonzero vectors $\mathbf a $, $\mathbf b$ is defined as
+
+$$
+\theta = \underbrace{\arccos}_{\cos^{-1}} \left( \frac{\mathbf a^\top \mathbf b}{\|\mathbf a\| \|\mathbf b\|}\right)
+$$
+
+where $\arccos$ denotes the inverse cosine, normalized to lie in the interval $[0, \pi]$. In other words, we define $\theta$ as the unique number between $0$ and $\pi$ that satisfies
+
+$$
+\mathbf a^\top \mathbf b = \|\mathbf a\| \|\mathbf b\| \cos \theta
+$$
+
+The angle between $\mathbf a$ and $\mathbf b$ is written as $\angle(\mathbf a, \mathbf b)$, and is sometimes expressed in degrees. (The default angle unit is *radians* $\pi$; where $180º = \pi$).
+
+The angle coincides with the usual notion of angle between vectors, when they
+have dimension two or three, and they are thought of as displacements from a common point. But the definition of angle is more general; we can refer to the angle between two vectors with dimension 100.
+
+```{r}
+angle <- function(a, b, radians = FALSE) {
+  num <- t(a) %*% b
+  denom <- sqrt(t(a) %*% (a)) * sqrt(t(b) %*% (b))
+  output <- as.numeric(acos(num / denom))
+  
+  if (radians) {
+    return(output)
+  }
+  
+  if (!radians) {
+    return(output * 180 / pi)
+  }
+}
+
+angle(c(1, 0), c(0, 1))
+```
+
+*Properties and additional notation*
+
+- The angle is a symmetric function of $\mathbf a$ and $\mathbf b$: $\angle(\mathbf a, \mathbf b) = \angle(\mathbf b, \mathbf a)$.
+
+- The angle is not affected by scaling each of the vectors by a *positive* scalar: $\angle(\alpha \mathbf a, \beta \mathbf b) = \angle(\mathbf a, \mathbf b)$.
+
+- The vectors are said to be **orthogonal** if the angle is $\pi / 2 = 90º$. (By convention, we also say that a zero vector is orthogonal to any vector).
+
+$$
+\mathbf a \perp \mathbf b \ \ \ \longleftrightarrow \ \ \ \angle(\mathbf a, \mathbf b) = \frac{\pi}{2} \ \ \ \longrightarrow \ \ \ \mathbf a^\top \mathbf b = 0
+$$
+
+- If the angle is zero, we say that the vectors are *aligned*: $\mathbf a^\top \mathbf b = \|\mathbf a\| \|\mathbf b\|$
+
+- If the angle is 180º, we say that the vectors are *anti-aligned*: $\mathbf a^\top \mathbf b = -\|\mathbf a\| \|\mathbf b\|$
+
+- If the vectors make an acute angle (i.e. $\angle(\mathbf a, \mathbf b) < 90º$), then their inner product is positive.
+
+- If the vectors make an obtuse angle (i.e. $\angle(\mathbf a, \mathbf b) > 90º$), then their inner product is negative.
+
+**Norm of a sum via angles.** For any vectors $\mathbf x$ and $\mathbf y$ we have
+
+$$
+\begin{align}
+\|\mathbf x + \mathbf y\|^2 &= \|\mathbf x\|^2 + 2\mathbf x^\top \mathbf y + \|\mathbf y\|^2 \\ \\ &= 
+\|\mathbf x\|^2 + 2\mathbf \|\mathbf x\| \|\mathbf y\| \cos \theta + \|\mathbf y\|^2
+\end{align}
+$$
+
+- If $\mathbf x$ and $\mathbf y$ are aligned ($\theta = 0$), we have that $\|\mathbf x + \mathbf y\| = \|\mathbf x\| + \|\mathbf y\|$.
+
+- If $\mathbf x$ and $\mathbf y$ are orthogonal ($\theta = 90º$), we have that $\|\mathbf x + \mathbf y\|^2 = \|\mathbf x\|^2 + \|\mathbf y\|^2$. This corresponds to the *Pythagorean theorem.*
+
+**The correlation coefficient**
+
+Suppose $\mathbf a$ and $\mathbf b$ are $n$-vectors, with associated de-meaned vectors
+
+$$
+\tilde{\mathbf a} = \mathbf a - \mu_a \mathbf 1 \hspace{2cm}
+\tilde{\mathbf b} = \mathbf b - \mu_b \mathbf 1
+$$
+
+We then define their correlation coefficient as:
+
+$$
+\rho = \frac{\tilde{\mathbf a}^\top \tilde{\mathbf b}}{\|\tilde{\mathbf a\|} \|\tilde{\mathbf b}\|}
+$$
+
+This means $\rho = \cos \theta$.
+
+Note that the Cauchy-Schwarz inequality tells us that the correlation coefficient ranges between $-1$ and $+1$. When $\rho = 0$, we say the vectors are uncorrelated.
+
+**Standard deviation of sum.**
+
+We can derive a formula for the *standard deviation of a sum* from the formula used to get the "norm of a sum". 
+
+$$
+\text{std}(\mathbf a + \mathbf b) = \sqrt{
+\text{std}(\mathbf a)^2 + 2 \rho \ \text{std}(\mathbf a)\ \text{std}(\mathbf b) + \text{std}(\mathbf b)^2
+}
+$$
+
+Remember that $\text{std}(\mathbf a) = \|\tilde{\mathbf a}\| / \sqrt{n}$.
+
+$$
+\begin{align}
+n \ \text{std}(\mathbf a + \mathbf b)^2 &= \|\tilde{\mathbf a} + \tilde{\mathbf b} \|^2 \\ &= \|\tilde{\mathbf a}\|^2 + 2 \rho \|\tilde{\mathbf a}\| \|\tilde{\mathbf b}\| + \|\tilde{\mathbf b}\|^2 \\ &=
+n \ \text{std}(\mathbf a)^2 + 2 n \rho  \ \text{std}(\mathbf a)\ \text{std}(\mathbf b) + n \ \text{std}(\mathbf b)^2 \\
+\text{std}(\mathbf a + \mathbf b)^2 &= \text{std}(\mathbf a)^2 + 2 \rho \ \text{std}(\mathbf a) \ \text{std}(\mathbf b) + \text{std}(\mathbf b)^2
+\end{align}
+$$
+
+### Exercises
+
+3.1 Distance between Boolean vectors.
+
+3.2 RMS value and average of block vectors. 
+
+3.6 Taylor approximation of norm.
+
+3.15 Average, RMS value, and standard deviation. 
+
+## Clustering
+
+****
+
+Here, we introduce the task of clustering a collection of vectors into groups of vectors that are close to each other, as measured by the distance between pairs of them. There are many clustering methods, but we focus on the *$k$-means algorithm*.
+
+When we cluster the observations of a data set, we seek to partition them into distinct groups so that the observations within each group are as similar to each other as possible (and observations in different groups are as different from each other as possible). So, at its core, the $k$-means algorithm seeks to minimize the Euclidean distance of vectors *within* groups, and maximize the distance of vectors *between* them.
+
+****
+
+The goal of *clustering* is to group or partition the vectors (if possible) into $k$ groups or clusters, with the vectors in each group close to each other.
+
+*Examples*
+
+- *Topic discovery.* Suppose $\mathbf x_i$ are word counts associated with $N$ documents. A clustering algorithm partitions the documents into $k$ groups, which typically can be interpreted as groups of documents with the same or similar topics, genre, or author. Since the clustering algorithm runs automatically and without any understanding of what the words in the dictionary mean, this is sometimes called "automatic topic discovery".
+
+- *ZIP code clustering.* Suppose that $\mathbf x_i$ is a vector giving $n$ quantities or statistics for the residents of ZIP code $i$, such as numbers of residents in various age groups, household size, education statistics, and income statistics. (In this example $N$ is around 40000.) A clustering algorithm might be used to cluster the 40000 ZIP codes into, say, $k = 100$ groups of ZIP codes with similar statistics.
+
+In each of these examples, it would be quite informative to know that the vectors can be well clustered into, say, $k = 5$ or $k = 37$ groups. This can be used to develop insight into the data. By examining the clusters we can often understand them, and assign labels or descriptions to them.
+
+Suppose we have $N$ $n$-vectors, $\mathbf x_1, \dots, \mathbf x_N$.
+
+**Specifying the cluster assignments.** We specify a clustering of the vectors by saying which cluster or group each vector belongs to; we label the groups $1, \dots, k$, and specify a clustering or assignment of the $N$ vectors to groups using an $N$-vector $\mathbf c$, where $c_i$ is the group (number) that the vector $\mathbf x_i$ is assigned to. 
+
+For example, having $N = 5$ vectors, $k = 3$ groups, and $\mathbf c = (3, 1, 1, 1, 2)$ means that $\mathbf x_1$ is assigned to group 3; $\mathbf x_2$, $\mathbf x_3$, and $\mathbf x_4$ are assigned to group 1; and $mathbf x_5$ is assigned to group 2.
+
+We will also describe the clustering by the sets of indices for each group. Formally, we can express these index sets in terms of the group assignment vector $\mathbf c$ as
+
+$$
+G_j = \{i \mid c_i = j\}
+$$
+
+which means that $G_j$ is the set of all indices $i$ for which $c_i = j$.
+
+In the previous example, we would have the following:
+
+$$
+G_1 = \{2,3,4\} \hspace{1cm} G_2 = \{5\} \hspace{1cm} G_3 = \{1\}
+$$
+
+**Group representatives**. With each of the groups we associate a *group representative* $n$-vector, which we denote $\mathbf z_1$, ..., $\mathbf z_k$. These representatives can be *any* vectors; they do not need to be one of the given vectors. We want each representative to be close to the vectors in its associated group, so the *Euclidean distance* between them $\|\mathbf x_i - \mathbf z_{c_i}$ should be as small as possible.
+
+(Remember that $\mathbf x_i$ is in group $j = c_i$, so $\mathbf z_{c_i}$ is the representative vector associated with data vector $\mathbf x_i$).
+
+**A clustering objective.** We can now give a single number that we use to judge a choice of clustering, along with a choice of the group representatives (also known as the "objective function"):
+
+$$
+J^\text{clust} = \left(\frac{1}{N}\right) \underbrace{(\|\mathbf x_1 - \mathbf z_{c_i} \|^2 + \dots + \| \mathbf x_N - \mathbf z_{c_N}\|^2)}_\text{sum of squared distances}
+$$
+
+Our choice of clustering objective $J^\text{clust}$ makes sense, since it encourages all points to be near their associated representative, but there are other reasonable choices. For example, it is possible to use an objective that encourages more balanced groupings. 
+
+**Optimal and suboptimal clustering.** 
+
+We seek a clustering (i.e. a choice of group assignments $c_1, \dots, c_N$) and a choice of representatives $\mathbf z_1, \dots, \mathbf z_k$, that minimize the objective $J^\text{clust}$. We call such a clustering *optimal.* 
+Unfortunately, for all but the very smallest problems, it is practically impossible to find an optimal clustering. (It can be done in principle, but the amount of computation needed grows extremely rapidly with $N$). The good news is that the $k$-means algorithm described in the next section requires far less computation (and indeed, can be run for problems with $N$ measured in billions), and often finds a very good, if not the absolute best, clustering. (Here, "very good" means a clustering and choice of representatives that achieves a value of $J^\text{clust}$ near its smallest possible value.) We say that the clustering choices found by the $k$-means algorithm are *suboptimal*, which means that they might not give the lowest possible value of $J^\text{clust}$.
+
+Even though it is a hard problem to choose the best clustering and the best representatives, it turns out that we can find the best clustering, if the representatives are fixed, and we can find the best representatives, if the clustering is fixed.
+
+- **Partitioning the vectors with the representatives fixed.** Suppose that the group representatives $\mathbf z_1, \dots, \mathbf z_k$ are fixed, and we seek the group assignments $c_1, \dots c_N$ that achieve the smallest possible value of $J^\text{clust}$. This problem can be solved exactly.
+
+    Note that the objective $J^\text{clust}$ is a sum of $N$ terms. This means that the choice of $c_i$ (i.e. the group to which we assign $\mathbf x_i$) only affects the $i$th term in $J^\text{clust}$, which is $(1/N) \|\mathbf x_i - \mathbf z_{c_i}\|^2$. How do we choose $c_i$ to minimize this term? This is easy: We simply choose $c_i$ to be the value of $j$ that minimizes $\| \mathbf x_i − \mathbf z_j \|$ over all $j$ groups.
+    
+    $$
+    \|\mathbf x_i - \mathbf z_{c_i}\| = \underset{j = 1, \dots, k}{\min} \|\mathbf x_i - \mathbf z_j\|
+    $$
+    
+    In other words, we assign each data vector $\mathbf x_i$ to its nearest neighbor among the representatives. This means that the value of $J^\text{clust}$ is computed as follows:
+    
+    $$
+    J^\text{clust} = \left(\frac{1}{N}\right) \left(\underset{j = 1, \dots, k}{\min} \|\mathbf x_1 - \mathbf z_j\| + \dots + \underset{j = 1, \dots, k}{\min} \|\mathbf x_N - \mathbf z_j\| \right)
+    $$
+    
+    This has a simple interpretation: It is the mean of the squared distance from the data vectors to their closest representative.
+
+- **Optimizing the group representatives with the assignment fixed.** Now we turn to the problem of choosing the group representatives, with the clustering (group assignments) fixed, in order to minimize our objective $J^\text{clust}$. This problem also has a simple and natural solution.
+
+    We start by re-arranging the sum of $N$ terms into $k$ sums, each associated with one group. 
+    
+    $$
+    J^\text{clust} = J_1 + \dots + J_k \hspace{1cm} \text{where }\hspace{0.5cm}
+    J_j = \left(\frac{1}{N}\right) \sum_{i \in G_j} \| \mathbf x_i - \mathbf z_j \|^2
+    $$
+    
+    The choice of group representative $\mathbf z_j$ only affects the term $J_j$; it has no effect on the other terms in $J^\text{clust}$. So we can just choose each $\mathbf z_j$ to minimize $J_j$. Thus we should choose the vector $\mathbf z_j$ so as to minimize the mean square distance to the vectors in group $j$. 
+    
+    This problem has a very simple solution: We should choose $\mathbf z_j$ to be the average (or mean or centroid) of the vectors $x_i$ in its group:
+    
+    $$
+    \mathbf z_i = \left(\frac{1}{|G_j|}\right) \sum_{i \in G_j} \mathbf x_i
+    $$
+    
+    Here, $|G_j|$ represents the number of elements in the set $G_j$ (i.e. the size of group $j$). The resulting $\mathbf z_i$ is sometimes called *group centroid* or *cluster centroid*.
+
+### The $k$-means algorithm
+
+It might seem that we can now solve the problem of choosing the group assignments and the group representatives to minimize $J^\text{clust}$, since we know how to do this when one or the other choice is fixed. But the two choices are circular, each depends on the other.
+
+To solve this, we rely on a very old idea in computation: we
+*iterate* between the two choices. This means that we repeatedly alternate between updating the group assignments, and then updating the representatives, using the methods developed above. In each step the objective $J^\text{clust}$ gets better (i.e., goes down) unless the step does not change the choice. Iterating between choosing the group representatives and choosing the group assignments is the celebrated $k$-means algorithm for clustering a collection of vectors.
+
+****
+
+**$k$-MEANS ALGORITHM**
+
+given a list of $N$ vectors $\mathbf x_1, \dots, \mathbf x_N$, and an *initial list* of $k$ group representative vectors $\mathbf z_1, \dots, \mathbf z_k$
+
+repeat until convergence
+
+1. *Partition the vectors into k groups.* For each vector $i = 1, \dots, N$, assign $\mathbf x_i$ to the group associated with the nearest representative.
+
+2. *Update representatives.* For each group $j = 1, \dots, k$, set $\mathbf z_j$ to be the mean of the vectors in group $j$
+
+****
+
+Note: 
+
+- We start the algorithm with a choice of initial group representatives. One simple method is to pick the representatives randomly from the original vectors; another is to start from a random assignment of the original vectors to $k$ groups, and use the means of the groups as the initial representatives. (However, other more sophisticated methods for choosing initial representatives also exist).
+
+- Ties in step 1 can be broken by assigning $\mathbf x_i$ to the group associated with one of the closest representatives with the smallest value of $J_j$.
+
+
+**4.2 k-means with nonnegative**, proportions, or Boolean vectors. 
+
+## Linear Independence
+
+****
+
+This section explores the concept of *linear independence* which plays important roles in further applications. 
+
+****
+
+A collection or list of $n$-vectors $\mathbf a_1, \dots \mathbf a_k$ (with $k \geq 1$) is called linearly dependent when 
+
+$$
+\beta_1 \mathbf a_1 + \beta_2 \mathbf a_2 + \dots \beta_3 \mathbf a_3 = \mathbf 0
+$$
+
+holds for some $\beta_1, \dots, \beta_k$ that are all *not* zero.
+
+*When a collection of vectors is linearly dependent, at least one of the vectors can be expressed as a linear combination of the other vectors*: If $\beta_i \neq 0$ in the equation above (and by definition, this must be true for at least one $i$), we can move the term $\beta_i \mathbf a_i$ to the other side of the equation and divide by $\beta_i$ to get the following:
+
+$$
+\mathbf a_i = \left( \frac{-\beta_1}{\beta_i}\right) \mathbf a_1 + \dots + \left( \frac{-\beta_{i-1}}{\beta_i}\right) \mathbf a_{i-1} + \left( \frac{-\beta_{i+1}}{\beta_i}\right) \mathbf a_{i+1} + \dots + \left( \frac{-\beta_k}{\beta_i}\right) \mathbf a_k
+$$
+
+The converse is also true: If any vector in a collection of vectors is a linear combination of the other vectors, then the collection of vectors is linearly dependent.
+
+Following standard mathematical language usage, we will say "The vectors
+$\mathbf a_1, \dots \mathbf a_k$ are linearly dependent" to mean "The list of vectors $\mathbf a_1, \dots \mathbf a_k$ is linearly dependent". But it must be remembered that linear dependence is an attribute of a *collection* of vectors, and not individual vectors.
+
+**Linearly independent vectors.** A collection of $n$-vectors $\mathbf a_1, \dots \mathbf a_k$ (with $k \geq 1$) is called *linearly independent* if it is not linearly dependent, which means that
+
+$$
+\underbrace{\beta_1 \mathbf a_1 + \dots + \beta_k \mathbf a_k = 0 \hspace{0.5cm} \longleftrightarrow \hspace{0.5cm}
+\beta_1 = \dots = \beta_k = 0}_\text{linear independence}
+$$
+
+It is generally not easy to determine by casual inspection whether or not a list of vectors is linearly dependent or linearly independent. This is why we need the *Gram-Schmidt algorithm.*
+
+*Examples*
+
+- A list consisting of a single vector is linearly dependent only if the vector is zero. It is linearly independent only if the vector is nonzero.
+
+- Any list of vectors containing the zero vector is linearly dependent.
+
+- A list of two vectors is linearly dependent if and only if one of the vectors
+is a multiple of the other one. More generally, a list of vectors is linearly
+dependent if any one of the vectors is a multiple of another one.
+
+- The following vectors are linearly dependent, since $\mathbf a_1 + 2 \mathbf a_2 - 3 \mathbf a_3 = 0$.
+
+$$
+\mathbf a_1 = \pmatrix{0.2 \\ -7.0 \\ 8.6} \hspace{1cm}
+\mathbf a_2 = \pmatrix{-0.1 \\ 2.0 \\ -1.0} \hspace{1cm}
+\mathbf a_3 = \pmatrix{0.0 \\ -1.0 \\ 2.2}
+$$
+
+- The standard unit $n$-vectors $\mathbf e_1, \dots \mathbf e_n$ are linearly independent. To see this, suppose that $\beta_1 = \dots = \beta_k = 0$ holds. 
+
+$$
+\mathbf 0 = \beta_1 \mathbf e_1 + \dots + \beta_n \mathbf e_n = \pmatrix{\beta_1 \\ \vdots \\ \beta_n}
+$$
+
+**Linear combinations of linearly independent vectors.** 
+
+Suppose a vector $\mathbf x$ is a linear combination of $\mathbf a_1, \dots, \mathbf a_k$.
+
+$$
+\mathbf x = \beta_1 \mathbf a_1 + \dots + \beta_k \mathbf a_k
+$$
+
+*When the vectors $\mathbf a_1, \dots, \mathbf a_k$ are linearly independent, the coefficients that form $\mathbf x$ are unique.* This gives a nice interpretation of linear independence: A list of vectors is linearly independent if and only if for any linear combination of them, we can infer or deduce the associated coefficients. 
+
+### Basis
+
+**Independence-dimension inequality.** 
+
+If the $n$-vectors $\mathbf a_1, \dots, \mathbf a_k$ are linearly independent, then $k \leq n$. 
+
+In words:
+
+- *A linearly independent collection of $n$-vectors can have at most $n$ elements.*
+
+- *Any collection of $n + 1$ (or more) $n$-vectors is linearly dependent.*
+
+As a very simple example, we can conclude that any three 2-vectors must be linearly dependent. (Note that $\alpha$ and $\beta$ are unique).
+
+```{r, echo=FALSE, fig.width=8, fig.height=3}
+gridExtra::grid.arrange(nrow = 1,
+
+ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 4, yend = 3),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 3, yend = 1), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = -2, yend = 3), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  annotate("text", x = -1, y = 1, label = "a", size = 4, parse = TRUE) +
+  annotate("text", x = 1.3, y = 1.2, label = "b", size = 4, parse = TRUE) +
+  annotate("text", x = 2, y = 0.85, label = "c", size = 4, parse = TRUE) +
+  theme_void(base_family = "Avenir") +
+  xlab("") + 
+  coord_fixed(),
+
+ggplot() + 
+  geom_segment(aes(x = 0, y = 0, xend = 4, yend = 3),
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 0, y = 0, xend = 6, yend = 1), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  geom_segment(aes(x = 6.1, y = 1, xend = 4.1, yend = 3), 
+               arrow = arrow(length = unit(0.2, "cm"))) +
+  annotate("text", x = 5.5, y = 2, label = "beta * a", size = 4, parse = TRUE) +
+  annotate("text", x = 2, y = 2, label = "b", size = 4, parse = TRUE) +
+  annotate("text", x = 3, y = 0.3, label = "gamma * c", size = 4, parse = TRUE) +
+  theme_void(base_family = "Avenir") +
+  xlab("") +
+  coord_fixed()
+)
+
+
+```
+
+A proof of this inequality is in Boyd & Vandenberghe (2018: 94-5).
+
+**Basis** 
+
+A collection of $n$ linearly independent $n$-vectors (i.e., a collection of linearly independent vectors of the maximum possible size) is called a *basis*. 
+If the $n$-vectors $\mathbf a_1, \dots, \mathbf a_n$ are a basis, then any $n$-vector $\mathbf b$ can be written as a linear combination of them. To see this, consider the collection of $n+1$ $n$-vectors $\mathbf a_1, \dots, \mathbf a_n, \mathbf b$. Because of the independence-dimension inequality, these vectors are linearly dependent, so there are $\beta_1, \dots, \beta_{n+1}$, not all zero, that satisfy this equation:
+
+$$
+\beta_1 \mathbf a_1 + \dots + \beta_n \mathbf a_n + \beta_{n+1} \mathbf b = \mathbf 0
+$$
+
+Furthermore, if we assume $\beta_{n+1} = 0$, we get:
+
+$$
+\beta_1 \mathbf a_1 + \dots + \beta_n \mathbf a_n = \mathbf 0 \hspace{1cm} \text{contradiction!}
+$$
+
+This equation *does not* hold, because we already said that $\mathbf a_1, \dots, \mathbf a_n$ is a collection of linearly independent $n$-vectors. By contradiction, we conclude that $\beta_{n+1} \neq 0$; therefore, we can rearrange the original equation so that $\mathbf b$ is shown to be a linear combination of all the other vectors $\mathbf a_1, \dots, \mathbf a_n$.
+
+$$
+\mathbf b = \left(\frac{- \beta_1}{\beta_{n+1}}\right) \mathbf a_1 + \dots + \left(\frac{- \beta_n}{\beta_{n+1}}\right) \mathbf a_n
+$$
+
+Combining this result with the observation above that any linear combination of linearly independent vectors can be expressed in only one way, we conclude:
+
+- *Any $n$-vector $\mathbf b$ can be written in a unique way as a linear combination of a basis $\mathbf a_1, \dots, \mathbf a_n$*
+
+**Expansion in a basis**
+
+When we express an $n$-vector $\mathbf b$ as a linear combination of a basis $\mathbf a_1, \dots, \mathbf a_n$, we refer to it as the expansion of $\mathbf b$ in the $\mathbf a_1, \dots, \mathbf a_n$ basis.
+
+$$
+\mathbf b = \alpha_1 \mathbf a_1 + \dots \alpha_n \mathbf a_n
+$$
+
+The numbers $\alpha_1, \dots, \alpha_n$ are called the *coefficients* of the expansion of $\mathbf b$ in the basis $\mathbf a_1, \dots, \mathbf a_n$. 
+
+*Examples*
+
+- The $n$ standard unit $n$-vectors $\mathbf e_1, \dots \mathbf e_n$ are a basis. Any $n$-vector $\mathbf b$ can be written as the linear combination of this basis.
+
+    $$\mathbf b = b_1 \mathbf e_1 + \dots + b_n \mathbf e_n$$
+    
+    This expansion is *unique*, which means that there is no other linear combination of $\mathbf e_1, \dots \mathbf e_n$ that equals $\mathbf b$.
+    
+- The vectors $\mathbf a_1 = (1.2, -2.6)$ and $\mathbf a_2 = (-0.3, -3.7)$ are also a basis. The vector $\mathbf b = (1, 1)$ can be expressed in only one way as a linear combination of them:
+
+    $$\mathbf b = 0.6513 \ \mathbf a_1 - 0.7280 \ \mathbf a_2$$
+
+
+### Orthonormal vectors
+
+- A collection of vectors $\mathbf a_1, \dots, \mathbf a_k$ is *orthogonal* or mutually orthogonal if, for any $i$, $j$
+
+$$
+\underset{i \neq j}{\mathbf a_i \perp \mathbf a_j} \hspace{0.8cm}  
+i, j = 1, \dots, k
+$$
+
+- A collection of vectors $\mathbf a_1, \dots, \mathbf a_k$ is *orthonormal* if it is orthogonal and $\|\mathbf a_i \| = 1$ for $i = 1, \dots, k$. (A vector of norm one is called *normalized*; and to normalize a vector, we divide it by its norm).
+
+Thus, each vector in an orthonormal collection of vectors is normalized, and two different vectors from the collection are orthogonal. These two conditions can be combined into one statement about the inner products of pairs of vectors in the collection:
+
+$\mathbf a_1, \dots, \mathbf a_k$ is orthonormal means that
+
+$$
+\mathbf a_i^\top \mathbf a_j =
+  \begin{cases}
+    1 & i = j \\
+    0 & i \neq j
+  \end{cases}
+$$
+
+Orthonormality, like linear dependence and independence, is an attribute of a *collection* of vectors, and not an attribute of vectors individually. By convention, though, we say "The vectors $\mathbf a_1, \dots, \mathbf a_k$ are orthonormal" to mean "The collection of vectors $\mathbf a_1, \dots, \mathbf a_k$ is orthonormal".
+
+Note that orthonormal vectors are linearly independent.
+
+**Linear combinations of orthonormal vectors.** Suppose a vector $\mathbf x$ is a linear combination of $\mathbf a_1, \dots, \mathbf a_k$ (all of them are orthonormal),
+
+$$
+\mathbf x = \beta_1 \mathbf a_1 + \dots + \beta_k \mathbf a_k
+$$
+
+Taking the inner product of the left-hand and right-hand sides of this equation with $\mathbf a_i$ yields
+
+$$
+\begin{align}
+\mathbf a_i^\top \mathbf x &= \mathbf a_i^\top (\beta_1 \mathbf a_1 + \dots + \beta_k \mathbf a_k) \\ &=
+\beta_1 (\mathbf a_i^\top \mathbf a_1) + \beta_2 (\mathbf a_i^\top \mathbf a_2) + \dots + \beta_k(\mathbf a_i^\top \mathbf a_k) \\ &= \beta_i
+\end{align}
+$$
+
+since $\mathbf a_i^\top \mathbf a_j = 0$ for $j \neq i$ and $\mathbf a_i^\top \mathbf a_i = 1$. So if a vector $\mathbf x$ is a linear combination of orthonormal vectors, we can easily find the coefficients of the linear combination by taking the inner products with the vectors.
+
+Thus, we have the following identity:
+
+$$
+\mathbf x = (\mathbf a_1^\top \mathbf x) \mathbf a_1 + \dots + (\mathbf a_k^\top \mathbf x) \mathbf a_k
+$$
+
+So if this identity holds, we have a simple way to check if an $n$-vector $\mathbf x$ is actually a linear combination of the orthonormal vectors $\mathbf a_1, \dots, \mathbf a_k$.
+
+**Orthonormal basis**. If the $n$-vectors $\mathbf a_1, \dots, \mathbf a_n$ are orthonormal, they are linearly independent, and therefore also a basis (i.e. an *orthonormal basis*). 
+
+The equation above is sometimes called the *orthonormal expansion formula*; the right-hand side is called the *expansion of $\mathbf x$ in the basis $\mathbf a_1, \dots, \mathbf a_n$*. It shows that any $n$-vector can be expressed as a linear combination of the basis elements, with the coefficients given by taking the inner product of $\mathbf x$ with the elements of the basis.
+
+*An example*
+
+The following $3$-vectors form an orthonormal basis:
+
+$$
+\mathbf a_1 = \pmatrix{0 \\ 0 \\ -1}, \hspace{0.8cm}
+\mathbf a_2 = \frac{1}{\sqrt{2}}\pmatrix{1 \\ 1 \\ 0}, \hspace{0.8cm}
+\mathbf a_3 = \frac{1}{\sqrt{2}} \pmatrix{1 \\ -1 \\ 0}
+$$
+
+The inner products of $3$-vector $\mathbf x = (1, 2, 3)$ with these vectors are:
+
+$$
+\mathbf a_1^\top \mathbf x = -3, \hspace{0.8cm}
+\mathbf a_2^\top \mathbf x = \frac{3}{\sqrt{2}}, \hspace{0.8cm}
+\mathbf a_3^\top \mathbf x = \frac{-1}{\sqrt{2}}
+$$
+
+It can be verified that the expansion of $\mathbf x$ in this basis is
+
+$$
+\mathbf x = (-3) \pmatrix{0 \\ 0 \\ -1} + \left(\frac{3}{\sqrt{2}}\right) \left(\frac{1}{\sqrt{2}} \pmatrix{1 \\ 1 \\ 0}\right) + \left(\frac{-1}{\sqrt{2}}\right) \left(\frac{1}{\sqrt{2}} \pmatrix{1 \\ -1 \\ 0}\right)
+$$
+
+### Gram-Schmidt algorithm
+
+The Gram-Schimdt algorithm can be used to determine if a list of $n$-vectors $\mathbf a_1, \dots, \mathbf a_k$ is linearly independent (it has many other uses as well). 
+
+If the vectors are linearly independent, the Gram-Schmidt algorithm produces an orthonormal collection of vectors $\mathbf q_1, \dots, \mathbf q_k$ with the following properties: For each $i = 1, \dots, k$, $\mathbf a_i$ is a linear combination of $\mathbf q_1, \dots, \mathbf q_i$, and $\mathbf q_i$ is a linear combination of $\mathbf a_1, \dots, \mathbf a_i$. If the vectors $\mathbf a_1, \dots, \mathbf a_{j−1}$ are linearly independent, but $\mathbf a_1, \dots, \mathbf a_j$ are linearly dependent, the algorithm detects this and terminates. In other words, the Gram-Schmidt algorithm finds the first vector $\mathbf a_j$ that is a linear combination of previous vectors $\mathbf a_1, \dots, \mathbf a_{j−1}$.
+
+****
+
+**GRAM-SCHMIDT ALGORITHM**
+
+given $n$-vectors $\mathbf a_1, \dots, \mathbf a_k$
+
+for $i = 1, \dots, k$
+
+1. *Orthogonalization*. $\tilde{\mathbf q}_i = \mathbf a_i - (\mathbf q_1^\top \mathbf a_1) \mathbf q_1 - \dots - (\mathbf q_{i-1}^\top \mathbf a_{i}) \mathbf q_{i-1}$
+
+2. *Test for linear dependence*. if $\tilde{\mathbf q}_i = \mathbf 0$, quit
+
+3. *Normalization*. $\mathbf q_i = \tilde{\mathbf q}_i / \| \tilde{\mathbf q}_i \|$
+
+****
+
+- The orthogonalization step, with $i = 1$, reduces to $\tilde{\mathbf q}_1 = \mathbf a_1$.
+
+- If the algorithm does not quit in step 2 (i.e. $\tilde{\mathbf q}_1, \dots, \tilde{\mathbf q}_k$ are all nonzero) we can conclude that the original collection of vectors is linearly independent.
+
+- If the algorithm does quit early, say, with $\tilde{\mathbf q}_j = \mathbf 0$, we can conclude that the original collection of vectors is linearly dependent (and indeed, that $\mathbf a_j$ is a linear combination of $\mathbf a_1, \dots, \mathbf a_{j−1}$).
+
+The following figure illustrates the Gram-Schmidt algorithm for two $2$-vectors. The top row shows the original vectors; the middle and bottom rows show the first and second iterations of the loop in the Gram-Schmidt algorithm, with the left-hand side showing the orthogonalization step, and the right-hand side showing the normalization step.
+
+```{r, out.width="500px", echo=FALSE}
+knitr::include_graphics("figures/gram_schmidt.png")
+```
+
+Note that Gram-Schmidt completion implies linear independence.
+
+**Early termination.** Suppose that the Gram-Schmidt algorithm terminates prematurely, in iteration $j$, because $\tilde{\mathbf q}_j = \mathbf 0$. In this scenario, the obvious conclusions from the Gram-Schmidt algorithm hold for $i = 1, \dots, j-1$, since in those cases $\tilde{\mathbf q}_i \neq \mathbf 0$.
+
+- $\mathbf q_1, \dots, \mathbf q_i$ are orthonormal.
+
+- $\mathbf a_i$ is a linear combination of $\mathbf q_1, \dots, \mathbf q_i$.
+
+- $\mathbf q_i$ is a linear combination of $\mathbf a_1, \dots, \mathbf a_i$.
+
+Furthermore, since $\tilde{\mathbf q}_j = \mathbf 0$, we have that $\mathbf a_j$ is a linear combination of $\mathbf q_1, \dots, \mathbf q_{j-1}$.
+
+$$
+\mathbf a_j = (\mathbf q_1^\top \mathbf a_j)\mathbf q_1 + \dots + (\mathbf q_{j-1}^\top \mathbf a_j) \mathbf q_{j-1}
+$$
+
+But because each of these vectors ($\mathbf q_1, \dots, \mathbf q_{j-1}$) is in turn a linear combination of $\mathbf a_1, \dots, \mathbf a_{j−1}$, we have that $\mathbf a_j$ is also a linear combination of $\mathbf a_1, \dots, \mathbf a_{j-1}$, This means that $\mathbf a_1, \dots, \mathbf a_j$ are linearly dependent, which implies that the larger set $\mathbf a_1, \dots, \mathbf a_k$ is also linearly dependent.
+
+In summary, the Gram-Schmidt algorithm gives us an explicit method for determining if a list of vectors is linearly dependent or independent. It also serves to check if the $n$-vectors $\mathbf a_1, \dots, \mathbf a_n$ are a basis: if Gram-Schmidt terminates early, they are not a basis; if it runs to completion, we know they are a basis.
+
+*An example*
+
+```{r, message=FALSE, warning=FALSE}
+## Are these vectors linearly independent?
+a1 <- c(-1, 1, -1, 1); a2 <- c(-1, 3, -1, 3); a3 <- c(1, 3, 5, 7)
+
+norm <- function(x) sqrt(t(as.vector(x)) %*% (as.vector(x))) %>% 
+  as.numeric()
+
+all_zeroes <- function(x) sum(x == 0) > 0
+
+## First iteration
+qt1 <- a1
+all_zeroes(qt1)
+q1 <- qt1 / norm(qt1)
+
+## Second iteration
+qt2 <- a2 - (t(q1) %*% a2) * q1
+all_zeroes(qt2)
+q2 <- qt2 / norm(qt2)
+
+## Third iteration
+qt3 <- a3 - (t(q1) %*% a3) * q1 - (t(q2) %*% a3) * q2
+all_zeroes(qt3)
+q3 <- qt3 / norm(qt3)
+```
+
+Completion of the algorithm without early termination tells us that the vectors $\mathbf a_1$, $\mathbf a_2$, $\mathbf a_3$ are linearly independent.
+
+```{r}
+# Resulting vectors
+cbind(q1, q2, q3)
+```
+
+Note: When the Gram-Schmidt algorithm is implemented, a variation on it called the *modified Gram-Schmidt algorithm* is typically used. This algorithm produces the same results as the Gram-Schmidt algorithm, but is less sensitive to the small round-off errors that occur when arithmetic calculations are done using floating point numbers.
+
+
+# Matrices 
+
+## Introduction
+
+A *matrix* is a rectangular array of numbers written between rectangular brackets (or parentheses), as in
+
+$$
+\mathbf A = \pmatrix{0 & 1 & -2 & 3\\ 2 & 4 & 0.5 & -3 \\ 1 & 5 & -3 & 1}
+$$
+
+The matrix above has 3 rows and 4 columns, so its size is $3 \times 4$. A matrix of size $m \times n$ is called an $m \times n$ matrix. The elements (or entries or coefficients) of a matrix are the values in the array. The $i, j$ element is the value in the $i$th row and $j$th column, denoted by double subscripts. In the example above, $\mathbf A_{1,4}$ is $3$.
+
+As with vectors, we normally deal with matrices with entries that are real numbers, which will be our assumption unless we state otherwise. The set
+of real $m \times n$ matrices is denoted $\mathbb R^{m\times n}$. But matrices with complex numbers for entries, for example, do arise in some applications.
+
+**Column and row vectors.** An $n$-vector can be interpreted as an $n \times 1$ matrix; we do not distinguish between vectors and matrices with one column. A matrix with only one row (i.e. with size $1 \times n$, is called a row vector; to give its size, we can refer to it as an *$n$-row-vector.* To distinguish them from row vectors, vectors are sometimes called *column vectors*. An $m \times n$ matrix $\mathbf A$ has $n$ columns, given by its $m$-vectors; and $m$ rows, given by its $n$-vectors.
+
+Note that a $1 \times 1$ matrix is considered to be the same as a scalar.
+
+**Block matrices and submatrices.** It is useful to consider matrices whose entries are themselves matrices.
+
+$$
+\mathbf A = \pmatrix{\mathbf B & \mathbf C \\ \mathbf D & \mathbf E}
+$$
+
+Here, $\mathbf A$ is called a block matrix; the elements $\mathbf B$, $\mathbf C$, $\mathbf D$, and $\mathbf E$ are called blocks or submatrices of $\mathbf A$. The submatrices can be referred to by their block row and column indices; for example, $\mathbf C$ is the $1,2$ block of $\mathbf A$.
+
+Block matrices must have the right dimensions to fit together. 
+
+- Matrices in the same (block) row must have the same number of rows (i.e. the same "height").
+
+- Matrices in the same (block) column must have the same number of columns (i.e. the same "width"). 
+
+In the example above, $\mathbf B$ and $\mathbf C$ must have the same number of rows, and $\mathbf C$ and $\mathbf E$ must have the same number of columns. Matrix blocks placed next to each other in the same row are said to be *concatenated*; matrix blocks placed above each other are called *stacked.*
+
+For example, if
+
+$$
+\mathbf B = \pmatrix{0&2&3} \hspace{0.8cm}
+\mathbf C = \pmatrix{-1} \hspace{0.8cm}
+\mathbf D = \pmatrix{2&2&1 \\ 1&3&5} \hspace{0.8cm}
+\mathbf E = \pmatrix{4\\4}
+$$
+
+then
+
+$$
+\mathbf A = \pmatrix{0&2&3&-1\\2&2&1&4\\1&3&5&4}
+$$
+
+As with vectors, we can use colon notation to denote submatrices. In the above example, we might want to specify the following submatrix:
+
+$$
+\mathbf A_{2:3, 3:4} = \pmatrix{1&4\\5&4}
+$$
+
+Note that block matrix notation can be used to write an $m \times n$ matrix $\mathbf A$ as a block matrix with one block row and $n$ block columns:
+
+$$
+\mathbf A = \pmatrix{\mathbf a_1 & \mathbf a_2 & \dots & \mathbf a_n}
+$$
+
+Alternatively, the same $m\times n$ matrix can be expressed as a block matrix with $m$ block rows and one block column.
+
+*Examples*
+
+The most direct interpretation of a matrix is as a table of numbers that depend on two indices $i$ and $j$.
+
+- *Images.* A black and white image with $M \times N$ pixels is naturally represented as a matrix. The row index $i$ gives the vertical position of the pixel, the column index $j$ gives the horizontal position of the pixel, and the $i, j$ entry gives the pixel value.
+
+- *Contingency table.* Suppose we have a collection of objects with two attributes, the first attribute with $m$ possible values and the second with $n$ possible values. An $m \times n$ matrix $\mathbf A$ can be used to hold the counts of the numbers of objects with the different pairs of attributes: $\mathbf A_{ij}$ is the number of objects with first attribute $i$ and second attribute $j$. (This is the analog of a count $n$-vector, that records the counts of one attribute in a collection).
+
+- *Prices from multiple suppliers.* An $m \times n$ matrix $\mathbf P$ gives the prices of $n$ different goods from $m$ different suppliers (or locations): $\mathbf P_{ij}$ is the price that supplier $i$ charges for good $j$. The $j$th column of $\mathbf P$ is the $m$-vector of supplier prices for good $j$; the $i$th row gives the prices for all goods from supplier $i$.
+
+**Matrix representation of a relation or graph.** Suppose we have $n$ objects labeled $1, \dots, n$. A relation $\mathcal R$ on the set of objects $\{1, \dots, n\}$ is a subset of ordered pairs of objects. For example, $\mathcal R$ can represent a *preference relation* among $n$ possible products or choices, with $(i, j) \in \mathcal R$ meaning that choice $i$ is preferred to choice $j$.
+
+A relation can also be viewed as a *directed graph*, with nodes (or vertices) labeled $1, \dots, n$, and a directed edge from $j$ to $i$ for each $(i, j) \in \mathcal R$. This is typically drawn as a graph, with arrows indicating the direction of the edge. 
+
+For example:
+
+$$
+\mathcal R = \{(1,2), (1,3), (2,1), (2,4), (3,4), (4,1)\}
+$$
+
+Here, the relation $\mathcal R$ on $\{1, \dots, n\}$ is represented by the $n \times n$ matrix $\mathbf A$, such that
+
+$$
+\mathbf A_{ij} = \begin{cases}
+  1 &(i,j) \in \mathcal R \\ 
+  0 &(i,j) \not \in \mathcal R
+\end{cases}
+$$
+
+This matrix is called the **adjacency matrix** associated with the graph. In the example above, we would the following matrix and graph:
+
+$$
+\mathbf A = \pmatrix{0&1&1&0\\1&0&0&1\\0&0&0&1\\1&0&0&0}
+$$
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=4, fig.height=4}
+library(ggraph)
+tibble(
+  from = c(1, 1, 2, 2, 3, 4),
+  to = c(2, 3, 1, 4, 4, 1)
+  ) %>% 
+  igraph::graph_from_data_frame() %>% 
+  ggraph() + 
+  geom_edge_fan(arrow = arrow(length = unit(.25, "cm")),
+                end_cap = circle(.3, "cm"),
+                start_cap = circle(.3, "cm"),
+                colour = "skyblue") + 
+  geom_node_text(aes(label = name)) +
+  theme_graph()
+```
+
+**Zero matrix**. A zero matrix is a matrix with all elements equal to zero. The zero matrix of size $m \times n$ is sometimes written as $\mathbf 0_{m \times n}$, but usually a zero matrix is denoted just $\mathbf 0$. In this case the size of the zero matrix must be determined from the context.
+
+**Identity matrix.** An identity matrix is a square matrix whose diagonal elements (i.e. those with equal row and column indices) are all equal to one, whereas the rest are zero. Identity matrices are denoted by the letter $\mathbf I$. 
+
+Note that the column vectors of the $n \times n$ identity matrix are the unit vectors of size $n$. Using block matrix notation, we can write
+
+$$
+\mathbf I = \pmatrix{\mathbf e_1 & \mathbf e_2 & \dots & \mathbf e_n}
+$$
+
+**Sparse matrices.** A matrix $\mathbf A$ is said to be sparse if many of its entries are zero. Its *sparsity pattern* is
+the set of indices $(i, j)$ for which $\mathbf A_{ij} \neq 0$. The number of *nonzeros* of a sparse matrix $\mathbf A$ is the number of entries in its sparsity pattern, and denoted $\text{nnz}(\mathbf A)$. If $\mathbf A$ is an $m \times n$ matrix, two properties follow: $\text{nnz}(\mathbf A) \leq mn$ and the *density* of $\mathbf A$ is $\text{nnz}(\mathbf A) / mn$.
+
+A square $n \times n$ matrix $\mathbf A$ is diagonal if $\mathbf A_{ij} = 0$ for $i \neq j$. The notation $\text{diag}(a_1, \dots, a_n)$, or $\text{diag}(\mathbf a)$, is used to compactly describe an $n \times n$ matrix. This notation is not yet standard, but is coming into more prevalent use. 
+
+
+### Transpose and norm
+
+Transposition converts row vectors into column vectors and vice versa. For example, it is common to extend concepts from (column) vectors to row vectors, by applying the concept to the transposed row vectors. We say that a collection of row vectors is linearly dependent (or independent) if their transposes (which are column vectors) are linearly dependent (or independent). 
+
+The transpose of a block matrix has the simple form (shown here for a $2 \times 2$ block matrix):
+
+$$
+\pmatrix{\mathbf A &\mathbf B \\ \mathbf C &\mathbf D}^\top = 
+\pmatrix{\mathbf A^\top &\mathbf B^\top \\ \mathbf C^\top & \mathbf D^\top}
+$$
+
+**Matrix norm**. The norm of an $m \times n$ matrix $\mathbf A$ is the square-root of the sum of the squares of its entries.
+
+$$
+\| \mathbf A \| = \sqrt{\sum_{i=1}^m \sum_{j=1}^n \mathbf A_{ij}^2}
+$$
+
+Like the vector norm, the matrix norm is a quantitative measure of the magnitude of a matrix. In some applications it is more natural to use the RMS values of the matrix entries, $\|\mathbf A \| / \sqrt{mn}$, as a measure of matrix size. The RMS value of the matrix entries tells us the typical size of the entries, independent of the matrix dimensions.
+
+The matrix norm satisfies the properties of any norm: *nonnegative homogeneity*, *positive definiteness*, and *triangle inequality*.
+
+$$
+\underbrace{\| \mathbf A + \mathbf B\|}_\text{matrix addition} \leq \underbrace{\|\mathbf A\| + \|\mathbf B\|}_\text{scalar addition}
+$$
+
+The matrix norm allows us to define the distance between two matrices as $\|\mathbf A − \mathbf B\|$. As with vectors, we can say that one matrix is close to, or near, another one if their distance is small. (What qualifies as small depends on the application).
+
+Note: several other forms of matrix norms are used in different applications. In contexts where other norms of a matrix are used, the norm we have seen is called the Frobenius norm and is usually denoted with a subscript, as $\|\mathbf A\|_F$.
+
+
+### Matrix-vector multiplication
+
+If $\mathbf A$ is an $m \times n$ matrix and $\mathbf x$ is an $n$-vector, then the matrix-vector product $\mathbf y = \mathbf{Ax}$ is the $m$-vector $\mathbf y$.
+
+$$
+y_i = \sum_{j = 1}^n a_{ij} x_j, \hspace{0.8cm} i = 1, \dots, m
+$$
+
+Here, each $y_i$ is the inner product between $\mathbf x$ and the $i$th row-vector of $\mathbf A$. Alternatively, we can see $\mathbf y$ as the linear combination of the columns of $\mathbf A$ with coefficients given by $\mathbf x$.
+
+$$
+\mathbf y = x_1 \mathbf a_1 + x_2 \mathbf a_2 + \dots + x_n \mathbf a_n
+$$
+
+Notice that we can "pick out" the columns in $\mathbf A$ by multiplying it with a unit vector $\mathbf a_j = \mathbf{Ae}_j$.
+
+****
+
+**6.4 Adjacency matrix row and column sums.** Suppose $\mathbf A$ is the adjacency matrix of a directed graph. What are the entries of the vector $\mathbf{A1}$? What are the entries of the
+vector $\mathbf{A^\top 1}$?
+
+**6.5 Adjacency matrix of reversed graph.** Suppose $\mathbf A$ is the adjacency matrix of a directed graph. The reversed graph is obtained by reversing the directions of all the edges of the original graph. What is the adjacency matrix of the reversed graph? (Express your answer in terms of $\mathbf A$).
+
+**6.12 Skew-symmetric matrices.**
+
+**6.15 Distance between adjacency matrices.**
+
+### Examples
+
+**Geometric transformations**
+
+Suppose the 2-vector (or 3-vector) x represents a position in 2-D (or 3-D) space. Several important geometric transformations or mappings from points to points can be expressed as matrix-vector products $\mathbf y = \mathbf{Ax}$.
+
+- *Scaling and dilation*. Here, $\mathbf A = \mathbf I \boldsymbol\alpha$. This mapping stretches a vector in different directions by the factor $|\alpha_i|$ (or shrinks it when $|\alpha_i| < 1$), and it flips the vector (reverses its direction) if $\alpha_i < 0$.
+
+    For example:
+
+$$
+\pmatrix{2\\1} = \pmatrix{2 & 0 \\ 0 & \frac{1}{2}} \pmatrix{1\\2}
+$$
+
+```{r, echo=FALSE, fig.width=4, fig.height=3}
+A <- matrix(c(2, 0, 0, 0.5), ncol = 2, byrow = TRUE)
+x <- c(1, 2)
+y <- A %*% x
+plot_settings()
+plot(c(0, max(c(x[2], y[2]))) ~ c(0, max(c(x[1], y[1]))), 
+     type = "n", xlab = "", ylab = "")
+  arrows(0, 0, x[1], x[2], length = 0.05)
+  arrows(0, 0, y[1], y[2], length = 0.05, col = "tomato")
+
+```
+
+- *Rotation.* Suppose that $\mathbf y$ is the vector obtained by rotating $\mathbf x$ by $θ$ radians counterclockwise. The *rotation matrix* is as follows:
+
+$$
+\mathbf A = \pmatrix{\cos \theta & - \sin \theta \\ \sin \theta & \cos \theta}
+$$
+
+```{r, echo=FALSE, fig.width=4, fig.height=3}
+to_radians <- function(x) x * pi / 180
+theta <- to_radians(90)
+A <- matrix(c(cos(theta), -sin(theta), sin(theta), cos(theta)),
+            ncol = 2, byrow = TRUE)
+
+x <- c(2, 1)
+y <- A %*% x
+plot_settings()
+plot(c(min(x[2], y[2], 0), max(x[2], y[2], 2)) ~ 
+       c(min(x[1], y[1], 0), max(x[1], y[1], 2)), 
+     main = expression(paste(theta, " = 90º")),
+     type = "n", xlab = "", ylab = "")
+  arrows(0, 0, x[1], x[2], length = 0.05)
+  arrows(0, 0, y[1], y[2], length = 0.05, col = "tomato")
+```
+
+Note that when a geometric transformation is represented by matrix-vector multiplication, a simple method to find the matrix is to find its columns. The $i$th column is the vector obtained by applying the transformation to $\mathbf e_i$.
+
+**The incidence matrix**
+
+Similarly to an adjacency matrix, an *incidence matrix* is used to represent graphs. A directed graph can be described by its $n \times m$ incidence matrix, with $n$ nodes and $m$ edges:
+
+$$
+\mathbf A_{ij} = \begin{cases}
+\ \ \ 1 &\text{if edge } j \text{ points to node } i \\
+  -1 &\text{if edge } j \text{ points from node } i \\
+\ \ \ 0 &\text{otherwise}
+\end{cases}
+$$
+
+For example:
+
+$$
+\underset{n \times m}{\mathbf A} = \pmatrix{-1&-1&0&1&0\\1&0&-1&0&0\\0&0&1&-1&-1\\0&1&0&0&1}
+$$
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=4, fig.height=4}
+library(ggraph)
+tibble(
+  from = c(1, 1, 2, 3, 3),
+  to = c(2, 4, 3, 1, 4)
+  ) %>% 
+  igraph::graph_from_data_frame() %>% 
+  ggraph() + 
+  geom_edge_fan(arrow = arrow(length = unit(.25, "cm")),
+                end_cap = circle(.3, "cm"),
+                start_cap = circle(.3, "cm"),
+                colour = "skyblue") + 
+  geom_node_text(aes(label = name)) +
+  theme_graph()
+```
+
+The adjacency and incidence matrices for a directed graph are closely related, but not the same. For example, the adjacency matrix does not explicitly label the edges $j = 1, \dots, m$. There are also some small differences in the graphs that can be represented using incidence and adjacency matrices (e.g. self edges --that connect from and to the same node-- cannot be represented in an incidence
+matrix.
+
+**Convolution**
+
+The convolution of an $n$-vector $\mathbf a$ and an $m$-vector $\mathbf b$ is the $(k = n + m − 1)$-vector denoted $\mathbf c = \mathbf a \ast \mathbf b$, with entries as follows:
+
+$$
+c_k = \sum_{i+j=k+1} a_i b_j, \hspace{0.8cm} k=1, 2, \dots, n+m-1
+$$
+
+For example, suppose $n=4$ and $m=3$.
+
+$$
+\begin{align}
+c_1 &= a_1b_1 \\ c_2 &= a_1b_2 + a_2b_1 \\ c_3 &= a_1 b_3 + a_2b_2 + a_3b_1
+\\ c_4 &= a_1 b_4 + a_2 b_3 + a_3b_2 + a_4b_1 \\ c_5 &= a_1b_5 + a_2b_4 + a_3b_3 + a_4b_2 \\ c_6 &=  a_4b_3
+\end{align}
+$$
+
+This amounts to having each $c_k$ represent the sum of the *minor diagonals* of the $\mathbf a \mathbf b^\top$ ($4 \times 3$) matrix; i.e. diagonals that run from the top-right corner to the bottom-left corner.
+
+Note that convolution reduces to ordinary multiplication of numbers when $n = m = 1$, and to scalar-vector multiplication when either $n = 1$ or $m = 1$.
+
+### Exercises 
+
+**7.1**
+
+** 7.9**
+
+## Linear equations
+
+The notation $f : \mathbb R^n \to \mathbb R^m$ means that $f$ is a function that maps real $n$-vectors to real $m$-vectors. Here, the value of the function $f$, evaluated at an $n$-vector $\mathbf x$, is an $m$-vector: 
+
+$$
+f(\mathbf x) = \pmatrix{f_1(\mathbf x) \\ f_2(\mathbf x) \\ \vdots \\ f_m(\mathbf x)}
+$$
+
+Here, each of the components $f_i$ of $f$ is itself a scalar-valued function of $x_1, \dots, x_n$.
+
+**The matrix-vector product function.** Suppose $\mathbf A$ is an $m \times n$ matrix. We can define a function $f : \mathbb R^n \to \mathbb R^m$ by $f(\mathbf x) = \mathbf{Ax}$. This function also satisfies the *superposition property* mentioned earlier.
+
+(Note the similarity with the inner product function, where $m = 1$).
+
+*Two examples of linear functions*:
+
+1. *Reversal*. $f$ reverses the order of the elements in $\mathbf x$. If $\mathbf x$ is a 5-vector:
+
+```{r}
+diag(5)[5:1, ]
+```
+
+2. *Running sum.* $f$ forms the running sum of the elements in $\mathbf x$. If $mathbf x$ is a 5-vector:
+
+```{r, echo=FALSE}
+create_lower_tri <- function(m, n) {
+  A <- matrix(NA, nrow = m, ncol = n)
+  for (i in 1:nrow(A)) {
+    for (j in 1:ncol(A)) {
+      if (i >= j) {
+        A[i, j] <- 1
+      } else {
+        A[i, j] <- 0
+      }
+    }
+  }
+  return(A)
+}
+
+```
+
+```{r}
+create_lower_tri(5, 5)
+```
+
+**Examples of functions that are not linear** (because superposition doesn't hold).
+
+- *Absolute value*. $f$ replaces each element of $\mathbf x$ with its absolute value: $f(\mathbf x) = (|x_1|, |x_2|, \dots, |x_n|)$.
+
+    Proof by counterexample. Suppose $n = 1$, $x=1$, $y=0$, $\alpha = -1$, and $\beta = 0$. Thus, we have:
+    
+$$
+f(\alpha x + \beta y) = 1 \hspace{1.5cm} \alpha f(x) + \beta f(y) = -1
+$$
+
+- *Sort*. $f$ sorts the elements of $\mathbf x$ in *decreasing* order.
+
+    Proof by counterexample. Suppose $n = 2$, $\mathbf x = (1, 0)$, $\mathbf y = (0, 1)$, $\alpha = \beta = 1$.
+    
+$$
+f(\alpha \mathbf x + \beta \mathbf y) = (1, 1) \hspace{1.5cm} 
+\alpha f(\mathbf x) + \beta f(\mathbf y) = (2, 0)
+$$
+
+**Affine functions.**
+
+Recall that a vector-valued function $f : \mathbb R^n \to \mathbb R^m$ is called *affine* if it can be expressed as $f(\mathbf x) = \mathbf{Ax} + \mathbf b$, where $\mathbf A$ is an $m \times n$ matrix and $\mathbf b$ is an $m$-vector.
+
+It can be shown that a function $f : \mathbb R^n \to \mathbb R^m$ is affine if and only if superposition holds.
+
+The matrix $\mathbf A$ and the vector $\mathbf b$ in the representation of an affine function as $f(\mathbf x) = \mathbf{Ax} + \mathbf b$ are unique. These parameters can be obtained by evaluating $f$ at the vectors $\mathbf 0, \mathbf e_1, \dots \mathbf e_n$, where $\mathbf e_k$ is the $k$th unit vector in $\mathbb R^n$. We have that
+
+$$
+\mathbf A = \pmatrix{ f(\mathbf e_1) − f(\mathbf 0) & f(\mathbf e_2) − f(\mathbf 0) & \dots & f(\mathbf e_n) − f(\mathbf0) }, \hspace{0.5cm} \mathbf b = f(\mathbf 0)
+$$
+
+Just like affine scalar-valued functions, affine vector-valued functions are often called linear, even though they are linear only when the vector $\mathbf b$ is zero.
+
+### Linear models
+
+Many functions or relations between variables that arise in natural science, engineering, and social sciences can be approximated as linear or affine functions. In these cases we refer to the linear function relating the two sets of variables as a *model* or an approximation, to remind us that the relation is only an approximation, and not exact.
+
+For example: 
+
+- *Price elasticity of demand* in economics.
+
+- *Elastic deformation* in engineering.
+
+**Taylor approximations**
+
+Suppose $f : \mathbf R^n \to \mathbf R^m$ is differentiable, (i.e. has partial derivatives) and $\mathbf z$ is an $n$-vector. The first-order Taylor approximation of $f$ near $\mathbf z$ is given by
+
+$$
+\begin{align}
+\widehat f (\mathbf x)_i &= f_i(\mathbf z) + \frac{\partial f_i}{\partial x_1} (\mathbf z) (x_1 - z_1) + \dots + \frac{\partial f_i}{\partial x_n} (\mathbf z) (x_n - z_n) \\\\ &=
+f_i(\mathbf z) + \nabla f_i (\mathbf z)^\top (\mathbf x - \mathbf z) \\\\ &\text{for } m = 1, \dots, m
+\end{align}
+$$
+
+This is just the first order approximation for each of the scalar functions $f_i$. When $\mathbf x$ is near $\mathbf z$, $\widehat f(\mathbf x)$ is a very good approximation of $f(\mathbf x)$. We can write this more compactly as follows:
+
+$$
+\widehat f(\mathbf x) = f(\mathbf z) + \mathbf J f(\mathbf z) (\mathbf x - \mathbf z)
+$$
+
+Here, the $m \times n$ matrix $\mathbf J f(\mathbf z)$ is the *derivative* or *Jacobian* matrix of $f$ at $\mathbf z$. Its components are the partial derivatives of $f$ evaluated at the point $\mathbf z$. 
+
+$$
+\mathbf J f(\mathbf z)_{ij} = \frac{\partial f_i}{\partial x_j} (\mathbf z) \hspace{1cm} \text{for } i = 1, \dots m \hspace{0.5cm} j = 1, \dots, n
+$$
+
+**The regression model**
+
+
+
+

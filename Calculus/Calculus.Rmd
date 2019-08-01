@@ -1,0 +1,51 @@
+---
+title: "Calculus"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Taken from:
+
+- Strogatz, S. (2019). ___Infinite Powers: How Calculus Reveals the Secrets of the Universe.___ Eamon Dolan Books.
+
+- Fernandez, O. (2019). ___Calculus Simplified.___ Princeton University Press.
+
+## Introduction
+
+- "It is often said that mathematics is the language of science. There's a great deal of truth to that [...] But the language analogy is incomplete. Calculus, like other forms of mathematics, is much more than a language; it's also a powerful system of reasoning". 
+
+- There's one main idea that runs through calculus: _the infinity principle_. "To shed light on any continuous shape, object, motion, process, or phenomenon -no matter how wild and complicated it may appear- reimagine it as an infinite series of simpler parts, analyze those, and then add the results back together to make sense of the original whole".
+
+- Calculus succeeds were other forms of reasoning fail by proceeding in two phases: cutting (_differential_ calculus) and reassembling (_integral_ calculus). 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
