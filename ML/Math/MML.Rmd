@@ -1,0 +1,35 @@
+---
+title: "Mathematics for Machine Learning"
+author: "Andrés Castro Araújo"
+date: "4/28/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+There are three components in Machine Learning:
+
+1. __Data as vectors__. Not all data is numerical, but it is often useful to consider data in such away. In particular, we assume that data has already been appropriately converted into a numerical representation suitable for reading into a computer program.
+
+2. __Model__. A model is typically used to describe a process for generating data, similar to the dataset at hand. There are two common views on how models should be estimated: the probabilistic and the optimization view.
+
+3. __Learning__ (or parameter estimations). There are two common views on how models should be estimated: the probabilistic and the optimization view. We use the available data to _optimize_ the parameters in some model with respect to a utility function that evaluates how well the model predicts the _training_ and _testing_ data.
+
+# Math
+
+## Linear algebra
+
+YOYU ARE HERE
+
+## Geometry
+
+
+## Matrix decompositions
+
+## Vector calculus
+
+
+## Optimization
+# Machine Learning

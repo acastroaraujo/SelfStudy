@@ -1,0 +1,707 @@
+---
+title: "Deep Learning for NLP"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "",
+                      fig.align = "center", fig.width = 4, fig.height = 3,
+                      cache = TRUE)
+
+## Packages
+library(tidyverse)
+
+## Other
+theme_set(
+  theme_bw(base_family = "Avenir", base_line_size = 0)
+  )
+
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+```
+
+
+Taken from Francois Chollet & J.J. Allaire (2018). ___Deep Learning with `R` and `Keras`___. Manning Publications.
+
+****
+
+We can understand how deep-learning works in three stages:
+
+1. Set up the model, which also involves specifying the number of "hidden layers" and parameters (or "weights")
+
+    AKA _a neural network is parameterized by its weights_.
+
+2. Set up a loss function that quantifies the distance between predictions and observed values.
+
+    AKA _a loss function measures the quality of the network’s output_.
+
+3. Use the backpropagation algorithm to come up with parameters that minimize the loss function.
+
+    AKA _the loss score is used as a feedback signal to adjust the weights_.
+
+Here, we focus on [**`Keras`**](https://keras.rstudio.com/), a framework that provides a convenient way to define and train almost any kind of deep learning model. 
+
+****
+
+The typical `Keras` workflow will look like this:
+
+1. Define your training data: input tensors and target tensors.
+
+2. Define a network of layers (or model) that maps your inputs to your targets.
+
+3. Configure the learning process by choosing a _loss function_, an _optimizer_, and some _metrics_ to monitor during training and testing time.
+
+4. Iterate on your training data by calling the `fit()` method of your model.
+
+```{r, out.width="60%", echo=FALSE}
+knitr::include_graphics("figures/chollet_structure.jpeg")
+```
+
+****
+
+## Basic math and notation
+
+****
+
+### Glossary
+
+Taken from Chollet (2018: 95-6):
+
+- _Sample_ or _input_: One data point that goes into your model.
+
+- _Prediction_ or _output_: What comes out of your model.
+
+- _Target_: The truth. What your model should ideally have predicted, according to an external source of data.
+
+- _Prediction error_ or _loss value_: A measure of the distance between your model's prediction and the target.
+
+- _Classes_: A set of possible labels to choose from in a classification problem. For example, when classifying cat and dog pictures, “dog” and “cat” are the two classes.
+
+- _Label_: A specific instance of a class annotation in a classification problem. For instance, if picture #1234 is annotated as containing the class “dog,” then “dog” is a label of picture #1234.
+
+- _Ground-truth_ or _annotations_: All targets for a dataset, typically collected by humans.
+
+- _Binary classification_: A classification task where each input sample should be categorized into two exclusive categories.
+
+- _Multiclass classification_: A classification task where each input sample should be categorized into more than two categories: for instance, classifying handwritten digits.
+
+- _Multilabel classification_: A classification task where each input sample can be assigned multiple labels. For instance, a given image may contain both a cat and a dog and should be annotated both with the “cat” label and the “dog” label. The number of labels per image is usually variable.
+
+- _Scalar regression_: A task where the target is a continuous scalar value. Predicting house prices is a good example: the different target prices form a continuous space.
+
+- _Vector regression_: A task where the target is a set of continuous values: for example, a continuous vector. If you’re doing regression against multiple values (such as the coordinates of a bounding box in an image), then you’re doing vector regression.
+
+- _Mini-batch_ or _batch_: A small set of samples (typically between 8 and 128) that are processed simultaneously by the model. The number of samples is often a power of 2, to facilitate memory allocation on GPU. When training, a mini-batch is used to compute a single gradient-descent update applied to the weights of the model.
+
+### Tensors
+
+Tensors are multidimensional arrays of data. In other words, they're a generalization of vectors and matrices to an arbitrary number of dimensions. But don't be confused with how the word "dimension" is used in linear algebra with how it's used in the context of tensors.
+
+- In linear algebra, the word "dimension" refers to the "length" or the number of elements inside a vector.
+
+- When talking about tensors, the word "dimension" refers to the "shape" or the number of "axes". Thus, any  $n$-vector is a 1D tensor; any $n \times m$ matrix is a 2D tensor; any $n \times m \times p$ array is a 3D tensor; and so on.
+
+The word **shape** is reserved to describe the number of dimensions a tensor has along each axis. For example, an $n$-vector is a 1D tensor with shape $n$. A 3D tensor can be interpreted visually as a cube of numbers, but it gets hard to visualize higher dimensional arrays.
+
+- A 3D time-series data tensor.
+
+```{r, out.width="40%", echo=FALSE}
+knitr::include_graphics("figures/chollet_timedata.jpeg")
+```
+
+- A 4D image data sensor (channels-first convention).
+
+```{r, out.width="40%", echo=FALSE}
+knitr::include_graphics("figures/chollet_imagedata.jpeg")
+```
+
+In general, the first axis in all data tensors you'll come across in deep learning will be the _samples axis_ (sometimes called the "samples dimension"), which simply indexes the number of observations. So in an $n \times m$ matrix we are usually looking at $n$ samples (or "units of observations") with $m$ features each.
+
+### Tensor Operations
+
+All transformations learned by deep neural networks can be reduced to a handful of _tensor operations_.
+
+1. ___Element-wise operations___ (which may involve tensors of different dimensions, e.g. the `sweep()` function in R or the notion of _broadcasting_ in NumPy).
+
+2. ___Tensor productos___ (i.e. matrix multiplication).
+
+3. ___Tensor reshaping___ (or rearranging the rows and columns of an array to match a target shape).
+
+    For example:
+
+    ```{r}
+    x <- matrix(0:5, nrow = 3, ncol = 2, byrow = TRUE)
+    x
+    
+    keras::array_reshape(x, dim = c(2, 3), order = "F")    ## Fortran style
+    keras::array_reshape(x, dim = c(2, 3))                 ## C style
+    t(x)                                                   ## Transpose
+    ```
+
+
+### The Backpropagation Algorithm
+
+Each layer in a given neural network will look something like this:
+
+$$
+\underbrace{\mathbf y}_\text{output}  = \underbrace{f}_\text{activation} \bigg(\underbrace{\mathbf W}_\text{weights} \bullet  \underbrace{\mathbf x}_\text{input} + \underbrace{\mathbf b}_\text{bias} \bigg)
+$$
+
+In this expression, $\mathbf W$ and $\mathbf b$ are tensors that are attributes of the layer: they're the _trainable parameters_. Initially, these weight matrices are filled with small random values (a step called _random initialization_). What comes next is to gradually adjust these weights, based on a feedback signal (i.e. _training_). 
+
+This is how it works:
+
+1. Draw a batch of training samples $\mathbf x$ and corresponding targets $\mathbf y$
+
+2. Run the network on $\mathbf x$ (called a _forward pass_) to obtain predictions $\mathbf y^\text{pred}$
+
+3. Compute the _loss_ of the network on the batch, a measure of the mismatch between
+$\mathbf y^\text{pred}$ and $\mathbf y$
+
+4. Update all weights of the network in a way that slightly reduces the loss on this batch.
+
+5. Repeat as long as necessary.
+
+
+Step 4 is not straightforward. Given any individual weight coefficient in the network, how can know whether to increase or decrease it, and by how much? To solve this problem we compute the _gradient_ of the loss function $\nabla L(\mathbf W, \mathbf b)$  (a vector of _partial derivatives_) and move the parameters accordingly. (Note that all operations used in the network _differentiable_). 
+
+Thus, step 4 can best be understood as follows:
+
+<p style="margin-left: 30px"> 4.1. Compute the gradient of the loss with regard to the network’s parameters (called a _backward pass_).</p>
+
+<p style="margin-left: 30px"> 4.2. Move the parameters a little in the opposite direction from the gradient, thus reducing the loss on the batch a bit.</p>
+
+Collectively, this procedure is known as _mini-batch stochastic gradient descent stochastic_ (or minibatch SGD).
+
+In practice, a neural network consists of many tensor operations chained together. Calculating the gradient resulting from these operations amounts means that we must use the __chain rule__ from calculus. Doing this gives rise to an algorithm called _backpropagation_ (also called _reverse-mode differentiation_): we start with the final loss value and work backward from the final to the first layers, applying the chain rule to compute the contribution that each parameter had in the loss value.
+
+
+### Evaluation
+
+In order to avoid _overfitting_ (i.e. learning _too much_ from a sample of data), we split the available data into three sets: _training_, _validation_, and _test_. The validation set is used for tuning the "hyperparameters" of a network (e.g. number of layers, size of each layer, etc).
+
+Central to this practice is the notion of _information leaks._ Every time you tune a hyperparameter of your model based on the model's performance on the validation set, some information about the validation data leaks into the model. If you do this many times, you’ll leak an increasingly significant amount of information about the validation set into the model. 
+
+Ultimately, we wish to build a model that performs well on _new_ data. And we can achieve this form of "cross-validation" through many approaches. Here we focus on just four:
+
+1. ___The validation set approach___. Set apart some fraction of your data as your _hold out_ or _testing_ set. Train on the remaining data and then evaluate on the testing set. Conceptually, this approach is simple and easy to implement. But it has two drawbacks:
+
+    i. The resulting test error rate can be highly variable, depending on which observations are included in the training set and which are held out.
+    
+    ii. Loss of information. Only a subset of the observations are used to fit the model. And if little data is available, then both sets of data may contain too few samples to provide meaningful statistical estimates.
+    
+```{r, out.width="40%", echo=FALSE}
+knitr::include_graphics("figures/chollet_validation1.png")
+```
+
+
+2. ___Leave-one-out cross-validation___ (LOOCV). Like with previous approach, LOOCV involves splitting the set of observations into two parts. But this time we only use a single observation $(y_i, \mathbf x_i)$ for validation, and train the model on the remaining observations to obtain a single held-out prediction ($y_i^\text{pred}$). We repeat this procedure on the $n - 1$ remaining observations and average all test error estimates to obtain a final estimate which solves for both drawbacks in the previous approach.
+
+    $$
+    \text{CV}_{(n)} = \frac{1}{n} \sum_{i = 1}^n \text{error}_i
+    $$
+    
+    Unfortunately, this procedure is computationally very expensive, which explains why it isn't used by Deep Learning practitioners. 
+
+3. ___$k$-fold cross-validation___. This approach involves randomly dividing the set of observations into $k$ groups (or _folds_) of approximately equal size. The first fold is treated as a validation set, and the model is fitted on the remaining $k − 1$ folds. Much like with LOOCV, this procedure is repeated $k$ times.
+
+    $$
+    \text{CV}_{(k)} = \frac{1}{k} \sum_{i = 1}^k \text{error}_i
+    $$
+    
+    Or schematically:
+    
+```{r, out.width="60%", echo=FALSE}
+knitr::include_graphics("figures/chollet_validation2.png")
+```
+
+4. ___Iterated $k$-fold cross-validation with shuffling___. It consists of applying $k$-fold validation multiple times, shuffling the data every time before splitting it $k$ ways. The final score is the average of the scores obtained at each run of $k$-fold validation. This is closer to LOOCV, which means it's also more computationally expensive. Note that you end up training and evaluating $P \times K$ models (where $P$ is the number of iterations you use).
+
+****
+
+## 1^st^ Example: Classification
+
+****
+
+In this example we try to classify movie reviews as positive or negative. Here’s a small summary of the main takeaways>
+
+- Text data requires a lot of preprocessing before feeding it (as tensors) into a neural network. Most of the time, sequences of words are encoded as binary vectors, but there are other encoding options.
+
+- Stacks of dense layers with `relu` activations can solve a wide range of problems.
+
+- In a binary classification problem, the network should end with a dense layer with one unit and a `sigmoid` activation: this turns the output into a scalar between 0 and 1 (i.e. a probability). In this case, the appropriate loss function is `binary_crossentropy`.
+
+- The `rmsprop` optimizer is almost always a good enough choice.
+
+- Thre are three popular strategies for dealing with overfitting.
+
+****
+
+```{r}
+library(keras)
+imdb <- dataset_imdb(num_words = 10000)
+```
+
+The IMDB dataset comes packaged with Keras. It has already been preprocessed: the reviews (sequences of words) have been turned into sequences of integers, where each integer stands for a specific word in a dictionary.
+
+```{r}
+## First 5 reviews from the training set
+tibble(y = imdb$train$y[1:5], 
+       x = imdb$train$x[1:5]) 
+```
+
+Thus, each review is a list of _word indices_, encoding a sequence of words.
+
+For example, this...
+
+```{r}
+imdb$train$x[[6]]
+```
+
+...translates to this
+
+```{r}
+word_index <- dataset_imdb_word_index() %>% 
+  unlist()
+
+decode <- function(index) {
+  # Note that the indices are offset by 3 because 0, 1, and 2 are
+  # reserved indices for "padding", "start of sequence", and "unknown".
+  word <- if (index >= 3) names(word_index[word_index == index - 3])
+  if (is.null(word)) "[?]" else word
+}
+
+imdb$train$x[[7]] %>% 
+  map_chr(decode) %>% 
+  cat()
+```
+
+```{r}
+tibble(y = imdb$train$y[1:10], 
+       x = imdb$train$x[1:10]) %>% 
+  mutate(review = x %>% map(function(x) map_chr(x,decode))) %>% 
+  mutate(review = map_chr(review, function(x) paste0(x, collapse = " ")))
+```
+
+__Preparing the data__
+
+The lists of word indices must first be turned into tensors, so that we can feed them into a neural network. Here, we turn each IMDB review into a vector of size 10,000 whose elements consist on 0s and 1s (also known as "one-hot encoding").
+
+```{r}
+vectorize_sequences <- function(sequences, dimension = 10000) {
+  results <- matrix(0, nrow = length(sequences), ncol = dimension)
+  
+  for (i in 1:length(sequences)) {
+    results[i, sequences[[i]]] <- 1
+  }
+  return(results)
+}
+
+## Training data
+x_train <- vectorize_sequences(imdb$train$x)
+y_train <- as.numeric(imdb$train$y)
+
+## Testing data
+x_test <- vectorize_sequences(imdb$test$x)
+y_test <- as.numeric(imdb$test$y)
+
+colnames(x_train) <- c(rep("[?]", 3), names(sort(word_index)[1:9997]))
+colnames(x_test) <- c(rep("[?]", 3), names(sort(word_index)[1:9997]))
+
+x_train[1:10, 11:21]
+```
+
+```{r, fig.width=5, fig.height=2, echo=FALSE}
+plot_settings(); par(mfrow = c(1, 2), cex = 0.7)
+relu <- function(x) pmax(x, 0)
+
+curve(relu, from = -5, to = 5, ylab = "", xlab = "", 
+      main = "The rectified linear unit function")
+
+curve(plogis, from = -5, to = 5, ylab = "", xlab = "", 
+      main = "The sigmoid function")
+```
+
+```{r}
+## Set up the model
+model <- keras_model_sequential() %>%
+  layer_dense(units = 16, activation = "relu", input_shape = c(10000)) %>%
+  layer_dense(units = 16, activation = "relu") %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+model
+
+## Choose loss function and optimizer
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = "accuracy"
+)
+
+## Define validation set
+val_indices <- 1:10000
+x_val <- x_train[val_indices,]
+partial_x_train <- x_train[-val_indices,]
+y_val <- y_train[val_indices]
+partial_y_train <- y_train[-val_indices]
+
+## Train the model
+history <- model %>% fit(
+  partial_x_train,
+  partial_y_train,
+  epochs = 20,
+  batch_size = 512,
+  validation_data = list(x_val, y_val)
+)
+
+history
+```
+
+```{r, fig.width=6}
+plot(history)
+```
+
+```{r}
+model %>% 
+  evaluate(x_test, y_test)
+```
+
+This is exactly what you'd expect to see when running a gradient-descent optimization: the training loss decreases with every epoch, whereas the training accuracy increases. In other words, the quantity you're trying to minimize (i.e. _training loss_) should be less with every iteration. But that isn't the case for the validation loss and accuracy: they seem to peak at the fourth epoch. This is an example of _overfitting_: you end up learning representations that are specific to the training data and don’t generalize to data outside of the training set. 
+
+In this case, to prevent overfitting, you could stop training after just three epochs. (Other techniques that prevent overfitting include reducing the network's _size_, weight _regularization_, and _dropout_).
+
+This fairly naive approach achieves an accuracy of 88%. With state-of-the-art approaches, you should be able to get close to 95%.
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 16, activation = "relu", input_shape = c(10000)) %>%
+  layer_dense(units = 16, activation = "relu") %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("accuracy")
+  )
+
+model %>% fit(
+  x_train, 
+  y_train, 
+  epochs = 4, 
+  batch_size = 512
+  )
+
+model %>% 
+  evaluate(x_test, y_test)
+```
+
+Now we can look at how the model performs in the testing dataset with the `predict()` method.
+
+```{r, fig.width=6}
+predictions <- predict(model, x_test)
+
+ggplot(NULL, aes(x = predictions)) +
+  geom_density(fill = "skyblue") +
+  labs(subtitle = "testing data")
+```
+
+```{r}
+## Positive
+which(predictions == max(predictions))
+imdb$test$x[[5336]][1:100] %>% 
+  map_chr(decode) %>% 
+  cat()
+
+## Negative
+which(predictions == min(predictions))
+imdb$test$x[[23116]][1:100]  %>% 
+  map_chr(decode) %>% 
+  cat()
+```
+
+### Reducing network size
+
+The simplest way to prevent overfitting is to reduce the size of the model. In other words, to reduce the number of parameters in the model (i.e. the number of layers and the number of units per layer). In deep learning, the number of learnable parameters in a model is often referred to as the model's ___capacity___. A model with more parameters has more "memorization capacity" and therefore can easily learn a perfect mapping between training samples and their targets: a mapping without any generalization power.
+
+```{r, out.width="20%", echo=FALSE}
+knitr::include_graphics("figures/Borges.jpg")
+```
+
+Thus, reducing the number of parameters to avoid overfitting is one of the most common approaches in statistics.
+
+```{r}
+model <- keras_model_sequential() %>%
+layer_dense(units = 4, activation = "relu", input_shape = c(10000)) %>%
+layer_dense(units = 4, activation = "relu") %>%
+layer_dense(units = 1, activation = "sigmoid")
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("accuracy")
+  )
+
+history2 <- model %>% fit(
+  partial_x_train,
+  partial_y_train,
+  epochs = 20,
+  batch_size = 512,
+  validation_data = list(x_val, y_val)
+)
+```
+
+
+```{r, fig.width=6}
+df <- tibble(
+  original_model = history$metrics$val_loss,
+  small_model = history2$metrics$val_loss,
+  epoch = 1:20)
+
+df %>% 
+  gather(1:2, key = model, value = loss) %>% 
+  ggplot(aes(x = epoch, y = loss, color = model, shape = model)) +
+  geom_point() +
+  labs(y = "validation loss")
+```
+
+The smaller network starts overfitting later than the original network, and its performance degrades much more slowly once it starts overfitting.
+
+### Regularization
+
+A common way to reduce overfitting is to put constraints on the complexity of a network by stopping its weights from taking large values. This is called _weight regularization_, and it's done by slightly modifying the network's loss function by penalizing large weights.
+
+This cost comes in two forms:
+
+- ___L1 regularization___: The cost added is proportional to the _absolute value_ of the weight coefficients (we call this LASSO in the context of regression).
+
+- ___L2 regularization___: The cost added is proportional to the _square of the value_ of the weight coefficients. L2 regularization is also called _weight decay_ in the context of neural networks (in other context we call this Ridge regression).
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 16, activation = "relu", input_shape = c(10000),
+              kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dense(units = 16, activation = "relu",
+              kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("accuracy")
+  )
+
+history3 <- model %>% fit(
+  partial_x_train,
+  partial_y_train,
+  epochs = 20,
+  batch_size = 512,
+  validation_data = list(x_val, y_val)
+)
+```
+
+
+```{r, fig.width=6}
+df <- tibble(
+  original_model = history$metrics$val_loss,
+  regularized_model = history3$metrics$val_loss,
+  epoch = 1:20)
+
+df %>% 
+  gather(1:2, key = model, value = loss) %>% 
+  ggplot(aes(x = epoch, y = loss, color = model, shape = model)) +
+  geom_point() +
+  labs(y = "validation loss")
+```
+
+Note that because this penalty is _only added at training time_, the loss for this network will be much higher at training time than at test time.
+
+### Dropout
+
+___Dropout___ is one of the most common and effective regularization techniques for neural networks. It's applied to individual layers and consists of randomly dropping out (setting to zero) a number of output features of the layer during training. The _dropout rate_ is the fraction of the features that are zeroed out (usually between 0.2 and 0.5). At test time, no units are dropped out; instead, the layer's output values are scaled down by a factor equal to the dropout rate, to balance for the fact that more units are active than at training time.
+
+So, for example, let's say a given layer returns the following vector:
+
+$$
+\pmatrix{0.2 \\ 0.5 \\ 1.3 \\ 0.8 \\ 1.1} \overset{\text{dropout}}{\longrightarrow} \pmatrix{0 \\ 0.5 \\ 1.3 \\ 0 \\ 1.1}
+$$
+
+In code:
+
+```{r, eval=FALSE}
+## Dropout during training
+layer_output <- layer_output * sample(x = 0:1, 
+                                      size = length(layer_output), 
+                                      replace = TRUE)
+## Test time (scaling down)
+layer_output <- layer_output * 0.5
+```
+
+This technique obviously sounds obscure and arbitrary. It was first developed by Geoffrey Hinton, who was inspired by, among other things, a fraud-prevention mechanism used by banks.
+
+In his words:
+
+> I went to my bank. The tellers kept changing and I asked one of them why. He said he didn't know but they got moved around a lot. I figured it must be because it would require cooperation between employees to successfully defraud the bank. This made me realize that randomly removing a different subset of neurons on each example would prevent conspiracies and thus reduce overfitting.
+
+The idea is that by introducing noise in the output values of a layer, we can break up happenstance patterns that aren’t significant (what Hinton calls  "conspiracies"), which the network will start memorizing if no noise is present.
+
+In Keras, dropout can be introduced in a network via the `layer_dropout()` function.
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 16, activation = "relu", input_shape = c(10000)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 16, activation = "relu") %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "binary_crossentropy",
+  metrics = c("accuracy")
+  )
+
+history4 <- model %>% fit(
+  partial_x_train,
+  partial_y_train,
+  epochs = 20,
+  batch_size = 512,
+  validation_data = list(x_val, y_val)
+)
+```
+
+```{r, fig.width=6}
+df <- tibble(
+  original_model = history$metrics$val_loss,
+  dropout_model = history4$metrics$val_loss,
+  epoch = 1:20)
+
+df %>% 
+  gather(1:2, key = model, value = loss) %>% 
+  ggplot(aes(x = epoch, y = loss, color = model, shape = model)) +
+  geom_point() +
+  labs(y = "validation loss")
+```
+
+## Text and Sequences
+
+Notes:
+
+The two fundamental deep-learning algorithms for sequence processing are _recurrent_ and 1D _convolutional_ neural networks.
+
+These models don't understand text in a human sense; rather, they can map the statistical structure of written language. In other words, deep learning for natural-language processing is pattern recognition applied to words, sentences, and paragraphs.
+
+_Vectorizing_ text is the process of transforming text into numeric tensors. This is done by segmenting text into words or $n$-grams (and less commonly into characters). Collectively, the different units into which you can break down text (words, characters, or n-grams) are called tokens, and breaking text into such tokens is called _tokenization_. All text-vectorization processes consist of applying some tokenization scheme and then associating numeric vectors with the generated tokens.
+
+There are multiple ways to associate a vector with a token, but only two of them are worth our time: __one-hot encoding__ of tokens, and token __embedding__ (typically used exclusively for words, and called word embedding).
+
+A set of _unordered_ tokens is commonly known as bag-of-words. This tokenization method tends to be used in shallow language-processing models (e.g. logistic regression and random forests) rather than in deep-learning models. Extracting $b$-grams is a form of feature engineering, and deep learning does away with this kind of rigid approach, replacing it with "hierarchical feature learning". By looking at continuous word or character sequences, 1D convnets and recurrent neural networks are capable of learning representations for groups of words and characters without being explicitly told about the existence of such groups.
+
+### One hot encoding
+
+One hot encoding: it consists of associating a unique integer index with every word
+and then turning this integer index $i$ into a binary vector of size $N$ (the size of the vocabulary); the vector is all zeros except for the $i$th entry, which is 1.
+
+For example:
+
+```{r}
+samples <- c("the cat sat on the cow", "the dog ate my homework", "the cow wrote a best selling book")
+
+token_index <- list()
+for (s in samples) {
+  for (w in str_split(s, " ")[[1]]) {
+    if (!w %in% names(token_index)) {
+      ## Don't attribute anything to index 1
+      token_index[[w]] <- length(token_index) + 2
+    }
+  }
+}
+
+results <- array(0, dim = c(length(samples), max(unlist(token_index))))
+for (i in 1:length(samples)) {
+  s <- samples[[i]]
+  w <- str_split(s, " ")[[1]]
+  for (n in 1:length(w)) {
+    j <- token_index[[w[[n]]]]
+    results[[i, j]] <- 1
+  }
+}
+
+colnames(results) <- c("?", names(token_index))
+results
+```
+
+
+
+```{r}
+library(tokenizers)
+tokens <- tokenize_words(samples)
+
+results <- cbind(
+  "?" = 0, 
+  tibble(text = tokens, id = 1:length(samples)) %>% 
+    unnest() %>% 
+    distinct(id, text) %>% 
+    mutate(n = 1) %>%   ## one-hot encoding
+    tidytext::cast_sparse(id, text, n)
+  )
+
+results[, 1:8]
+
+library(ggraph)
+tibble(text = samples) %>% 
+  mutate(id = row_number()) %>% 
+  tidytext::unnest_tokens(word, text) %>% 
+  distinct() %>% 
+  as.matrix() %>% 
+  igraph::graph_from_edgelist(directed = FALSE) %>% 
+  ggraph("kk") +
+  geom_edge_fan(colour = "grey", alpha = 0.3,
+        end_cap = circle(0.3, "cm"),
+        start_cap = circle(0.2, "cm")) +  
+  geom_node_text(aes(label = name, color = !str_detect(name, "\\d")), 
+                 show.legend = FALSE) +
+  theme_graph(base_family = "Avenir") +
+  labs(subtitle = "one-hot encoding")
+```
+
+
+
+```{r}
+library(keras)
+tokenizer <- text_tokenizer(num_words = 15) %>%
+  fit_text_tokenizer(samples)
+
+one_hot_results <- texts_to_matrix(tokenizer, samples, mode = "binary")
+colnames(one_hot_results) <- c("?", names(tokenizer$word_index))
+one_hot_results
+cat("Found", length(tokenizer$word_index), "unique tokens.\n")
+```
+
+
+### Word embeddings
+
+```{r, out.width="30%", echo=FALSE}
+knitr::include_graphics("figures/chollet_wordvectors.png")
+```
+
+*****
+
+https://jjallaire.github.io/deep-learning-with-r-notebooks/notebooks/6.1-using-word-embeddings.nb.html
+
+
+Also see: [Keras](https://blogs.rstudio.com/tensorflow/posts/2017-12-22-word-embeddings-with-keras/)
+
+https://www.onceupondata.com/2019/01/21/keras-text-part1/
+
+
