@@ -1,0 +1,324 @@
+---
+title: "Computer Vision"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", comment = "")
+```
+
+## Introduction
+
+PUT SOMETHING HERE
+
+## Deep Learning
+
+Taken from Francois Chollet & J.J. Allaire (2018). ___Deep Learning with `R` and `Keras`___. Manning Publications.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(keras)
+use_python("/usr/local/bin/python3")
+
+theme_set(theme_bw(base_family = "Avenir"))
+```
+
+****
+
+- Understanding convolutional neural networks (or _convnets_).
+
+- Using data augmentation to _mitigate overfitting_.
+
+- Using a pretrained convnet to do _feature extraction_.
+
+- Fine-tuning a pretrained convnet.
+
+- Visualizing _what_ convnets learn and _how_ they make classification decisions.
+
+****
+
+1^st^ example: using a convnet to classify MNIST digits.
+
+Every convnet will take tensors of shape $(\text{image-height},\ \text{image-width},\ \text{image-channels})$. The MNIST images have tensors of shape $(28, 28, 1)$.
+
+```{r}
+## A small convnet
+model <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu",
+                input_shape = c(28, 28, 1)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu")
+
+model
+```
+
+Notice that the width and height dimensions tend to shrink as you go deeper in the network; from (26 $\times$ 26 $\times$ 32) to (3 $\times$ 3 $\times$ 64). Similarly, 
+
+The next step is to feed the last output tensor (of shape $(3, 3, 64)$) into a densely connected classifier network: a stack of dense layers.
+
+```{r}
+## Adding a classifier on top of the convnet
+model <- model %>%
+  layer_flatten() %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 10, activation = "softmax") ## 10-way classification
+
+model
+```
+
+```{r}
+## Data acquisition and pre-process
+mnist <- dataset_mnist()
+c(c(train_images, train_labels), c(test_images, test_labels)) %<-% mnist
+train_images <- array_reshape(train_images, c(60000, 28, 28, 1))
+train_images <- train_images / 255
+test_images <- array_reshape(test_images, c(10000, 28, 28, 1))
+test_images <- test_images / 255
+train_labels <- to_categorical(train_labels)
+test_labels <- to_categorical(test_labels)
+```
+
+
+
+```{r}
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+  )
+
+history <- model %>% fit(
+  train_images, train_labels,
+  epochs = 5, batch_size=64
+  )
+
+plot(history)
+```
+
+
+```{r}
+## Test accuracy
+results <- model %>% evaluate(test_images, test_labels)
+results
+```
+
+
+### Covnets
+___How they work___
+
+Here's the fundamental difference between densely connected and convolution layers: _Whereas dense layers learn **global** patterns in their input feature space (e.g. for an MNIST digit, patterns involving all pixels), convolution layers learn **local** patterns (e.g. in the case of images, patterns found in small 2D windows of the inputs)._ Two properties follow from this fact:
+
+1. The patterns covnets learn are _translation invariant_. 
+
+2. They can learn _spatial hierarchies of patterns_.
+
+"Convolutions operate over 3D tensors, called _feature maps_, with two spatial axes (height and width) as well as a depth axis (also called the channels axis). For an RGB image, the dimension of the depth axis is 3, because the image has three color channels: red, green, and blue. For a black-and-white picture, like the MNIST digits, the depth is 1 (levels of gray)."
+
+The convolution operation extracts patches from its input feature map and applies the same transformation to all of these patches, producing an output feature map. This output feature map is still a 3D tensor: it has a width and a height. Its depth can be arbitrary, because the output depth is a parameter of the layer, and the different channels in that depth axis no longer stand for specific colors as in RGB input; rather, they stand for filters.
+
+FIGURE 5.4
+
+FACTORS THAT AFFECT THE SHAPE OF THE OUTPUT FEATURE MAP: PADDING AND STRIDES.
+
+
+__Max pooling__
+
+The role of max pooling is to aggressively _downsample_ feature maps. (IN THE EXAMPLE they go from 26 to 13, and then from 11 to 5). and also to induce spatial-filter hierarchies.
+
+1. It isn’t conducive to learning a spatial hierarchy of features. (try recognizing a digit by only looking at it through windows that are 7 × 7 pixels!)
+
+2. The final feature map has 22 × 22 × 64 = 30,976 total coefficients per sample. This is huge.
+
+Max pooling means we are taking a maximum, as opposed to, for example, an average.
+
+> Note that max pooling isn’t the only way you can achieve such downsampling. As you already know, you can also use strides in the prior convolution layer. And you can use average pooling instead of max pooling, where each local input patch is trans- formed by taking the average value of each channel over the patch, rather than the max. But max pooling tends to work better than these alternative solutions. In a nut- shell, the reason is that features tend to encode the spatial presence of some pattern or concept over the different tiles of the feature map (hence, the term feature map), and it’s more informative to look at the maximal presence of different features than at their average presence. So the most reasonable subsampling strategy is to first produce dense maps of features (via unstrided convolutions) and then look at the maximal activation of the features over small patches, rather than looking at sparser windows of the inputs (via strided convolutions) or averaging input patches, which could cause you to miss or dilute feature-presence information. SUMMARIZE THIS
+
+
+This double operation is the reason 
+
+```{r}
+# model_no_max_pool <- keras_model_sequential() %>%
+#           layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu",
+#                         input_shape = c(28, 28, 1)) %>%
+#           layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu") %>%
+#           layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu")
+# 
+# model_no_max_pool
+# DELETE
+```
+
+### Small datasets
+
+Deep Learning is highly data efficient on perceptual problems. That's because convnets learn local, translation-invariant features. A few hundred samples can suffice if the model is small, well regularized, and the task is simple. 
+
+three strategies—training a small model from scratch, doing feature extraction using a pretrained model, and fine-tuning a pre- trained model. 
+
+___Dogs and cats___
+
+> The depth of the feature maps progressively increases in the network (from 32 to 128), whereas the size of the feature maps decreases (from 148 × 148 to 7 × 7). This is a pattern you’ll see in almost all convnets.
+
+
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu",
+                input_shape = c(150, 150, 3)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu") %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 512, activation = "relu") %>%
+  layer_dense(units = 1, activation = "sigmoid")
+
+
+model %>% compile(
+  loss = "binary_crossentropy",
+  optimizer = optimizer_rmsprop(lr = 1e-4),
+  metrics = "acc"
+)
+
+```
+
+
+ADD CODE TO LOOK AT A FEW OF THE IMAGES, AS WELL AS HISTORY BEHIND DATASET
+
+
+1 Read the picture files.
+2 Decode the JPEG content to RGB grids of pixels.
+3 Convert these into floating-point tensors.
+4 Rescale the pixel values (between 0 and 255) to the [0, 1] interval (as you know,
+neural networks prefer to deal with small input values).
+
+```{r}
+## Rescales all images by 1/255
+train_datagen <- image_data_generator(rescale = 1/255)
+validation_datagen <- image_data_generator(rescale = 1/255)
+
+train_generator <- flow_images_from_directory(
+  "cats-dogs/train",
+  train_datagen,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "binary"
+)
+
+validation_generator <- flow_images_from_directory(
+  "cats-dogs/validation",
+  validation_datagen,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "binary"
+)
+
+## Looking at just one batch
+batch <- generator_next(train_generator)
+str(batch)
+
+
+## Fitting the model using fit_generator()
+history <- model %>% fit_generator(
+  train_generator,
+  steps_per_epoch = 100,
+  epochs = 30,
+  validation_data = validation_generator,
+  validation_steps = 50
+)
+```
+
+
+___Using data augmentation to avoid overfitting___
+
+> You already know about a number of techniques that can help mitigate overfitting, such as dropout and weight decay (L2 regularization). We’re now going to work with a new one, specific to computer vision and used almost universally when processing images with deep-learning models: data augmentation.
+
+
+> Data augmentation takes the approach of generating more training data from existing training samples, by augmenting the samples via a number of random transformations that yield believable-looking images. The goal is that at training time, your model will never see the exact same picture twice. This helps expose the model to more aspects of the data and generalize better.
+
+
+```{r}
+datagen <- image_data_generator(
+  rescale = 1/255,
+  rotation_range = 40, # is a value in degrees (0–180), a range within which to ran- domly rotate pictures.
+  width_shift_range = 0.2,
+  height_shift_range = 0.2,
+  shear_range = 0.2,   # is for randomly applying shearing transformations.
+  zoom_range = 0.2,    # is for randomly zooming inside pictures.
+  horizontal_flip = TRUE,  # is for randomly flipping half the images horizontally
+  fill_mode = "nearest"    # is the strategy used for filling in newly created pixels, which can appear 
+)                          # after a rotation or a width/height shift.
+
+```
+
+
+CODE TO LOOK AT EXAPMLES OF IMAGE AUGMENTATION
+
+> you can’t produce new information, you can only remix existing information. As such, this may not be enough to completely get rid of overfitting. To further fight overfitting, you’ll also add a drop- out layer to your model, right before the densely connected classifier.
+
+
+```{r}
+test_datagen <- image_data_generator(rescale = 1/255)
+
+train_generator <- flow_images_from_directory(
+  "cats-dogs/train",
+  datagen,
+  target_size = c(150, 150),
+  batch_size = 32,
+  class_mode = "binary"
+  )
+
+
+validation_generator <- flow_images_from_directory(
+  "cats-dogs/validation",
+  test_datagen,
+  target_size = c(150, 150),
+  batch_size = 32,
+  class_mode = "binary"
+)
+
+
+history <- model %>% fit_generator(
+  train_generator,
+  steps_per_epoch = 100,
+  epochs = 100,
+  validation_data = validation_generator,
+  validation_steps = 50
+)
+
+
+model %>% save_model_hdf5("cats_and_dogs_small_2.h5")
+
+
+```
+
+
+>Thanks to data augmentation and dropout, you’re no longer overfitting: the training curves are closely tracking the validation curves (see figure 5.11). You can now reach an accuracy of 82%, a 15% relative improvement over the non-regularized model.
+
+```{r}
+plot(history)
+```
+
+
+## Pre-trained models
+
+
+> A common and highly effective approach to deep learning on small image datasets is to use a pretrained network. A pretrained network is a saved network that was previously trained on a large dataset, typically on a large-scale image-classification task. If this original dataset is large enough and general enough, then the spatial hierarchy of fea- tures learned by the pretrained network can effectively act as a generic model of the visual world, and hence its features can prove useful for many different computer- vision problems, even though these new problems may involve completely different classes than those of the original task.
+
+
+There are two ways to use a pretrained network: feature extraction and fine-tuning.There are two ways to use a pretrained network: __feature extraction__ and __fine-tuning__.
+
+
+

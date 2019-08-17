@@ -29,7 +29,9 @@ How to think about time in statistics?
 
 - Time as nuisance, or how to remove time from the data (e.g. We would really prefer 20 randomly-selected societies, but instead we have the same one society over 20 years).
 
-## Essential packages
+Here we focus on a few packages for preprocessing and modeling, `lubridate`, `xts`, `tsibble`, `feasts`, and `fable`.
+
+## Pre processing
 
 **Introduction to `lubridate` and `xts`**
 
@@ -40,12 +42,14 @@ How to think about time in statistics?
 
 ## Prophet
 
+(Make separate notebook)
 
 ## Kalman filters
 
+(Make separate notebook)
 
 ## Survival Analysis
 
-
+(Make separate notebook)
 
 
