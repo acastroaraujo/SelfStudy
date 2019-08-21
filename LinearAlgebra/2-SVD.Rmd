@@ -1,0 +1,32 @@
+---
+title: "Singular Value Decomposition"
+author: "Andrés Castro Araújo"
+date: "8/18/2019"
+output: html_documentoutput: 
+  html_document: 
+    code_folding: hide
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+http://web.stanford.edu/class/bios221/book/Chap-Multivariate.html
+
+https://en.wikipedia.org/wiki/Singular_value_decomposition
+
+https://machinelearningmastery.com/singular-value-decomposition-for-machine-learning/
+
+
+https://www.quora.com/What-is-an-intuitive-explanation-of-singular-value-decomposition-SVD cool!! 
+
+
+From shalizi
+
+"Strictly speaking, singular value decomposition is a matrix algebra trick which is used in the most common algorithm for PCA."
+
+Also add B.7.1-2

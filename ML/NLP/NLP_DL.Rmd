@@ -205,7 +205,6 @@ Ultimately, we wish to build a model that performs well on _new_ data. And we ca
 knitr::include_graphics("figures/chollet_validation1.png")
 ```
 
-
 2. ___Leave-one-out cross-validation___ (LOOCV). Like with previous approach, LOOCV involves splitting the set of observations into two parts. But this time we only use a single observation $(y_i, \mathbf x_i)$ for validation, and train the model on the remaining observations to obtain a single held-out prediction ($y_i^\text{pred}$). We repeat this procedure on the $n - 1$ remaining observations and average all test error estimates to obtain a final estimate which solves for both drawbacks in the previous approach.
 
     $$
@@ -694,6 +693,18 @@ cat("Found", length(tokenizer$word_index), "unique tokens.\n")
 ```{r, out.width="30%", echo=FALSE}
 knitr::include_graphics("figures/chollet_wordvectors.png")
 ```
+
+
+
+
+
+
+
+
+
+
+
+
 
 *****
 

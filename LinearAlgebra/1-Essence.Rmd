@@ -1199,7 +1199,7 @@ There are two functions in R that perform PCA.
 
 - `prcomp()`: "The calculation is done by a *singular value decomposition* of the (centered and possibly scaled) data matrix, not by using `eigen()` on the covariance matrix. This is generally the preferred method for numerical accuracy."
 
-- `princomp()`: "The calculation is done using `eigen()` on the correlation or covariance matrix, as determined by `cor()`". 
+- `princomp()`: This function calculates the covariance matrix matrix, as determined by `cor()`, and then taking the eigenvalues using `eigen()`.
 
 ****
 
@@ -1228,14 +1228,17 @@ Here are some more facts:
 An example:
 
 ```{r}
-prcomp(scale(mtcars))$sdev^2 %>%  ## eigenvalues
+princomp(scale(mtcars))$sdev^2 %>%  ## eigenvalues
   round(2)
-prcomp(scale(mtcars))$rotation %>% ## eigenvectors
-  round(2)
-summary(prcomp(scale(mtcars))) %>% 
+
+princomp(scale(mtcars))$loadings %>% ## eigenvectors
+  print(digits = 2, sort = TRUE)
+
+summary(princomp(scale(mtcars))) %>% 
   print(digits = 2)
 ```
 
+Note: The `prcomp()` function is generally more robust, but uses an entirely different method called singular value decomposition.
 
 ## Abstract Vector Spaces
 
