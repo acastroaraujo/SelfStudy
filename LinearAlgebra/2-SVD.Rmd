@@ -24,6 +24,8 @@ https://machinelearningmastery.com/singular-value-decomposition-for-machine-lear
 
 https://www.quora.com/What-is-an-intuitive-explanation-of-singular-value-decomposition-SVD cool!! 
 
+https://youtu.be/P5mlg91as1c
+
 
 From shalizi
 

@@ -4,10 +4,10 @@ author: "Andrés Castro Araújo"
 date: "`r Sys.Date()`"
 output: 
   html_document: 
-    code_folding: hide
+    code_folding: show
     theme: lumen
     toc: yes
-    toc_float: 
+    toc_float:
       collapsed: yes
 bibliography: references.bib
 ---
@@ -19,6 +19,22 @@ knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center",
 library(tidyverse)
 theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
 ```
+
+
+```{r results="asis", echo=FALSE}
+cat("<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
+
+
+
+rename? mixture models are a lot more interesting than I thought.
 
 ****
 
@@ -33,26 +49,25 @@ Simple probability distributions can be used as the building blocks for more com
 The following graph shows a mixture of two normal distributions. We call these _finite mixtures_. Other mixtures can involve almost as many distributions as we have observations. These we call _infinite mixtures_. 
 
 ```{r}
-N <- 1e3
-mix <- sample(c(TRUE, FALSE), N, replace = TRUE, prob = c(0.5, 0.5))
-draw_samples <- function(x, means = c(-1, 1), sds = c(0.5, 0.5)) {
-  rnorm(n = length(x), 
-        mean = ifelse(x, means[[1]], means[[2]]),
-        sd = ifelse(x, sds[[1]], sds[[2]])
+draw_samples <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
+  mix <- sample(c(TRUE, FALSE), N, replace = TRUE, prob = c(0.5, 0.5))
+  rnorm(n = length(mix), 
+        mean = ifelse(mix, means[[1]], means[[2]]),
+        sd = ifelse(mix, sds[[1]], sds[[2]])
         )
 }
 
-ggplot(tibble(value = draw_samples(mix)), aes(x = value)) + 
-  geom_histogram(binwidth = 0.1, color = "steelblue1", fill = "steelblue1", alpha = 0.5)
+ggplot(tibble(value = draw_samples()), aes(x = value)) + 
+  geom_histogram(binwidth = 0.1, color = "steelblue1", 
+                 fill = "steelblue1", alpha = 0.5)
 ```
 
 Note that as we increase the number of observations and bins, the histogram gets nearer to a smooth curve. This smooth limiting curve is called the density function of the random variable. 
 
 ```{r}
-N <- 1e6
-mix <- sample(c(TRUE, FALSE), N, replace = TRUE, prob = c(0.5, 0.5))
-ggplot(tibble(value = draw_samples(mix)), aes(x = value)) + 
-  geom_histogram(bins = 500, color = "steelblue1", fill = "steelblue1", alpha = 0.5)
+ggplot(tibble(value = draw_samples(N = 1e6)), aes(x = value)) + 
+  geom_histogram(bins = 500, color = "steelblue1", 
+                 fill = "steelblue1", alpha = 0.5)
 ```
 
 In this case, each of the two normals that can be written explicitly as
@@ -65,8 +80,11 @@ $$
 And the mixture density in our previous example can simply be written as:
 
 $$
-f(x) = \frac{1}{2} \phi_1(x) + \frac{1}{2} \phi_2(x)
+\begin{align}
+f(x) = \lambda_1 \ \phi_1(x) +  \lambda_2 \ \phi_2(x), && \lambda_1 = \lambda_2 = \frac{1}{2}
+\end{align}
 $$
+
 
 ```{r}
 f_mixture <- function(x, f1 = c(mu = -1, sd = 0.5), f2 = c(mu = 1, sd = 0.5), probs = c(0.5, 0.5)) {
@@ -79,62 +97,7 @@ ggplot(tibble(x = c(-3, 3)), aes(x)) +
   labs(y = "mixture density")
 ```
 
-## The EM Algorithm
-
-We can use the [_expectation-maximization algorithm_](https://en.wikipedia.org/wiki/Expectation–maximization_algorithm) to make inferences about hidden groupings (or latent variables) in our data. 
-
-
-The EM algorithm is a popular procedure that alternates between two steps [@holmes2018modern]:
-
-1. pretending we know the probability with which each observation belongs to a component (or cluster) and estimating the distribution parameters of the components, and
-
-2. pretending we know the parameters of the component (or cluster) distributions and estimating the probability with which each observation belongs to them.
-
-The name "EM" comes from those two steps. 
-
-After starting with initial guesses about the cluster parameters and mixing proportions, we (1) calculate the weights using those guesses
-
-We first find the "expectation" of the 
-
-
-REWRITE, LOOK AT EVERYTHING
-
-
-GELMAN:
-The name ‘EM’ comes from the two alternating steps: finding the expectation of the
-needed functions (the sufficient statistics) of the missing values, and maximizing the resulting posterior density to estimate the parameters as if these functions of the missing data
-were observed.
-
-For example, suppose we measure a variable $Y$ on a series of objects. We think these measurements come from two different groups, but we don't know for sure. We then start by _augmenting_ the data with the unobserved (or latent) group label, which we call $U$. We are now interested in discovering the values of $U$, and also the unknown parameters that describe the underlying densities (e.g. $\mu_1$, $\sigma_1$, $\mu_2$, $\sigma_2$). 
-
-### Identifiability
-
-Before attempting to estimate our probability distributions, we need to make sure they are [_identifiable_](https://en.wikipedia.org/wiki/Identifiability),  "that if we have distinct representations of the model, they make distinct observational claims" [@shalizi2013advanced, chap. 19]. Mixture models can exhibit many issues with identifiability. For example __label degeneracy__, which means that "we can always swap the labels of any two clusters with no effect on anything observable at all --- if we decide that cluster A is now cluster number B and vice versa, that doesn’t
-change the distribution of $X$ at all" [@shalizi2013advanced].
-
-Another coin flip example:
-
-We have two unfair coins, whose probabilities of heads are $p_1 = 0.125$ and $p_2 = 0.25$. We pick coin 1 with probability $\lambda$ (and coin 2 with probability $1-\lambda$). After picking a coin, we toss it twice and record the number of heads $K$.
-
-```{r}
-set.seed(911)
-coin_simulation <- function(N, p1, p2, lambda) {
-  coin <- sample(c(1, 2), size = N, replace = TRUE, prob = c(lambda, 1 - lambda))
-  K <- rbinom(n = N, size = 2, prob = ifelse(coin == 1, p1, p2))
-  return(K)
-}
-
-table(coin_simulation(N = 100, p1 = 1/8, p2 = 1/4, lambda = 1/8))
-table(coin_simulation(N = 100, p1 = 1/8, p2 = 1/4, lambda = 1/4))
-```
-
-After seeing both contingency tables, do you feel that you could uniquely estimate the values of $p_1$, $p_2$, and $\lambda$? 
-
-More generally, the problem of identifiability arises when there are too many degrees of freedom in the parameters.
-
-### Mixture of normals
-
-Back to our motivating example, the mixture of normals.
+****
 
 Suppose that a dataset was generated from a mixture of two normals with the following parameters:
 
@@ -148,21 +111,22 @@ $$
 Here is an example of a dataset generated out of such model.
 
 ```{r}
-N   <- 100
+set.seed(123)
+N   <- 500
 mus <- c(-0.5, 1.5)
 u   <- sample(1:2, N, replace = TRUE)  ## label
-y   <- rnorm(N, mean = mus[u])
-df  <- tibble(u, y)
-
-glimpse(df)
+x   <- rnorm(N, mean = mus[u], sd = 0.75)
+df  <- tibble(u, x)
 ```
 
-And because we know the labels $u$, we can estimate both means using separate maximum likelihood estimates for each group.
+```{r}
+table(df$u)
+```
 
-The overall MLE is obtained by maximizing the following equation (or it's logarithm):
+And because we know the labels $u$, we can estimate both means using separate maximum likelihood estimates for each group. The overall MLE is obtained by maximizing the following equation (or it's logarithm):
 
 $$
-f(y, u \mid \boldsymbol \theta) = \prod_{\{i: u_i = 1\}} \phi_1(y_i) \prod_{\{i: u_i = 2\}} \phi_2(y_i)
+f(x, u \mid \boldsymbol \theta) = \prod_{\{i: u_i = 1\}} \phi_1(x_i) \prod_{\{i: u_i = 2\}} \phi_2(x_i)
 $$
 
 Note that the MLE for the mean and variance of normal distributions are simply:
@@ -178,15 +142,15 @@ $$
 ```{r}
 df %>% 
   group_by(u) %>% 
-  summarize(mu_hat = mean(y), sd_hat = sd(y))
+  summarize(mu_hat = mean(x), sd_hat = sd(x))
 ```
 
-The problem, however, is that we won't know $u$ or the mixture proportions (i.e. $\lambda$). This is the problem that the EM algorithm is supposed to solve.
+The problem, however, is that _we won't know $u_i$ or the mixture proportions_ ( $\lambda_1, \lambda_2$). This is the problem that the EM algorithm is supposed to solve.
 
 We can use the [__`mixtools`__](https://cran.r-project.org/web/packages/mixtools/index.html) package to provide a fast implementation of this algorithm and compare the results.
 
 ```{r}
-output <- mixtools::normalmixEM(df$y)
+output <- mixtools::normalmixEM(df$x)
 output$lambda
 ```
 
@@ -197,17 +161,137 @@ output$mu
 output$sigma
 ```
 
-Summary
+## The EM Algorithm
 
-REWRITE
+We can use the [_expectation-maximization algorithm_](https://en.wikipedia.org/wiki/Expectation–maximization_algorithm) to make inferences about hidden groupings (or latent variables) in our data [@holmes2018modern]. These can be any number $K$ of groupings.
 
-It shows us how we can tackle a difficult problem with too many unknowns by alternating between solving simpler problems. In this way, we eventually find estimates of hidden variables.
+The EM algorithm is a popular procedure that alternates between two steps:
 
-It provides a first example of soft averaging i.e., where we don’t decide whether an observation belongs to one group or another, but allow it to participate in several groups by using probabilities of membership as weights, and thus obtain more nuanced estimates.
+- Pretending we know the probability with which each observation belongs to a component (or cluster) and estimating the distribution parameters of the components. We refer to these probabilities as the _weights_ of each individual data point ($w_{i,k}$)
 
-The method employed here can be extended to the more general case of model-averaging (Hoeting et al. 1999). It can be sometimes beneficial to consider several models simultaneously if we are unsure which one is relevant for our data. We can combine them together into a weighted model. The weights are provided by the likelihoods of the models.
+- Pretending we know the parameters of the component (or cluster) distributions and estimating the probability with which each observation belongs to them. 
+
+In other words, we solve a difficult optimization problem by iteratively pretending we know one part of the solution to compute the other part.
+
+For example, suppose we measure a variable $X$ on a series of objects. We think these measurements come from $K$ different groups (in this example we assume $K = 2$), but we don't know for sure. We then start by _augmenting_ the data with the unobserved (or missing or latent) group label, which we call $U$. We are now interested in discovering the values of $U$, and also the unknown parameters that describe the underlying densities (e.g. $\mu_1$, $\sigma_1$, $\mu_2$, $\sigma_2$). 
+
+After starting with initial guesses about the cluster parameters and mixing proportions (i.e. $\lambda$), we then proceed to 
+
+1. Use the current parameter guesses to calculate the weights $w_{i,k}$ (__E-step__).
+
+2. Use the current weights to maximize the weighted likelihood and getting new parameter estimates (__M-step__).
+
+The name "EM" comes from those two steps. "E" standad for expectation because we calculate the expectation of the missing values ($w_{i, k}$), which gives us the conditional probabilities of different values of $U$. "M" stands for maximization because we get new parameter estimates by maximizing the likelihood function of the data.
+
+Finally, note that Bayes' rule shows up because the $w_{i, k}$ are conditional probabilities:
+
+$$
+w_{i, k} = \frac{\overbrace{\lambda_k}^\text{prior} \ \overbrace{p(x_i \mid \boldsymbol \theta)}^\text{likelihood}}{\sum_{k = 1}^K \lambda_k \ p(x_i \mid \boldsymbol \theta)}
+$$
+
+### Identifiability
+
+Before attempting to estimate our probability distributions, we need to make sure they are [_identifiable_](https://en.wikipedia.org/wiki/Identifiability), "that if we have distinct representations of the model, they make distinct observational claims" [@shalizi2013advanced, chap. 19]. Mixture models can exhibit many issues with identifiability. For example __label degeneracy__, which means that "we can always swap the labels of any two clusters with no effect on anything observable at all --- if we decide that cluster A is now cluster number B and vice versa, that doesn’t
+change the distribution of $X$ at all" [@shalizi2013advanced].
+
+Another coin flip example:
+
+We have two unfair coins, whose probabilities of heads are $p_1 = 0.125$ and $p_2 = 0.25$. We pick coin 1 with probability $\lambda$ (and coin 2 with probability $1-\lambda$). After picking a coin, we toss it twice and record the number of heads $K$.
+
+```{r}
+set.seed(911)
+coin_simulation <- function(N, p1, p2, lambda) {
+  coin <- sample(c(1, 2), size = N, replace = TRUE, prob = c(lambda, 1 - lambda))
+  K <- rbinom(n = length(coin), size = 2, prob = ifelse(coin == 1, p1, p2))
+  return(K)
+}
+
+table(coin_simulation(N = 100, p1 = 1/8, p2 = 1/4, lambda = 1/8))
+table(coin_simulation(N = 100, p1 = 1/8, p2 = 1/4, lambda = 1/4))
+```
+
+After seeing both contingency tables, do you feel that you could uniquely estimate the values of $p_1$, $p_2$, and $\lambda$? This seems _very unlikely_.
+
+More generally, the problem of identifiability arises when there are too many degrees of freedom in the parameters.
+
+### Zero inflated data
+
+Mixture models are useful whenever we have observations that can be related to different causes. Note that these models can incorporate different probability distributions to model the same outcome $y$. 
+
+>Count variables are especially prone to needing a mixture treatment. The reason is that a count of zero can often arise more than one way. A "zero" means that nothing happened, and nothing can happen either because the rate of events is low or rather because the process that generates events failed to get started [@mcelreath2015statistical].
+
+The zero inflated model will usually look something like this:
+
+$$
+f_{ZI}(y) = \lambda \ \delta(y) + (1 - \lambda) \ f_{\text{count}}(y)
+$$
+Here, the $\delta$ is Dirac's delta function, which represents a probability distribution that has all its mass at 0. 
+
+### Closing remarks
+
+Here is why Holmes and Huber [-@holmes2018modern] think the EM algorithm is instructive:
+
+>1. It shows us how we can tackle a difficult problem with too many unknowns by alternating between solving simpler problems. In this way, we eventually find estimates of hidden variables.
+><br><br>
+>2. It provides a first example of _soft_ averaging i.e., where we don’t decide whether an observation belongs to one group or another, but allow it to participate in several groups by using probabilities of membership as weights, and thus obtain more nuanced estimates.
+><br><br>
+>3. The method employed here can be extended to the more general case of __model-averaging__ (Hoeting et al. 1999). It can be sometimes beneficial to consider several models simultaneously if we are unsure which one is relevant for our data. We can combine them together into a weighted model. The weights are provided by the likelihoods of the models.
+
 
 ## Bootstrap
+
+
+The sampling distribution is the set of possible data sets that could have been observed, if the data collection process had been repeated many many times. The true sampling distribution of a statistic (e.g. mean, variance, etc) is often hard to know as it requires many different data samples. 
+
+
+We use the standard error –which is nothing more than the estimated standard deviation of the sampling distribution– to characterize the variability of an estimator.
+
+```{r}
+sim <- tibble(dist = replicate(1e5, mean(rnorm(n = 100, mean = 1, sd = 2))))
+
+one_draw <- rnorm(n = 100, mean = 1, sd = 2)
+ggplot(sim, aes(x = dist)) + 
+  geom_density(color = "steelblue1", fill = "steelblue1", alpha = 0.5) +
+  geom_vline(xintercept = mean(one_draw), color = "tomato", linetype = "dashed")
+
+## bootstrap
+B <- 5000
+bmeans <- replicate(B, {
+  i = sample(100, 100, replace = TRUE)
+  sd(one_draw[i])
+})
+
+ggplot(NULL, aes(x = bmeans)) + 
+  geom_density(color = "steelblue1", fill = "steelblue1", alpha = 0.5) +
+  geom_vline(xintercept = median(one_draw), color = "tomato", linetype = "dashed")
+
+bmeans %>% mean
+sd(one_draw) / sqrt(length(one_draw))
+```
+
+```{r}
+HistData::ZeaMays
+```
+
+
+```{r}
+B <- 5000
+meds <- replicate(B, {
+  i = sample(15, 15, replace = TRUE)
+  median(HistData::ZeaMays$diff[i])
+})
+
+ggplot(tibble(medians = meds), aes(x = medians)) +
+  geom_histogram(bins = 30, fill = "purple") 
+  geom_vline(xintercept = HistData::ZeaMays$diff %>% mean)
+
+
+```
+
+Use rsample and bootstrap
+
+gelman
+
 
 ## Infinite Mixtures
 
