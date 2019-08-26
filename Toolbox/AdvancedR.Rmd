@@ -1,0 +1,119 @@
+---
+title: "<strong>Advanced `R`</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
+
+
+# library(tidyverse)
+# theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+```
+
+
+```{r results="asis", echo=FALSE, eval=FALSE}
+cat("<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 13px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
+
+Taken from [Wickham](https://adv-r.hadley.nz)
+
+****
+
+## There's something about `R`
+
+Knowing the difference between an object and its name will allow you to:
+
+- More accurately predict the performance and memory usage of your code.
+
+- Write faster code by avoiding accidental copies, a major source of slow code.
+
+- Better understand R's functional programming tools.
+
+We’ll use the `lobstr` package to dig into the internal representation of R objects.
+
+```{r}
+library(lobstr)
+```
+
+### Copy-on-modify semantics
+
+Suppose we want to contain an object `x` that contains the values 1, 2, and 3.
+
+```{r}
+x <- c(1, 2, 3)
+```
+
+But this is _not_ an object with a name. R first creates a vector of values `c(1,2,3)` and then binds that object to a name `x`. 
+
+>In other words, the object, or value, doesn’t have a name; it’s actually the name that has a value.
+
+Thus, names are actually references to values. And if we now run `y <- x`, we don't get another copy of the value `c(1,2,3)`; instead, we get another binding to the existing object.
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/bdc72c04d3135f19fb3ab13731129eb84c9170af/f0ab9/diagrams/name-value/binding-2.png"
+)
+```
+
+The `0x74b` refers to the object independently of its bindings. We can use `lobstr` to see that both `x` and `y` point to the same identifier. Note that these identifiers are long, and change every time you restart R.
+
+```{r}
+obj_addr(x)
+y <- x
+obj_addr(y)
+```
+
+Now suppose we modify `y`, but not `x`. 
+
+```{r}
+y[[2]] <- 100
+```
+
+R creates a new object `0xcd2`, which is basically of `0x74b` with one value change. Then `y` is rebound to that object.
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/ef9f480effa2f1d0e401d1f94218d0cf118433c0/b56e9/diagrams/name-value/binding-3.png"
+)
+```
+
+>This behaviour is called __copy-on-modify.__ Understanding it will radically improve your intuition about the performance of R code.
+
+This, for example, explains why loops perform better when we feed them a vector of adequate size.
+
+```{r}
+output <- vector("integer", length = 3)
+for (i in 1:5) {
+  output[[i]] <- i
+  print(obj_addr(output)) ## remains the same while vector is length = 3
+}
+```
+
+>Like vectors, lists use copy-on-modify behaviour; the original list is left unchanged, and R creates a modified copy. This, however, is a __shallow copy__: the list object and its bindings are copied, but the values pointed to by the bindings are not.
+
+
+
+
+
+
+
+
+
+
+
