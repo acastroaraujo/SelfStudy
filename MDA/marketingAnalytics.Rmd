@@ -1,0 +1,254 @@
+---
+title: "<strong>marketing data analysis</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
+
+library(tidyverse)
+theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+
+ggpairs <- function(df) {
+  require(ggforce)
+  df %>% 
+    ggplot(aes(.panel_x, .panel_y)) +
+    geom_point(alpha = 0.5, size = 0.5, position = 'auto') + 
+    geom_autodensity(fill = "steelblue1", position = 'identity') + 
+    geom_smooth(color = "steelblue1", se = FALSE, formula = y ~ splines::bs(x, 3), 
+                method = lm) +
+    facet_matrix(vars(everything()), layer.diag = 2, layer.continuous = TRUE,
+                 layer.mixed = -3, layer.discrete = -3, switch = "y")
+}
+
+
+```
+
+```{r results="asis", echo=FALSE, eval=FALSE}
+cat(
+"<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
+
+<font size = "2">
+Mostly taken from ___R for Marketing Research and Analytics
+Second Edition___, by Chris Chapman and Elea Feit
+</font>
+
+****
+
+## Introduction
+
+These notes are about MDA, it contains the most common types of methods you'll encounter during your brief stint as a marketing strategist. I consider MDA to be a collection of tools used to inform business decisions with regards to customers and competitors.
+
+Many other methods can be applied to marketing questions (e.g. analyzing product reviews with machine learning, A/B testing, social network analysis), but these are not reviewed here. I have only collected stuff that is very particular to MDA.
+
+## Data
+
+MDA looks at different sources of data.
+
+- Sales data
+
+- Customer satisfaction
+
+- Brand perception surveys
+
+- Customer retention
+
+- Website data
+
+- TO BE CONTINUED, I don't really know.
+
+The structure of the data will allow for different methods to apply.
+
+Following Chapman and Feit, I will mostly use simulated datasets (see the `simulateData.Rmd` file).
+
+## Regression models
+
+Regression models are the bread and butter of marketing analytics, but some of the jargon is different. Instead of talking more abstractly about relationships between variables, we are usually talk about finding the "drivers" behind some outcome variable like _sales_ or _customer satisfaction_. 
+
+Keep in mind the usual disclaimer about correlation and causation. Higher customer satisfaction could be positively correlated with price, but it's more likely that higher quality items are both more satisfying _and_ more expensive.
+
+When trying to use regression to understand how price and advertising are related to sales, you'll usually hear the term "marketing mix modeling". Here, we are interested in finding the best "mix" of marketing channels (e.g. TV, radio, billboards) from observational data, while adjusting for price behavior.
+
+### Basic
+
+Here we use the amusement park dataset generated in `simulateData.Rmd`.
+
+It contains measurements on whether the respondent visited on a weekend (which will be the variable `weekend` in the data frame), the number of children brought (`num_child`), and distance traveled to the park (`distance`). It also contains four questions about a customer's satisfaction with different dimensions of a visit to the amusement park: satisfaction with rides (`rides`), games (`games`), waiting times (`wait`), and cleanliness (`clean`), along with a rating of overall satisfaction (`overall`).
+
+>Marketers frequently use this type of data to figure out what aspects of the experience _drive_ overall satisfaction, asking questions such as, “Are people who are more satisfied with the rides also more satisfied with their experience overall?” If the answer to this question is “no,” then the company will know to invest in improving other aspects of the experience.
+
+```{r}
+apd <- readr::read_rds("apd.rds")
+glimpse(apd)
+```
+
+You might want to look at each bivariate relationship using a brute force approach, such as the following plot.
+
+```{r, fig.width=8, fig.height=8, message=FALSE}
+## Custom function that uses the ggforce package
+ggpairs(apd)
+```
+
+But more commonly you'll use regression.
+
+```{r}
+glimpse(apd)
+```
+
+
+```{r}
+## some basic preprocessing
+apd <- apd %>% 
+  mutate(has_child = as.integer(num_child > 0), log_distance = log(distance))
+
+## model
+model <- overall ~ rides + games + wait + clean + weekend + log_distance +
+  has_child:rides + has_child:games + has_child:wait + has_child:clean + 
+  weekend:rides + weekend:games + weekend:wait + weekend:clean
+
+## fit
+OLSa <- lm(model, data = apd)
+
+## scale all variables to make effect sizes comparable
+apd_scaled <- apd %>% mutate_if(is.numeric, scale)
+OLSa_scaled <- lm(model, data = apd_scaled)
+
+OLSa_scaled %>% 
+  broom::tidy(conf.int = TRUE) %>% 
+  ggplot(aes(term, estimate, ymax = conf.high, ymin = conf.low)) +
+  geom_hline(yintercept = 0, color = "steelblue1") +
+  geom_pointrange() +
+  coord_flip() 
+```
+
+Fitting a second model, after dropping non-significant interactions.
+
+```{r}
+model2 <- overall ~ rides + games + wait + clean + log_distance + has_child +
+  wait:has_child
+
+OLSb <- lm(model2, data = apd)
+
+vars <- c("adj.r.squared", "df", "sigma", "AIC")
+
+## Awesome r-squares only exist with simulated data :)
+broom::glance(OLSa) %>% select(vars) %>% knitr::kable(digits = 3)
+broom::glance(OLSb) %>% select(vars) %>% knitr::kable(digits = 3)
+
+tibble(A = OLSa$fitted.values, B = OLSb$fitted.values, y = apd$overall) %>% 
+  gather(model, prediction, -y) %>% 
+  ggplot(aes(y, prediction)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~model) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red")
+```
+
+We can compare these models without too much hassle using `anova()` to test whether the reduction in the residual sum of squares from the larger model to the smaller one is statistically significant or not. Basically, it performs an F-test. (Note: non-nested models can be compared using _information criteria_).
+
+```{r}
+anova(OLSb, OLSa) ## perform F-test
+```
+
+```{r}
+## display estimates
+OLSb %>% 
+  broom::tidy() %>% 
+  select(-statistic) %>% ## don't show the t-statistic
+  knitr::kable(digits = 2)
+```
+
+Finally, note that interaction terms make sense in terms of varying slopes and intercepts for different groups.
+
+```{r}
+grid <- crossing(
+  wait = 20:100, 
+  has_child = c(0, 1), 
+  apd %>% 
+    select(rides, games, clean, log_distance) %>% 
+    summarize_all(mean)
+  )
+
+grid$pred <- predict(OLSb, newdata = grid)
+
+grid %>% 
+  ggplot(aes(x = wait, y = pred, color = as.logical(has_child))) +
+  geom_line() +
+  labs(color = "has children?", y = "predicted overall satisfaction")
+```
+
+
+### Marketing Mix
+
+1. Advertising response (or _marketing mix_) modeling.
+
+    https://towardsdatascience.com/@ridhima.kumar0203
+
+2. Customer retention (or _churn_) modeling.
+
+3. Pricing analysis.
+
+## Conjoint analysis
+
+Conjoint analysis is a type of multilevel regression. 
+
+
+
+
+Data
+
+The direct ratings of product profiles analyze in Sects. 9.3 and 9.4, are nearly always
+collected by surveying customers. They are typically collected online, using a general
+web survey platform such as Qualtrics, Google Forms, or SurveyMonkey.
+
+
+```{r}
+library(rstanarm)
+options(mc.cores = parallel::detectCores())
+theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+```
+
+## Choice models
+
+Put this and previous section under regression modeling?
+
+https://khakieconomics.github.io/2019/03/17/Logit-models-of-discrete-choice.html
+
+## Segmentation
+
+Clustering (hard and soft) and classification.
+
+## Perception maps
+
+Dimensionality reduction and latent variables
+
+## Behavior Sequences
+
+Markov transitions and website visits.
+
+
+## Other 
+
+Pitfalls of NHST in A/B testing.
+
+- In the context of A/B testing, false positives do no reduce profit. Why should we control for them?
+
+- In some settings, recommended sample sizes could be larger than available population.
+
+- We don't know which treatment to deploy when the difference is non-significant. 

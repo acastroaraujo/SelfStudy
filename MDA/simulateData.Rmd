@@ -1,0 +1,201 @@
+---
+title: "<strong>data simulations</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+bibliography: references.bib
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center", 
+                      fig.width = 5, fig.height = 4)
+
+library(tidyverse)
+theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+```
+
+
+```{r results="asis", echo=FALSE}
+cat(
+"<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 0px;
+    font-size: 13px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
+
+
+## Amusement Park Data
+
+>In this section, we simulate data for a hypothetical survey of visitors to an amusement park. This data set comprises a few objective measures: whether the respondent visited on a weekend (which will be the variable `weekend` in the data frame), the number of children brought (`num_child`), and distance traveled to the park (`distance`).
+>
+>Our hypothetical survey includes four questions about a customer's satisfaction with different dimensions of a visit to the amusement park: satisfaction with rides (`rides`), games (`games`), waiting times (`wait`), and cleanliness (`clean`), along with a rating of overall satisfaction (`overall`). In such surveys, respondents often answer similarly on all satisfaction questions; this is known as the _halo effect_ [@chapman2019r].
+
+```{r}
+set.seed(12345)
+nresp <- 500 ## number of respondents
+halo <- rnorm(n = nresp , mean = 0, sd = 5)
+
+rides <- floor(rnorm(n = nresp, mean = 80, sd = 3)) + halo
+games <- floor(rnorm(n = nresp, mean = 70, sd = 7)) + halo
+wait  <- floor(rnorm(n = nresp, mean = 65, sd = 10)) + halo
+clean <- floor(rnorm(n = nresp, mean = 85, sd = 2)) + halo
+```
+
+By adding `halo` to the response for each question, we create positive correlation between the responses. 
+
+```{r}
+cor(tibble(rides, games, wait, clean))
+```
+
+Note that we have the same means, but different standard deviations because the sum of two normals has a standard deviation of $\sqrt{\sigma_1^2 + \sigma_2^2}$
+
+```{r}
+tibble(rides, games, wait, clean) %>% 
+    summarise_all(stats::sd)
+
+tibble(rides, games, wait, clean) %>% 
+  gather() %>% 
+  ggplot(aes(x = value, fill = key)) +
+  geom_histogram(color = "black", alpha = 0.5, show.legend = FALSE, bins = 30) +
+  facet_wrap(~key)
+```
+
+>Satisfaction surveys often include other questions related to the customer experience. For the amusement park data, we include whether the visit was on a weekend, how far the customer traveled to the park in miles, and the number of children in the party. We generate this data using two functions: `rlnorm()` to sample a log-normal distribution for `distance`, and `sample()` to sample discrete distributions for `weekend` and number of
+children (`num_child`)
+
+```{r}
+set.seed(12345)
+distance <- rlnorm(n = nresp, meanlog = 3, sdlog = 1)
+num_child <- sample(
+  x = 0:5, size = nresp, replace = TRUE,
+  prob = c(0.3, 0.15, 0.25, 0.15, 0.1, 0.05)
+)
+weekend <- as.factor(sample(
+  x = c("yes", "no"), size = nresp, replace = TRUE,
+  prob = c(0.5, 0.5)
+))
+```
+
+>We create the overall satisfaction rating as a function of ratings for the various aspects of the visit (satisfaction with rides, cleanliness, and so forth), distance traveled, and the number of children.
+
+```{r}
+set.seed(12345)
+## Note, these are the parameters we should estimate from linear regression
+overall <- floor(halo + 0.5 * rides + 0.1 * games + 0.3 * wait + 0.2 * clean +
+  0.03 * distance + 5 * (num_child == 0) + 0.3 * wait * (num_child > 0) +
+  rnorm(n = nresp, mean = 0, sd = 7))
+
+k <- (100 - max(overall))
+overall <- overall + k
+
+df <- tibble(overall, rides, games, wait, clean, distance, num_child, weekend)
+```
+
+***
+
+We can also generate the halo effect differently, by simulating the satisfaction questions' correlation matrix.
+
+```{r}
+nresp <- 500 ## number of respondents
+
+mus <- c(rides = 80, games = 70, wait = 65, clean = 85)
+sds <- c(rides = 3, games = 7, wait = 10, clean = 2)
+sds <- sqrt(sds^2 + 5^2) ## this ensures our two simulations are similar
+
+corr_matrix <- array(data = NA, dim = c(4, 4))
+
+for (i in 2:4) {
+  for (j in 1:(i - 1)) {  ## the halo becomes "structure" in the correlation matrix
+    corr_matrix[i, j] <- runif(1, min = 0.3, max = 1)
+  }
+}
+
+corr_matrix[upper.tri(corr_matrix)] <- t(corr_matrix)[upper.tri(corr_matrix)]
+diag(corr_matrix) <- 1
+
+# Compute the nearest positive definite matrix to an approximate one, simulating
+# correlation matrices is not easy!
+corr_matrix <- Matrix::nearPD(corr_matrix, corr = TRUE)$mat %>% as.matrix()
+cov_matrix <- diag(sds) %*% corr_matrix %*% diag(sds)
+
+simulation <- mvtnorm::rmvnorm(n = nresp, mus, cov_matrix)
+```
+
+```{r}
+readr::write_rds(df, "apd.rds", compress = "gz")
+```
+
+
+## Conjoint Choice Data
+
+>The park is now considering designs for a new roller coaster and hopes to find out which roller coaster features appeal to its customers. They are considering coasters with various possible levels of maximum `speed` (40, 50, 60 or 70 mph), `height` (200, 300, or 400 feet), `construction` type (wood or steel), and `theme` (dragon or eagle). The stakeholders wish to know which combination of features would be most popular according to customers' stated preference.
+>
+>In this section we simulate responses for a hypothetical conjoint analysis survey with 200 respondents who each rate the same set of 16 roller coaster profiles. 
+
+```{r}
+id <- 1:200 # respondent ids
+n <- 16 # number of conjoint ratings per respondent
+
+set.seed(123)
+profiles <- tibble(
+  speed  = sample(c("40", "50", "60", "70"), size = n, replace = TRUE),
+  height = sample(c("200", "300", "400"), size = n, replace = TRUE),
+  const  = sample(c(" Wood", "Steel"), size = n, replace = TRUE),
+  theme  = sample(c(" Dragon", "Eagle"), size = n, replace = TRUE)
+  )
+
+design_matrix <- model.matrix(~ ., data = profiles)
+```
+
+>In this example we assume that all respondents rate the same set of designs. Depending on your study’s goal, you might instead want to have a different, random set for each respondent. A single set of designs is convenient for printed surveys, while an online study could easily have a different set for every respondent.
+
+A complete set of alskd;flasdf would have been prod(4, 3, 2, 2) * 200 = 48
+
+>We use __mvtnorm__ package to draw unique preference weights for each respondent. Estimating those later is the key feature that distinguishes a hierarchical model from a standard linear model.
+
+```{r}
+mus <- c(-3, 0.5 , 1, 3, 2, 1, 0, -0.5)
+sigmas <- c(0.2 , 0.1 , 0.1 , 0.1 , 0.2 , 0.3 , 1, 1)
+## the covariance is a diagonal matrix!
+weights <- mvtnorm::rmvnorm(n = length(id), mean = mus, sigma = diag(sigmas))
+```
+
+
+Given the designs to be rated and individuals’ preferences, we compile the simulated
+individual ratings. For each respondent, we multiply the preference weights by the
+design matrix to get the total preference (utility) for each design, adding some random
+noise with rnorm(). We convert the utility to a 10-point rating scale using cut()
+(see Sect. 12.4.1), and add the respondent’s result to the overall data frame:
+
+```{r}
+conjoint_df <- NULL # make sure there ’s no data yet
+for (i in seq_along(id)) {
+  # create one respondent ’s ratings of the 16 items , plus error
+  utility <- profiles_mat %*% weights[i, ] + rnorm(16) # preference
+  rating <- cut(utility, 10) %>% as.numeric() # put on a 10-point scale
+  conjoint_resp <- cbind(id = rep(i, n), rating, profiles)
+  conjoint_df <- rbind(conjoint_df, conjoint_resp)
+}
+
+conjoint_df 
+```
+Building a data frame using rbind() repeatedly instead of preallocating a whole
+matrix is not efficient, but it is easy to understand and it is fast enough for this data
+set. For large data sets, it would be better to preallocate the data frame for the size
+needed and fill in the rows. With a bit of matrix manipulation, one might instead
+create the whole data frame at once; but a simple, readable method like the one here
+may be more effective overall if it’s easier and more reliable to code.
+
+
+## References
+
