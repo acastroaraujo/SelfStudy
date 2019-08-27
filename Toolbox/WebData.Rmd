@@ -1,30 +1,44 @@
 ---
-title: "Getting Web Data"
-date: "`r format(Sys.time(), '%B %d, %Y')`"
+title: "<strong>working with web data</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
 output: 
-  html_document:
-    theme: paper
+  html_document: 
+    code_folding: show
+    theme: lumen
     toc: yes
-    toc_float:
-      collapsed: no
+    toc_float: 
+      collapsed: yes
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center",
+                      fig.width = 4, fig.height = 3)
+
 library(tidyverse)
+theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
 ```
 
-## HTTP
+```{r results="asis", echo=FALSE}
+cat("<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
 
-**Getting data from the web**
+## Introduction HTTP
 
-Basics of HTTP (or HypterText Transfer Protocol).
+___Basics of HTTP (or HypterText Transfer Protocol).___
 
-- A system of rules about data exchange between computers.
+>A system of rules about data exchange between computers.
 
 You can think of this as a conversation between a client and a server. We, as clients, get to ask different things through different *HTTP requests* (or methods).
 
-```{r, out.width="60%", echo=FALSE}
+```{r, out.width="300px", echo=FALSE}
 knitr::include_graphics("figures/client_request.png")
 ```
 
@@ -80,26 +94,27 @@ https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 
 If an API client (i.e. an R package) doesn't exist, it's up to you to communicate directly with the API. We can do this through the [**`httr`**](https://httr.r-lib.org/) package. 
 
-- API stands for Application Programming Interface. It's a set of routines and protocols for building software components and how they interact. They are "like websites, but for machines".
-
-    Web APIs serve as interfaces to get or add data to a server, using HTTP methods.
+>API stands for __Application Programming Interface.__ It's a set of routines and protocols for building software components and how they interact. They are "like websites, but for machines".
+>
+>Web APIs serve as interfaces to get or add data to a server, using HTTP methods.
 
 The `httr::GET()` function will execute this request. The result is a **response object**, that provides easy access to the status code, content-type and (of course) the actual content.
+
+```{r}
+library(httr)
+github_api <- function(path) {
+  url <- modify_url("https://api.github.com", path = path)
+  GET(url)
+}
+
+resp <- github_api("/repos/hadley/httr")
+class(resp)
+resp
+```
 
 You can extract the content from the request using the `content()` function. At the time of writing, there are three ways to retrieve this content: as a raw object, as a character vector, or an R object, such as a list. If you don't tell `content()` how to retrieve the content through the as argument, it'll try its best to figure out which type is most appropriate based on the content-type.
 
 The `httr::POST()` request asks the server to accept something from you. They're commonly used for things like file upload, or authentication. As a result of their use for uploading things, `POST()` accepts not just a `url` but also a `body` argument containing whatever you want to give to the server.
-
-```{r}
-library(httr)
-domain <- "https://api.usaspending.gov/api/v2/"
-update_url <- paste(domain, "awards/last_updated/", sep = "/")
-response <- GET(update_url)
-response
-content(response)
-```
-
-Note that the "Content-Type" is a JSON file (see **Data formats** for more information on this).
 
 You can send additional data to the server in the url (with the `query` string) and in the `body` of `POST()`, `PUT()` and `PATCH()` requests.
 
@@ -109,27 +124,7 @@ $$
 \texttt{http://httpbin.org/get?key=val}
 $$
 
-```{r}
-s_url <- paste(domain, "financial_spending/object_class", sep = "/")
 
-query_params <- list(fiscal_year = "2018", 
-                     funding_agency_id = "1068",
-                     major_object_class_code = "20",
-                     limit = "100")
-
-response <- GET(s_url, query = query_params)
-response
-results <- content(response)$results
-typeof(results)
-length(results)
-bind_rows(results)
-```
-
-Here's how it looks in JSON format:
-
-```{r, comment=""}
-jsonlite::prettify(content(response, as = "text"))
-```
 
 
 **PUT STUFF HERE**
@@ -142,31 +137,8 @@ jsonlite::prettify(content(response, as = "text"))
 
 
 
-API FOR BETTERFIN CENSUS
 
 
-
-```{r}
-spending_url <- "https://api.usaspending.gov/api/v2/spending/"
-
-response <- POST(spending_url)
-content(response)
-```
-
-```{r}
-
-'{
-    "type": "agency",
-    "filters": {
-        "fy": "2017"
-    }
-}'
-
-## LIST WITHIN LIST?
-
-response <- POST(spending_url, list = "agency")
-content(response)
-```
 
 
 **Restpectful API usage**
@@ -174,10 +146,6 @@ content(response)
 - **`user_agent()`**: include information such as e-mail address or project URL, so that the developers running the API can contact you in case something goes wrong.
 
     From your end, the request looks exactly the same with or without a user agent, but it can make a big difference for the server.
-    
-```
-GET(url, user_agent("acastroaraujo@gmail.com"))
-```
     
 - **Rate-limitng**: make sure you only make a certain number of requests to the server in a given time period. Your limit will vary from server to server, but the implementation is always pretty much the same and involves a call to `Sys.sleep(# seconds)`.
 
@@ -188,28 +156,32 @@ Note: It's common for API clients to require access tokens -- unique keys that v
 
 ****
 
-## The **`rvest`** package
-
 
 ## Data formats
 
 ### JSON
 
-- JSON stands for JavaScript Object Notation. JSON files are structured a lot like Python dictionaries or named lists. Most APIs work with this type of object.
+- JSON stands for __JavaScript Object Notation__. JSON files are structured a lot like Python dictionaries (or named lists). Most APIs work with this type of object.
 
-The [**`jsonlite`**](https://cran.r-project.org/web/packages/jsonlite/index.html) package:
+The [**`jsonlite`**](https://cran.r-project.org/web/packages/jsonlite/index.html) package allows us to translate between JSON files and R objects seemingly through functions such as `fromJSON()` and `toJSON()`.
 
-```{r}
+```{r, message=FALSE}
 library(jsonlite)
-json_data <- '{"matrix": [[1, 2], [2, 1]],
-               "vector": ["a", "b", "c", "d"]}'
+json <- '{"mat": [[1, 2], [2, 1]],
+          "vec": ["a", "b", "c", "d"]}'
   
-fromJSON(json_data)
+fromJSON(json)
 ```
 
-`fromJSON()` also works if you pass a URL as a character string or the path to a local file that contains JSON data. 
+Other useful functions in the `jsonlite` package include `prettify()`, and `minify()`.
 
-There JSON *objects* and there are JSON *arrays*.
+```{r}
+prettify(toJSON(head(iris, n = 3)))
+```
+
+Note that `fromJSON()` also works if you pass a URL as a character string or the path to a local file that contains JSON data. 
+
+There are JSON _objects_ and there are JSON _arrays_.
 
 An object:
 
@@ -229,16 +201,6 @@ fromJSON('[[1, 2], [3, 4]]')  ## array of JSON arrays
 fromJSON('[{"a": 1, "b": 2},  // array of JSON objects
            {"a": 3, "b": 4},
            {"a": 5, "b": 6}]')
-```
-
-Other useful functions in the `jsonlite` package include `toJSON()`, `prettify()`, and `minify()`.
-
-```{r}
-toJSON(head(iris, n = 3))
-```
-
-```{r, comment=""}
-prettify(toJSON(head(iris, n = 3)))
 ```
 
 Note that many complex data structures will be represented as JSON objects, with so-called “child JSON objects", which are like dictionaries stored in other dictionaries.

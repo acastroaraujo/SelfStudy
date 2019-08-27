@@ -20,38 +20,39 @@ knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
 ```
 
 
-```{r results="asis", echo=FALSE, eval=FALSE}
+```{r results="asis", echo=FALSE}
 cat("<style>
 blockquote {
     padding: 10px 20px;
     margin: 0 0 20px;
-    font-size: 13px;
+    font-size: 14px;
     border-left: 5px solid #eee;
 }
 </style>")
 ```
 
-Taken from [Wickham](https://adv-r.hadley.nz)
+Taken from [Wickham's book](https://adv-r.hadley.nz)
 
 ****
 
-## There's something about `R`
+## Introduction
 
-Knowing the difference between an object and its name will allow you to:
+Somethings about `R` are different from what you'd expect to see in other programming languages. 
 
-- More accurately predict the performance and memory usage of your code.
+- Copy-on-modify semantics, which makes sense once we really understand the difference between an object and its name.
 
-- Write faster code by avoiding accidental copies, a major source of slow code.
+- Something about vectors.
 
-- Better understand R's functional programming tools.
+- R has aspects of both functional and object-oriented (OO) programming languages.
+
+
+## Copy-on-modify semantics
 
 We’ll use the `lobstr` package to dig into the internal representation of R objects.
 
 ```{r}
 library(lobstr)
 ```
-
-### Copy-on-modify semantics
 
 Suppose we want to contain an object `x` that contains the values 1, 2, and 3.
 
@@ -85,7 +86,7 @@ Now suppose we modify `y`, but not `x`.
 y[[2]] <- 100
 ```
 
-R creates a new object `0xcd2`, which is basically of `0x74b` with one value change. Then `y` is rebound to that object.
+R creates a new object `0xcd2`, which is basically the same as `0x74b` with one value change. Finally, the name `y` is rebound to that new object.
 
 ```{r, echo=FALSE, out.width="180px"}
 knitr::include_graphics(
@@ -105,15 +106,166 @@ for (i in 1:5) {
 }
 ```
 
+__Lists__
+
+Just like names, the elements of a list point to values as well. Instead of storing the values themselves, 
+
+```{r}
+l1 <- l2 <- list(1, 2, 3)
+```
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/52bc0e3da3382cba957a9d83397b6c9200906ce2/c72aa/diagrams/name-value/l-modify-1.png"
+)
+```
+
+
+```{r}
+l2[[3]] <- 4
+```
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/b844bb5a3443e1344299627f5760e2ae3a9885b5/e1c76/diagrams/name-value/l-modify-2.png"
+)
+```
+
 >Like vectors, lists use copy-on-modify behaviour; the original list is left unchanged, and R creates a modified copy. This, however, is a __shallow copy__: the list object and its bindings are copied, but the values pointed to by the bindings are not.
 
+We can use `lobstr::ref()` to see the values that are shared across both lists.
+
+```{r}
+lobstr::ref(l1, l2)
+```
+
+And because values are being shared, the size of lists is sometimes unintuitive. More generally, `obj_size(x)` + `obj_size(y)` will only equal `obj_size(x, y)`
+if they share no values.
+
+```{r}
+x <- runif(1000)
+y <- list(x, x, x)
+ref(x, y)
+obj_size(x) + obj_size(y)
+obj_size(x, y)
+```
+
+__Data frames__
+
+Data frames are lists of vectors, so copy-on-modify works very similar in this setting, except the following:
+
+- "If you modify a column, only that column needs to be modified; the others will still point to their original references."
+
+- "However, if you modify a row, every column is modified, which means every column must be copied."
+
+****
+
+>Note. The latests versions of R have a feature called ALTREP, short for __alternative representation__. It allows for R to represent some types of vectors very compactly. The place you are most likely to see this is with `:` because instead of storing every single number in the sequence, R just stores the first and last number.
+
+```{r}
+obj_size(c(1, 2, 3, 4, 5))
+obj_size(1:5)
+x <- 1:5000
+obj_size(x)
+x[[333]] <- 9
+obj_size(x)
+```
+
+****
+
+An important exception with regards to the copy-on-modify semantics occurs with `environments`, a special type of object that is always __modified on place__.
+
+>This property is sometimes described as __reference semantics__ because when you modify an environment all existing bindings to that environment continue to have the same reference.
+
+## Vectors
+
+There are two types of vectors in R:
+
+- __Atomic vectors__, of which there are six types: `logical`, `integer`, `double`, `character`, `complex`, and `raw.` Integer and double vectors are collectively known as _numeric_ vectors.
+
+    You can determine the type of a vector with the `typeof()` function.
+
+- __Lists__, which are sometimes called recursive vectors because lists can contain other lists. (Other times they're called generic vectors to emphasise their difference from atomic vectors).
+
+The chief difference between atomic vectors and lists is that atomic vectors are _homogeneous_, while lists can be _heterogeneous._ There’s one other related object: `NULL`, which is often used to represent the absence of a vector (as opposed to `NA`, which is used to represent the absence of a value in a vector).
+
+Most computations involving a missing value will return another missing value, with a couple of obvious exceptions:
+
+```{r}
+NA^0
+NA | TRUE
+NA & FALSE
+```
+
+___Attributes___
+
+Every vector can have __attributes__ (i.e. a named list of arbitrary metadata). Two attributes are particularly important: _dimension_, which turns vectors into matrices and arrays; and _class_, which powers the S3 object system.
+
+__Names__
+
+You can _name_ a vector in three ways:
+
+```{r}
+# When creating it: 
+x <- c(a = 1, b = 2, c = 3)
+
+# By assigning a character vector to names()
+x <- 1:3
+names(x) <- c("a", "b", "c")
+
+# Inline, with setNames():
+x <- setNames(1:3, c("a", "b", "c"))
+```
+
+```{r}
+str(x)
+```
+
+Other attributes are set (or retrieved) with the `attr()` function,
+
+```{r}
+attr(x, "names") <- c("a", "b", "c")
+attr(x, "arbitrary") <- rnorm(1)
+str(x)
+```
+
+And we can extract all of them with the `attributes()` function.
+
+```{r}
+attr(x, "arbitrary")
+attributes(x) ## returns a named list
+```
+
+__Dimensions__
+
+Adding a `dim` attribute to a vector allows it to behave like a 2-dimensional matrix or a multi-dimensional array.
+
+```{r}
+x <- 1:20
+dim(x) <- c(4, 5)
+x
+dim(x) <- c(2, 5, 2)
+x
+```
+
+Note that many of the functions for working with vectors have generalisations for matrices and arrays:
+
+```{r, echo=FALSE}
+knitr::kable(
+tibble::tibble(
+  vector = c("`names()`", "`length()`", "`c()`", "", "`is.null(dim(x))`"),
+  matrix = c("`rownames()`, `colnames()`", "`nrow()`, `ncol()`", "`rbind()`, `cbind()`", "`t()`", "`is.matrix()`"),
+  array = c("`dimnames()`", "`dim()`", "`abind::abind()`", "`aperm()`", "`is.array()`"))
+)
+```
+
+
+__S3 atomic vectors__
 
 
 
 
 
-
-
-
+__Lists__
 
 
