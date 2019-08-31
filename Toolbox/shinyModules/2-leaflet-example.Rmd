@@ -1,0 +1,225 @@
+---
+title: "Leaflet Example"
+author: "andres castro araujo"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", comment = "")
+```
+
+```{r, message=FALSE}
+## Packages
+library(tidyverse)
+library(shiny)
+library(leaflet)
+```
+
+
+This notebook will contain ideas to standardize a leaflet output as a reusable module.
+
+## Layout
+
+This is how the general layout could look like:
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = shinythemes::shinytheme("lumen"),
+  navbarPage(
+    title = "Leaflet example",
+    tabPanel(title = shiny::icon("fas fa-globe-americas"),
+      sidebarLayout(
+        sidebarPanel("Things that modify data"),
+        mainPanel(leafletOutput("leaflet_map"))
+      )
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  
+  output$leaflet_data <- reactive({ "Data reacts to widgets" })
+  
+  output$leaflet_map <- leaflet::renderLeaflet({ })
+  
+}
+```
+
+
+## Leaflet
+
+First we make sure our map is [WGS 84](https://en.wikipedia.org/wiki/World_Geodetic_System#A_new_World_Geodetic_System:_WGS_84) format.
+
+```{r}
+df <- readr::read_rds("../data/usa_county_map.rds")
+
+df <- sf::st_transform(df, 4326)
+  
+df_states <- df %>% 
+  group_by(state_fips, state) %>% 
+  summarize(geometry = sf::st_union(geometry), 
+            pop_total = sum(pop_total),
+            miles_squared = sum(miles_squared)) %>% 
+  drop_na() %>% ## Dropping NA's will change format from sf to tbl...
+  ungroup() %>% 
+  rename(name = state)
+
+df_states <- sf::st_as_sf(df_states, sf_column_name = "geometry")  ## Change back
+
+glimpse(df_states)
+```
+
+Now we create the app.
+
+For this small example, we will have widgets for choosing color scheme, opacity, and color reversal.
+
+```{r}
+## Options
+available_squemes <- c("viridis", "magma", "plasma",
+                       rownames(RColorBrewer::brewer.pal.info)[RColorBrewer::brewer.pal.info$category == "seq"])
+
+## App
+ui <- fluidPage(
+  theme = shinythemes::shinytheme("lumen"),
+  navbarPage(
+    title = "Leaflet example",
+    tabPanel(title = shiny::icon("fas fa-globe-americas"),
+             sidebarLayout(
+               sidebarPanel(
+                 width = 3, 
+                 
+                 wellPanel(
+                   ## Colors
+                   selectInput(inputId = "color_scheme", label = strong("Select color scheme:"), 
+                               choices = available_squemes, selected = "viridis"),
+                   
+                   ## Opacity
+                   sliderInput("opacity", strong("Opacity"), min = 0, max = 1, value = 1, step = 0.05),
+                   
+                   ## Reverse colors
+                   actionButton(inputId = "reverse", "Reverse color scheme!")
+                 )
+               ),
+               mainPanel(leafletOutput("leaflet_map"))
+             )
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  
+  ## Change color scheme
+  rev_button <- reactiveVal(TRUE)
+  observeEvent(eventExpr = input$reverse, ignoreNULL = FALSE, { 
+    new <- rev_button() == FALSE
+    rev_button(new)
+  })
+  
+  fill_pal <- reactive({                            
+    rev <- rev_button()                             # This reactive expression represents the palette function,
+    fill_pal <- colorNumeric(                       # which changes as the user makes selections in UI.
+      palette = input$color_scheme, 
+      domain = df_states$pop_total, 
+      reverse = rev_button())
+  })
+  
+  output$leaflet_map <- leaflet::renderLeaflet({ 
+    
+    # Only include aspects of the map that won't need to change dynamically.
+    
+    df_states %>% 
+      leaflet(options = leafletOptions(attributionControl = FALSE)) %>% 
+      setView(-96, 37.8, 4) 
+    
+  })
+  
+  # Incremental changes to the map should be performed in an
+  # observer. Each independent set of things that can change
+  # should be managed in its own observer. 
+  # See https://rstudio.github.io/leaflet/shiny.html
+  
+  observe({
+    
+    pal <- fill_pal() 
+    
+    fill_labels <- paste0(
+      "<strong>", df_states %>% pull(name), "</strong><br>", "<strong>",
+      "Total Population: ", "</strong>", df_states %>% pull(pop_total) %>% scales::comma()
+    ) %>% purrr::map(htmltools::HTML)
+    
+    proxy <- leafletProxy("leaflet_map", data = df_states) 
+    
+    proxy %>% 
+      clearShapes() %>%
+      clearControls() %>% 
+      addPolygons(fillColor = ~pal(pop_total),
+                  color = "black", weight = 1, smoothFactor = 0.5,
+                  opacity = 0.6, fillOpacity = input$opacity, 
+                  highlightOptions = highlightOptions(
+                    color = "black", 
+                    weight = 2,
+                    fillOpacity = input$opacity,
+                    bringToFront = TRUE),
+                  label = fill_labels) %>% 
+      addLegend(pal = pal,
+                values = ~pop_total,
+                opacity = input$opacity,
+                title = "Title", bins = 7,
+                position = "bottomright")
+  })
+  
+}
+
+shinyApp(ui, server)
+```
+
+## Modular app
+
+You can see how the above server side of the app is already large. Having to add more code will make this unwieldly, so we can take advantage of modules here.
+
+
+### Module
+
+```{r, code = readLines("leaflet_module.R")}
+```
+
+### App
+
+The resulting app is very short, but contains twice as much information as the original because now we have a map for both states and counties.
+
+```{r, eval=FALSE}
+## Data: add df and df_states
+source("leaflet_module.R")
+
+available_squemes <- c(
+  "viridis", "magma", "plasma",
+  rownames(RColorBrewer::brewer.pal.info)[RColorBrewer::brewer.pal.info$category == "seq"]
+  )
+
+ui <- fluidPage(
+  theme = shinythemes::shinytheme("lumen"),
+  navbarPage(
+    title = shiny::icon("fas fa-globe-americas"), windowTitle = "leaflet aesthetic",
+    tabPanel(title = "States", 
+             leafletAestheticsUI("states", available_squemes)),
+    tabPanel(title = "Counties", 
+             leafletAestheticsUI("counties", available_squemes))
+  )
+)
+
+server <- function(input, output) {
+  
+  callModule(leafletAesthetics, "states", DF = df_states)
+  callModule(leafletAesthetics, "counties", DF = df)
+  
+}
+
+shinyApp(ui, server)
+```
+

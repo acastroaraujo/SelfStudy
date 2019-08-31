@@ -1,0 +1,172 @@
+---
+title: "Python in R"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+
+## Packages
+library(reticulate)
+library(tidyverse)
+```
+
+## Introduction
+
+```{r}
+### create a new environment 
+# conda_create("r-NLP")
+### install modules
+# conda_install("r-NLP", c("scipy", "gensim", "networkx", "nltk", "numpy", "scikit-learn"))
+
+# indicate that we want to use a specific condaenv
+use_condaenv(condaenv = "r-NLP")
+```
+
+- Access to objects created within Python chunks from R using the `py` object (e.g. `py$x` would access an `x` variable created within Python from R).
+
+- Access to objects created within R chunks from Python using the `r` object (e.g. `r.x` would access to `x` variable created within R from Python).
+
+```{python}
+## Python chunk
+a = [1, 2, 5, "a"]
+a
+
+a.append("c")
+a
+```
+
+
+```{r}
+## R chunk
+names(py$a) <- letters[1:5]
+py$a    ## also can be used with stuff like dplyr::bind_rows() or tibble::enframe()
+```
+
+The translation between languages is somewhat awkward. Notice that we turned `py$a` into a _named list_, which in Python implies a `list` to `dictionary` convertion.
+
+```{python}
+## Python chunk
+a
+```
+
+```{r}
+## R chunk
+## import NumPy (it will be automatically discovered in "r-reticulate")
+np <- import("numpy", convert = TRUE)
+np$random$random(10L)
+```
+
+```{python}
+## Python chunk
+import numpy as np
+b = np.identity(3)
+b
+b.shape
+```
+
+```{r}
+## R chunk
+py$b
+dim(py$b)
+```
+
+Just as we use `py$obj` to access Python objects from inside R chunks, we can use `r.obj` to access R objections from inside 
+
+```{python}
+## Python list comprehesion using an R object
+[w for w in r.fruit if len(w) >= 12]
+```
+
+**Using Python functions**
+
+```{python}
+def flip(p):
+    return np.random.random() < p
+```
+
+```{python}
+## Python chunk
+flip(0.5)
+```
+
+```{r}
+## R chunk
+replicate(10, py$flip(0.3))
+```
+
+```{python}
+def all_pairs(nodes):
+    for i, u in enumerate(nodes):
+        for j, v in enumerate(nodes):
+            if i>j:
+                yield u, v
+                
+def random_pairs(nodes, p):
+    for edge in all_pairs(nodes):
+        if flip(p):
+            yield edge
+            
+import networkx as nx
+def make_random_graph(n, p):
+    G = nx.Graph()
+    nodes = range(n)
+    G.add_nodes_from(nodes)
+    G.add_edges_from(random_pairs(nodes, p))
+    return G
+```
+
+```{python}
+G = make_random_graph(n = 80, p = 0.01)
+G = nx.adjacency_matrix(G).asformat("array")
+```
+
+```{r}
+library(ggraph)
+py$G %>% 
+  igraph::graph_from_adjacency_matrix(mode = "undirected") %>% 
+  ggraph(layout = "kk") +
+  geom_edge_fan(alpha = 0.4) +
+  geom_node_point(col = "steelblue1") +
+  theme_graph()
+```
+
+
+## Other
+
+There are many more things that __`reticulate`__ allows us to do (see [here](https://rstudio.github.io/reticulate/reference/index.html)).
+
+Here are just a couple of interesting tidbits:
+
+```{r}
+## R chunk
+keys <- c("a", "b", "c")
+values <- 1:3
+py_dict(keys, values)
+py_dict(keys, values) %>% py_len()
+
+## More complex objects
+dict(list("andrés" = tuple(1, 2, 3)))
+```
+
+Creating Numpy arrays with `np_array()` and `array_reshape()` might come in handy too.
+
+****
+
+Finally, as of now RStudio's environment panel doesn't display the contents of the Python environment. There's no current analog to "magic commands" in Jupyter Notebooks, such as `%whos`, to do this, but these are a couple of ways around this problem:
+
+- Solution 1: Use the tab-complete feature in RStudio when typing `py$...`
+
+- Solution 2:
+
+```{python}
+[print(i) for i in locals().keys() if not i.endswith("__")]
+```
+
+- Solution 3: Wait until RStudio creates an addin.

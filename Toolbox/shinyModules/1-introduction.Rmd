@@ -1,0 +1,341 @@
+---
+title: "Shiny Modules"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    highlight: textmate
+    theme: paper
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", comment = "")
+
+library(shiny)
+library(tidyverse)
+```
+
+
+___The problem___: We need to create Shiny apps that are somehow standardized for efficiency/ workflow purposes, but we also need flexibility (i.e. the ability to create bespoke products). Usually the problem boils down to having a lot of repetition or redundant code.
+
+___The solution___: Treat shiny apps as if they were lego pieces, such that each individual piece is standardized and the flexibility comes from how we assemble them together. These pieces are known as [__modules__](https://shiny.rstudio.com/articles/modules.html) and work very similarly to regular R functions.
+
+An approach that resembles a solution consists of writing UI-generating _functions_. (We can also write functions that define outputs and reactive expressions in the server.
+
+The app shows an example of a UI generating function. It randomly samples 15 fruits each time the user clicks on the icon, and shows them as examples in a radioButtons widget. This provides a straightfoward way to create new UI content without having to write long lines of code involving conditional panels. But keep in mind that this approach has some limitations.
+
+<blockquote>
+<font size="2">
+In practice, functions alone don’t solve enough of the problem. Input and output IDs in Shiny apps share a global [namespace](https://en.wikipedia.org/wiki/Namespace), meaning, each ID must be unique across the entire app. If you’re using functions to generate UI, and those functions generate inputs and outputs, then you need to ensure that none of the IDs collide.
+</font>
+</blockquote>
+
+```{r, eval=FALSE}
+
+library(shiny)
+chunks <- fruit
+
+ui <- fluidPage(
+  
+  actionButton("repopulate", "", icon = icon("fas fa-kiwi-bird")),  
+  uiOutput("varButtons")
+  
+)
+
+server <- function(input, output, session) {
+  
+  buttons <- eventReactive(eventExpr = input$repopulate, ignoreNULL = TRUE, {
+        sample(fruit, size = 15, replace = FALSE) 
+        })
+  
+  output$varButtons <- renderUI({
+    
+    radioButtons(inputId = "var",
+                 label = "",
+                 choices = buttons(), 
+                 selected = buttons()[[1]]
+                 )
+    })
+  
+}
+
+shinyApp(ui, server)
+
+```
+
+Now consider a different problem. We need to reuse the same "side bar" of widgets when navigating through different `tabPanel()`'s in an app that has a `navbarPage()`. Keep in mind that you need to have unique names or IDs for `input` and `output` objects, which means we would have to copy paste the entire UI code and have names such as "sliderPanelOne" and "sliderPanelTwo".
+
+Modules work just like functions that define UIs, server logics, and reactive expressions. And they also help in solving the namespace collision problem.
+
+## Introduction
+
+What is a module?
+
+- A self-contained, composable component of a Shiny app.
+
+Why should we use modules?
+
+- Just like R functions, they allow us to quickly reuse the same code multiple times in the same app (or quickly use the same code in different apps).
+
+This is usually how a module looks like:
+
+```{r, eval=FALSE}
+fooUI <- function(id) {   ## A function that creates UI elements.
+  ns <- NS(id)            ## A function that makes namespaces
+  tagList(                ## special list object to return multiple shiny elements
+    
+    sliderInput(inputId = ns("slider"), ...),
+    htmlOutput(outputId = ns("info"), ...)
+  
+  )
+}
+
+foo <- function(input, output, session, ...) { ## A function that loads server logic.
+  
+  ## Do something
+  output$result <- some_function(input$anything, ...)
+  
+}
+
+```
+
+By wrapping every single input and output ID with the `ns()` function, we are guaranteeing that each of them is gonna have a unique name each time the module is reused.
+
+```{r}
+## This creates function that adds a prefix to an id, to create a "namespace".
+ns <- NS("hello")
+## Now we append the name "hello" to the whatever id input we choose.
+ns("world") 
+```
+
+Finally, we use the `callModule()` function to load the server logic into the app. Sort of like this:
+
+```{r, eval=FALSE}
+
+ui <- fluidPage(
+  
+  navbarPage(
+    tabPanel(title = "one", fooUI("one")),
+    tabPanel(title = "two", fooUI("two")),
+    tabPanel(title = "three", fooUI("three"))
+  )
+  
+)
+
+server <- function(input, output) {
+  
+  callModule(foo, "hello", ...),
+  callModule(foo, "bye", ...),
+  callModule(foo, "thanks", ...)
+  
+}
+
+shinyApp(ui, server)
+```
+
+
+We can reuse the same code safely because, by using `ns()`, we have created three namespaces for the inputs and outputs in our app.
+
+## Reactivity
+
+Passing _reactive input_ into functions might be a little confusing. 
+
+___Passing a reactive input to a module___
+
+The following app allows a user to decide whether or not they want to print the value of a slider bar:
+
+```{r, eval=FALSE}
+###########
+## Module
+###########
+sliderTextUI <- function(id) {
+  ns <- NS(id)
+  tagList(
+    sliderInput(ns("slider"), "", 0, 100, 1),
+    textOutput(ns("number"))
+  )
+}
+
+sliderText <- function(input, output, session, show) {
+  
+  output$number <- renderText({
+    
+    if (show()) input$slider else NULL    ## Use ()'s for your reactive expression
+    
+  })
+  
+}
+
+###########
+## App
+###########
+
+ui <- fluidPage(
+  
+  checkboxInput("display", "Show"),
+  sliderTextUI("module")
+  
+)
+
+server <- function(input, output) {
+  
+  display <- reactive({ input$display })
+  callModule(sliderText, "module", display)
+  ## Note that we passed the reactive expression, not the actual value. That is,
+  ## we don't use ()'s
+  
+}
+
+shinyApp(ui, server)
+```
+
+___Return a reactive output from a module___
+
+```{r, eval=FALSE}
+###########
+## Module
+###########
+sliderTextUI <- function(id) {
+  ns <- NS(id)
+  tagList(
+    sliderInput(ns("slider"), "", 0, 100, 1),
+    textOutput(ns("number"))
+  )
+}
+
+sliderText <- function(input, output, session) {
+  
+  output$number <- renderText({ input$slider })
+  reactive({ input$slider })
+  
+}
+
+###########
+## App
+###########
+
+ui <- fluidPage(
+  
+  sliderTextUI("module"),
+  textOutput("value") %>% h1()
+  
+)
+
+server <- function(input, output) {
+  
+  num <- callModule(sliderText, "module")
+  
+  output$value <- renderText({ num() })
+  
+}
+
+shinyApp(ui, server)
+```
+
+
+## Doing it
+
+Here we create a module for reusing sidebars accross `tabPanel()`'s. After doing this we can think about modules for reusing the same map accross apps.
+
+```{r, eval=FALSE}
+multiSidebarUI <- function(id) {
+  ns <- NS(id)
+  tagList(
+    
+    selectInput("item1", label = "Item 1:", choices = state.abb, selected = state.abb[[1]]),
+    selectInput("item2", label = "Item 2:", choices = fruit, selected = fruit[[1]]),
+    sliderInput("slider1", "Slider 1:", 0, 1e3, 0, 100),
+    sliderInput("slider2", "Slider 2:", 0, 100, 0, 10),
+    sliderInput("slider3", "Slider 3:", 0, 300, c(0, 300), 1)
+  
+  )
+}
+
+multiSidebar <- function(input, output, session) {
+  
+}
+```
+
+Here we have 5 input objects. But reusing the same module in four different `tabPanel()`'s will turn that into 20 uniquely named input objects.
+
+```{r, eval=FALSE}
+ui <- fluidPage(
+  theme = shinythemes::shinytheme("lumen"),
+  navbarPage(
+    title = "My First Reusable Sidebar",
+    
+    tabPanel(
+      title = "One",
+      
+      sidebarLayout(
+        
+        sidebarPanel(multiSidebarUI("one")),
+        mainPanel()
+        )
+      ),
+    
+    tabPanel(
+      title = "Two",
+      
+      sidebarLayout(
+        
+        sidebarPanel(multiSidebarUI("two")),
+        mainPanel()
+        )
+      ),
+
+    tabPanel(
+      title = "Three",
+      
+      sidebarLayout(
+        
+        sidebarPanel(multiSidebarUI("three")),
+        mainPanel()
+        )
+      ),
+    
+    tabPanel(
+      title = "Four",
+      
+      sidebarLayout(
+        
+        sidebarPanel(multiSidebarUI("four")),
+        mainPanel()
+        )
+      )
+    )
+  )
+
+server <- function(input, output, session) {
+  
+}
+
+shinyApp(ui, server)
+```
+
+
+## The End
+
+<div class = "row">
+<div class = "col-md-3">
+<blockquote>
+<font size="2" color="#BFBFBF">
+\- Ready? <br/>
+\- What? <br/>
+\- Modulate! <br/>
+\- What's that? <br/>
+\- Yeah, you did it 🙂<br/>
+</font>
+</blockquote>
+</div>
+
+<div class = "col-md-7">
+<iframe width="280" height="157" src="https://www.youtube.com/embed/FlpPEDuwO3w?start=122" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+</div>
+</div>
+
+
+
+
+
