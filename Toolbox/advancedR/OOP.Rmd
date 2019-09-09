@@ -1,0 +1,50 @@
+---
+title: "<strong>Object-Oriented Programming</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
+
+
+# library(tidyverse)
+# theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+```
+
+
+```{r results="asis", echo=FALSE, eval=FALSE}
+cat("<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    border-left: 5px solid #eee;
+}
+</style>")
+```
+
+## S3
+
+S3 is R's first and most used Object-Oriented system (it's used in the `base` and `stats` packages). It's minimalist. You should use it, unless you have a compelling reason to do otherwise.
+
+> Since S3 has few built-in constraints, the key to its successful use is applying the constraints yourself. 
+
+See [__vctrs__](https://vctrs.r-lib.org/).
+
+## Background knowledge
+
+https://adv-r.hadley.nz/vectors-chap.html#attributes
+
+https://adv-r.hadley.nz/vectors-chap.html#s3-atomic-vectors
+
+
+
+

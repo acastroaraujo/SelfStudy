@@ -1,6 +1,6 @@
 ---
-title: "The EM Algorithm"
-author: "Andrés Castro Araújo"
+title: "<strong>the EM algorithm</strong>"
+author: "andrés castro araújo"
 date: "`r Sys.Date()`"
 output: 
   html_document: 

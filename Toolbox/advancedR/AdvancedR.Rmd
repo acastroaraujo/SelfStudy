@@ -1,0 +1,456 @@
+---
+title: "<strong>Advanced `R`</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
+
+# library(tidyverse)
+# theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+```
+
+
+```{r results="asis", echo=FALSE}
+cat('<style>
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    color: #9C9C9C;
+    border-left: 10px solid #EEE;
+}
+</style>')
+```
+
+Taken from [Wickham's book](https://adv-r.hadley.nz)
+
+****
+
+## Introduction
+
+Somethings about `R` are different from what you'd expect to see in other programming languages. 
+
+- Copy-on-modify semantics, which makes sense once we really understand the difference between an object and its name.
+
+- Something about vectors.
+
+- R has aspects of both functional and object-oriented (OO) programming languages.
+
+
+## Copy-on-modify semantics
+
+We’ll use the `lobstr` package to dig into the internal representation of R objects.
+
+```{r}
+library(lobstr)
+```
+
+Suppose we want to contain an object `x` that contains the values 1, 2, and 3.
+
+```{r}
+x <- c(1, 2, 3)
+```
+
+But this is _not_ an object with a name. R first creates a vector of values `c(1,2,3)` and then binds that object to a name `x`. 
+
+>In other words, the object, or value, doesn’t have a name; it’s actually the name that has a value.
+
+Thus, names are actually references to values. And if we now run `y <- x`, we don't get another copy of the value `c(1,2,3)`; instead, we get another binding to the existing object.
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/bdc72c04d3135f19fb3ab13731129eb84c9170af/f0ab9/diagrams/name-value/binding-2.png"
+)
+```
+
+The `0x74b` refers to the object independently of its bindings. We can use `lobstr` to see that both `x` and `y` point to the same identifier. Note that these identifiers are long, and change every time you restart R.
+
+```{r}
+obj_addr(x)
+y <- x
+obj_addr(y)
+```
+
+Now suppose we modify `y`, but not `x`. 
+
+```{r}
+y[[2]] <- 100
+```
+
+R creates a new object `0xcd2`, which is basically the same as `0x74b` with one value change. Finally, the name `y` is rebound to that new object.
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/ef9f480effa2f1d0e401d1f94218d0cf118433c0/b56e9/diagrams/name-value/binding-3.png"
+)
+```
+
+>This behaviour is called __copy-on-modify.__ Understanding it will radically improve your intuition about the performance of R code.
+
+This, for example, explains why loops perform better when we feed them a vector of adequate size.
+
+```{r}
+output <- vector("integer", length = 3)
+for (i in 1:5) {
+  output[[i]] <- i
+  print(obj_addr(output)) ## remains the same while vector is length = 3
+}
+```
+
+__Lists__
+
+Just like names, the elements of a list point to values as well. Instead of storing the values themselves, 
+
+```{r}
+l1 <- l2 <- list(1, 2, 3)
+```
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/52bc0e3da3382cba957a9d83397b6c9200906ce2/c72aa/diagrams/name-value/l-modify-1.png"
+)
+```
+
+```{r}
+l2[[3]] <- 4
+```
+
+```{r, echo=FALSE, out.width="180px"}
+knitr::include_graphics(
+"https://d33wubrfki0l68.cloudfront.net/b844bb5a3443e1344299627f5760e2ae3a9885b5/e1c76/diagrams/name-value/l-modify-2.png"
+)
+```
+
+>Like vectors, lists use copy-on-modify behaviour; the original list is left unchanged, and R creates a modified copy. This, however, is a __shallow copy__: the list object and its bindings are copied, but the values pointed to by the bindings are not.
+
+We can use `lobstr::ref()` to see the values that are shared across both lists.
+
+```{r}
+lobstr::ref(l1, l2)
+```
+
+And because values are being shared, the size of lists is sometimes unintuitive. More generally, `obj_size(x)` + `obj_size(y)` will only equal `obj_size(x, y)`
+if they share no values.
+
+```{r}
+x <- runif(1000)
+y <- list(x, x, x)
+ref(x, y)
+obj_size(x) + obj_size(y)
+obj_size(x, y)
+```
+
+__Data frames__
+
+Data frames are lists of vectors, so copy-on-modify works very similar in this setting, except the following:
+
+- "If you modify a column, only that column needs to be modified; the others will still point to their original references."
+
+- "However, if you modify a row, every column is modified, which means every column must be copied."
+
+****
+
+>Note. The latests versions of R have a feature called ALTREP, short for __alternative representation__. It allows for R to represent some types of vectors very compactly. The place you are most likely to see this is with `:` because instead of storing every single number in the sequence, R just stores the first and last number.
+
+```{r}
+obj_size(c(1, 2, 3, 4, 5))
+obj_size(1:5)
+x <- 1:5000
+obj_size(x)
+x[[333]] <- 9 ## note the massive increase in size
+obj_size(x) 
+```
+
+****
+
+An important exception with regards to the copy-on-modify semantics occurs with `environments`, a special type of object that is always __modified on place__.
+
+>This property is sometimes described as __reference semantics__ because when you modify an environment all existing bindings to that environment continue to have the same reference.
+
+## Vectors
+
+There are two types of vectors in R:
+
+- __Atomic vectors__, of which there are six types: `logical`, `integer`, `double`, `character`, `complex`, and `raw.` Integer and double vectors are collectively known as _numeric_ vectors.
+
+    You can determine the type of a vector with the `typeof()` function.
+
+- __Lists__, which are sometimes called recursive vectors (because lists can contain other lists). Other times they're called generic vectors to emphasise their difference from atomic vectors.
+
+The chief difference between atomic vectors and lists is that atomic vectors are _homogeneous_, while lists can be _heterogeneous._ There’s one other related object: `NULL`, which is often used to represent the absence of a vector (as opposed to `NA`, which is used to represent the absence of a value in a vector).
+
+Most computations involving a missing value will return another missing value, with a couple of obvious exceptions:
+
+```{r}
+NA^0
+NA | TRUE
+NA & FALSE
+```
+
+___Attributes___
+
+Every vector can have __attributes__ (i.e. a named list of arbitrary metadata). Two attributes are particularly important: _dimension_, which turns vectors into matrices and arrays; and _class_, which powers the S3 object system.
+
+__Names__
+
+You can _name_ a vector in three ways:
+
+```{r}
+# When creating it: 
+x <- c(a = 1, b = 2, c = 3)
+
+# By assigning a character vector to names()
+x <- 1:3
+names(x) <- c("a", "b", "c")
+
+# Inline, with setNames():
+x <- setNames(1:3, c("a", "b", "c"))
+```
+
+```{r}
+str(x)
+```
+
+Other attributes are set (or retrieved) with the `attr()` function,
+
+```{r}
+attr(x, "names") <- c("a", "b", "c")
+attr(x, "arbitrary") <- rnorm(1)
+str(x)
+```
+
+And we can extract all of them with the `attributes()` function.
+
+```{r}
+attr(x, "arbitrary")
+attributes(x) ## returns a named list
+```
+
+__Dimensions__
+
+Adding a `dim` attribute to a vector allows it to behave like a 2-dimensional matrix or a multi-dimensional array.
+
+```{r}
+x <- 1:20
+dim(x) <- c(4, 5)
+x
+dim(x) <- c(2, 5, 2)
+x
+```
+
+Note that many of the functions for working with vectors have generalisations for matrices and arrays:
+
+```{r, echo=FALSE}
+knitr::kable(
+tibble::tibble(
+  vector = c("`names()`", "`length()`", "`c()`", "", "`is.null(dim(x))`"),
+  matrix = c("`rownames()`, `colnames()`", "`nrow()`, `ncol()`", "`rbind()`, `cbind()`", "`t()`", "`is.matrix()`"),
+  array = c("`dimnames()`", "`dim()`", "`abind::abind()`", "`aperm()`", "`is.array()`"))
+)
+```
+
+___S3 atomic vectors___
+
+Having a __`class`__ attribute turns an object into an _S3 object_, which makes it behave differently from a regular vector when passed to a _generic function_.
+
+Four types of important S3 vectors used in R:
+
+- `factor` vectors, used to store categorical data. where values come Factors are built on top of an integer vector with two attributes: a "factor" `class`, which makes them behave differently from regular integer vectors; and "levels", which defines the set of allowed values.
+
+    "Ordered factors" are a minor variation of factors (i.e. a < b < c).
+
+- Dates (with day resolution), which are recorded in `Date` vectors. They're built on top of "double" vectors. They have a class “Date”, and no other attributes.
+
+    The value of the double, represents the number of days since "1970-01-01" (also known as the Unix Epoch).
+    
+    ```{r}
+    x <- 0
+    class(x) <- "Date"
+    x
+    ```
+
+- Date-times are much like dates, except that they also have second or sub-second resolution. These are also built on top of doubles, but they have a `POSIXct` class.
+
+    >"POSIX" is short for Portable Operating System Interface, which is a family of cross-platform standards. "ct" standards for calendar time (the `time_t` type in C).
+
+    ```{r}
+    x <- as.POSIXct("1990-03-04 2:00", tz = "UTC")
+    x
+    attributes(x)
+    attr(x, which = "tzone") <- "EST"
+    x
+    ```
+
+    >The `tzone` attribute controls only how the date-time is formatted; it does not control the instant of time represented by the vector.
+    
+    EST stands for Eastern Daylight Time, whereas UTC stands for [Universal Time Coordinated](https://en.wikipedia.org/wiki/Coordinated_Universal_Time).
+
+- Durations, which are stored in `difftime` vectors. They're built on top of doubles and have an additional units attribute that determines how to interpret the numeric value.
+
+    ```{r}
+    x - x
+    class(x - x)
+    as.difftime(1.5, units = "weeks")
+    ```
+
+___Lists___
+
+Every element of a list can be of any type. Technically speaking, however, each element of list is really a reference (or a binding) to another object, which can be of any type.
+
+>This makes them fundamentally different from atomic vectors.
+
+You can turn a list into an atomic vector with `unlist()`. But the rules for the resulting type are complex and not well documented.
+
+The most important S3 vectors that are built upon lists are data frames and tibbles. In both cases, the length of each of its vectors must be the same. 
+
+```{r}
+typeof(mtcars)
+attributes(mtcars)
+```
+
+Tibbles, on the other hand, are provided by the [`tibble`](https://tibble.tidyverse.org/) package.
+
+>A concise, and fun, way to summarise the main differences is that tibbles are lazy [they don't coerce their input (e.g. `stringsAsFactors = FALSE`)] and surly: they do less and complain more.
+
+```{r}
+library(tibble)
+df <- tibble(x = 1:3, y = LETTERS[1:3])
+typeof(df)
+attributes(df)
+```
+
+But perhaps the biggest difference between data frames and tibbles is that the later are designed to disregard rownames.
+
+```{r}
+attributes(as_tibble(mtcars))
+```
+
+>There are three reasons why row names are undesirable:
+>
+>1. Metadata is data, so storing it in a different way to the rest of the data is fundamentally a bad idea. It also means that you need to learn a new set of tools to work with row names; you can’t use what you already know about manipulating columns.
+>
+>2. Row names are a poor abstraction for labelling rows because they only work when a row can be identified by a single string. This fails in many cases, for example when you want to identify a row by a non-character vector (e.g. a time point), or with multiple vectors (e.g. position, encoded by latitude and longitude).
+>
+>3. Row names must be unique, so any duplication of rows (e.g. from bootstrapping) will create new row names. If you want to match rows from before and after the transformation, you’ll need to perform complicated string surgery.
+>
+>For these reasons, tibbles do not support row names. Instead the tibble package provides tools to easily convert row names into a regular column with either `rownames_to_column()`, or the `rownames` argument in `as_tibble()`.
+
+Finally, making use of _list-columns_ with tibbles is much easier.
+
+>Since a data frame is a list of vectors, it is possible for a data frame to have a column that is a list. This is very useful because a list can contain any other object: this means you can put any object in a data frame. This allows you to keep related objects together in a row, no matter how complex the individual objects are.
+
+```{r, error=TRUE}
+df <- data.frame(x = 1:3)
+df$y <- list(1:2, 1:3, 1:4)
+df
+data.frame(
+  x = 1:3, 
+  y = list(1:2, 1:3, 1:4)
+)
+
+tibble(
+  x = 1:3, 
+  y = list(1:2, 1:3, 1:4)
+)
+
+```
+
+## Subsetting
+
+>Subsetting is a natural complement to `str()`. While `str()` shows you all the pieces of any object (its structure), subsetting allows you to pull out the pieces that you’re interested in. 
+
+___There are six ways to subset atomic vectors.___
+
+```{r, error=TRUE}
+## 1. Positive integers
+letters[3:1]
+letters[c(2, 2, 2)]
+letters[c(1.9, 2.1, 2.8)] ## silently truncated to integers
+
+## 2. Negative integers
+letters[1:20 * -1]
+letters[c(-1, 2)] ## can't mix!
+
+## 3. Logical vectors
+letters > "m"
+letters[letters > "m"]
+
+## 4. Nothing. Useful for matrices, data frames, and arrays
+letters[]
+
+## 5. Zero returns a zero-length vector. Usually not done on purpose
+letters[0]
+```
+
+Finally, if the vector is _named_, you can use character vectors to return elements with matching names.
+
+```{r}
+## 6. Character vectors
+(y <- setNames(1:4, letters[1:4]))
+y["c"]
+y[c("a", "a", "c", "a", "x")]
+```
+
+A final word of caution:
+
+>Factors are not treated specially when subsetting. This means that subsetting will use the underlying integer vector, not the character levels. This is typically unexpected, so you should avoid subsetting with factors.
+
+___Subsetting operators interact differently with different vector types (e.g., atomic vectors, lists, factors, matrices, and data frames)___
+
+- Subsetting a list will work in the same way as subsetting atomic vectors. `[` always returns a list, whereas `[[` and `$` pull elements out of a list.
+
+- The easiest way of subsetting matrices (2D) and arrays (>2D) is to supply a 1D index for each dimension separated by a comma.
+
+    And because both matrices and arrays are just vectors with special a `dimension` attribute, you can always subset them with a single vector (i.e. treat them as if they were a 1D vector). 
+    
+    Note: Arrays in R are stored in column-major order.
+    
+- We can also subset matrices and arrays with a matrix (integer, logical, and character if named).
+
+    For example:
+
+    ```{r}
+    x <- outer(1:4, 1:4, FUN = "+")
+    x
+    upper.tri(x)
+    x[upper.tri(x)]
+    ```
+
+- Subsetting a data frame with a simple index makes it behave like a list (e.g. `df[1:2]` selects the first two columns).
+
+    Subsetting a data frame with two indices makes it behave like a matrix (e.g. `df[1:3, ]` selects the first three rows).
+
+    >By default, subsetting a matrix or data frame with a single number, a single name, or a logical vector containing a single `TRUE`, will simplify the returned output, i.e. it will return an object with lower dimensionality. To preserve the original dimensionality, you must use `drop = FALSE`.
+
+    Tibbles have `drop = FALSE` by default.
+
+>_Exercise. Implement your own function that extracts the diagonal entries from a matrix (it should behave like diag(x) where x is a matrix)._
+
+```{r}
+extract_diag <- function(x) {      # When subsetting with integer matrices,
+  end <- min(nrow(x), ncol(x))     # each row specifies the location of one 
+  return(x[cbind(1:end, 1:end)])   # value, and each column corresponds to a 
+}                                  # dimension in the array.
+```
+
+
+___Selecting a single element___
+
+R has three subsetting operators: `[[`, `[`, and `$`.
+
+
+
+
+
+
+
+
+
