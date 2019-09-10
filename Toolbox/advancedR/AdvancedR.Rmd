@@ -15,6 +15,8 @@ knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center")
 
 # library(tidyverse)
 # theme_set(theme_minimal(base_family = "Avenir", base_line_size = 0))
+
+library(magrittr)
 ```
 
 
@@ -199,8 +201,6 @@ ___Attributes___
 
 Every vector can have __attributes__ (i.e. a named list of arbitrary metadata). Two attributes are particularly important: _dimension_, which turns vectors into matrices and arrays; and _class_, which powers the S3 object system.
 
-__Names__
-
 You can _name_ a vector in three ways:
 
 ```{r}
@@ -254,7 +254,8 @@ tibble::tibble(
   vector = c("`names()`", "`length()`", "`c()`", "", "`is.null(dim(x))`"),
   matrix = c("`rownames()`, `colnames()`", "`nrow()`, `ncol()`", "`rbind()`, `cbind()`", "`t()`", "`is.matrix()`"),
   array = c("`dimnames()`", "`dim()`", "`abind::abind()`", "`aperm()`", "`is.array()`"))
-)
+) %>% 
+  kableExtra::kable_styling(full_width = FALSE, bootstrap_options = "bordered")
 ```
 
 ___S3 atomic vectors___
@@ -316,7 +317,7 @@ typeof(mtcars)
 attributes(mtcars)
 ```
 
-Tibbles, on the other hand, are provided by the [`tibble`](https://tibble.tidyverse.org/) package.
+Tibbles, on the other hand, are provided by the [__`tibble`__](https://tibble.tidyverse.org/) package.
 
 >A concise, and fun, way to summarise the main differences is that tibbles are lazy [they don't coerce their input (e.g. `stringsAsFactors = FALSE`)] and surly: they do less and complain more.
 
@@ -351,9 +352,10 @@ Finally, making use of _list-columns_ with tibbles is much easier.
 df <- data.frame(x = 1:3)
 df$y <- list(1:2, 1:3, 1:4)
 df
+
 data.frame(
   x = 1:3, 
-  y = list(1:2, 1:3, 1:4)
+  y = list(1:2, 1:3, 1:4)  ## This doesn't work!
 )
 
 tibble(
@@ -367,7 +369,9 @@ tibble(
 
 >Subsetting is a natural complement to `str()`. While `str()` shows you all the pieces of any object (its structure), subsetting allows you to pull out the pieces that you’re interested in. 
 
-___There are six ways to subset atomic vectors.___
+R has three subsetting operators: `[`, `[[`, and `$`. The `[` operator lets you subset atomic vectors.
+
+___Six ways to subset atomic vectors.___
 
 ```{r, error=TRUE}
 ## 1. Positive integers
@@ -441,14 +445,57 @@ extract_diag <- function(x) {      # When subsetting with integer matrices,
 }                                  # dimension in the array.
 ```
 
-
 ___Selecting a single element___
 
-R has three subsetting operators: `[[`, `[`, and `$`.
+The `[[` operator is used for extracting single items; `$`, on the other hand, is a shorthand operator: `x$y` is equivalent to `x[["y"]]`. These operators are mostly useful when working with lists, because while `[` returns a smaller list, `[[` will actually extract the content of that list.
 
+```{r}
+mtcars["mpg"]
+mtcars[["mpg"]]
+```
 
+>Because `[[` can return only a single item, you must use it with either a single positive integer or a single string. If you use a vector with `[[`, it will subset recursively, i.e. `x[[c(1, 2)]]` is equivalent to `x[[1]][[2]]`. This is a quirky feature that few know about, so I recommend avoiding it in favour of `purrr::pluck()`.
+>
+>When the element is missing, `pluck()` always returns `NULL` (or the value of the .default argument) and `chuck()` always throws an error. The behaviour of `pluck()` makes it well suited for indexing into deeply nested data structures where the component you want may not exist (as is common when working with JSON data from web APIs). `pluck()` also allows you to mix integer and character indices, and provides an alternative default value if an item does not exist:
 
+```{r, error=TRUE}
+x <- list(
+  a = list(1, 2, 3),
+  b = list(3, 4, 5)
+)
 
+purrr::pluck(x, "a", 1)
+purrr::pluck(x, "c", 1)
+purrr::chuck(x, "c", 1)
+purrr::pluck(x, "c", 1, .default = NA)
+```
+
+`$` is most commonly used to access variables in a data frame.
+
+>One common mistake with `$` is to use it when you have the name of a column stored in a variable.
+
+```{r}
+var <- "mpg"
+# Doesn't work - mtcars$var translated to mtcars[["var"]]
+mtcars$var
+
+# Instead use [[
+mtcars[[var]]
+```
+
+Finally, `$` does left-to-right partial matching on regular data frames, which can be a frustrating source of errors. Tibbles, on the other hand, will never do partial matching.
+
+___Subsetting and assignment___
+
+>All subsetting operators can be combined with assignment to modify selected values of an input vector: this is called subassignment. The basic form is `x[i] <- value`. I recommend that you should make sure that length(value) is the same as length(x[i]), and that i is unique.
+
+```{r}
+x <- 1:5
+x[c(1, 2)] <- c(101, 102)
+x
+```
+
+You can use `x[[i]] <- NULL` to delete an element of a list; or use `x[[i]] <- list(NULL)` to replace an element with a literal `NULL` value.
 
 
 
