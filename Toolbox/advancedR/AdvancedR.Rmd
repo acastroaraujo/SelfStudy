@@ -32,7 +32,7 @@ blockquote {
 </style>')
 ```
 
-Taken from [Wickham's book](https://adv-r.hadley.nz)
+>Taken from Hadley Wickham. [__Advanced R__](https://adv-r.hadley.nz). CRC Press, 2019.
 
 ****
 
@@ -42,7 +42,9 @@ Somethings about `R` are different from what you'd expect to see in other progra
 
 - Copy-on-modify semantics, which makes sense once we really understand the difference between an object and its name.
 
-- Something about vectors.
+- In `R`, almost everything is a vector. 
+
+- There are three subsetting operators, `[[`, `[`, and `$`, and all of them interact in different ways with different vector types.
 
 - R has aspects of both functional and object-oriented (OO) programming languages.
 
@@ -89,7 +91,7 @@ y[[2]] <- 100
 
 R creates a new object `0xcd2`, which is basically the same as `0x74b` with one value change. Finally, the name `y` is rebound to that new object.
 
-```{r, echo=FALSE, out.width="180px"}
+```{r, echo=FALSE, out.width="170px"}
 knitr::include_graphics(
 "https://d33wubrfki0l68.cloudfront.net/ef9f480effa2f1d0e401d1f94218d0cf118433c0/b56e9/diagrams/name-value/binding-3.png"
 )
@@ -450,8 +452,8 @@ ___Selecting a single element___
 The `[[` operator is used for extracting single items; `$`, on the other hand, is a shorthand operator: `x$y` is equivalent to `x[["y"]]`. These operators are mostly useful when working with lists, because while `[` returns a smaller list, `[[` will actually extract the content of that list.
 
 ```{r}
-mtcars["mpg"]
 mtcars[["mpg"]]
+identical(mtcars[["mpg"]], mtcars$mpg)
 ```
 
 >Because `[[` can return only a single item, you must use it with either a single positive integer or a single string. If you use a vector with `[[`, it will subset recursively, i.e. `x[[c(1, 2)]]` is equivalent to `x[[1]][[2]]`. This is a quirky feature that few know about, so I recommend avoiding it in favour of `purrr::pluck()`.
@@ -497,7 +499,50 @@ x
 
 You can use `x[[i]] <- NULL` to delete an element of a list; or use `x[[i]] <- list(NULL)` to replace an element with a literal `NULL` value.
 
+## Subsetting applications
+
+___Lookup tables (character subsetting)___
+
+```{r}
+x <- c("m", "f", "u", "f", "f", "m", "m")
+lookup <- c(m = "Male", f = "Female")
+lookup[x]
+unname(lookup[x]) ## if you don’t want names in the result
+```
+
+___Matching and merging by hand (integer subsetting)___
+
+
+```{r}
+grades <- c(1, 2, 2, 3, 1)
+
+info <- tibble::tibble(
+  grade = 3:1,
+  desc = c("Excellent", "Good", "Poor"),
+  fail = c(F, F, T)
+)
+
+id <- match(grades, info$grade)
+id
+info[id, ]
+```
+
+___Random samples and bootstraps (integer subsetting)___
 
 
 
+___Ordering (integer subsetting)___
+
+
+
+___Expanding aggregated counts (integer subsetting)___
+
+
+
+___Removing columns from data frames (character)___
+
+___Selecting rows based on a condition (logical subsetting)___
+
+
+___Boolean algebra versus sets (logical and integer)___
 
