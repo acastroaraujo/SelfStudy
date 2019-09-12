@@ -512,6 +512,7 @@ unname(lookup[x]) ## if you don’t want names in the result
 
 ___Matching and merging by hand (integer subsetting)___
 
+>You can also have more complicated lookup tables with multiple columns of information. For example, suppose we have a vector of integer grades, and a table that describes their properties:
 
 ```{r}
 grades <- c(1, 2, 2, 3, 1)
@@ -519,17 +520,29 @@ grades <- c(1, 2, 2, 3, 1)
 info <- tibble::tibble(
   grade = 3:1,
   desc = c("Excellent", "Good", "Poor"),
-  fail = c(F, F, T)
+  fail = c(FALSE, FALSE, TRUE)
 )
 
-id <- match(grades, info$grade)
-id
-info[id, ]
 ```
+
+>Then, let’s say we want to duplicate the info table so that we have a row for each value in grades. An elegant way to do this is by combining `match()` and integer subsetting (`match(needles, haystack)` returns the position where each `needle` is found in the `haystack`).
+
+```{r}
+id <- match(grades, info$grade) 
+id
+info[id, ] 
+```
+
+>Note that `match()` returns a vector of the positions of (first) matches of its first argument in its second.
 
 ___Random samples and bootstraps (integer subsetting)___
 
+>You can use integer indices to randomly sample or bootstrap a vector or data frame. Just use sample(n) to generate a random permutation of 1:n, and then use the results to subset the values:
 
+```{r}
+df <- head(mtcars, n = 5) %>% tibble::as_tibble(rownames = "id")
+df[sample(nrow(df), 100, replace = TRUE), ]
+```
 
 ___Ordering (integer subsetting)___
 
