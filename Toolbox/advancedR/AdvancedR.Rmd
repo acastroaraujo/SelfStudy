@@ -546,9 +546,30 @@ df[sample(nrow(df), 100, replace = TRUE), ]
 
 ___Ordering (integer subsetting)___
 
+>`order()` takes a vector as its input and returns an integer vector describing how to order the subsetted vector. 
 
+```{r}
+x <- c("b", "c", "a")
+order(x)
+x[order(x)]
+```
+
+>To break ties, you can supply additional variables to `order()`. You can also change the order from ascending to descending by using `decreasing = TRUE`. By default, any missing values will be put at the end of the vector; however, you can remove them with `na.last = NA` or put them at the front with `na.last = FALSE`.
+
+```{r}
+df2 <- df[sample(nrow(df)), sample(ncol(df))] ## randomly reorder df
+df2[order(df2[[1]]), ]                        ## reorder rows according to first column
+df2[ , order(names(df2))]                     ## reorder rows according to first column
+```
+
+>You can sort vectors directly with `sort()`, or similarly `dplyr::arrange()`, to sort a data frame.
 
 ___Expanding aggregated counts (integer subsetting)___
+
+>Sometimes you get a data frame where identical rows have been collapsed into one and a count column has been added. `rep()` and integer subsetting make it easy to uncollapse, because we can take advantage of vectorisation: `rep(x, y)` repeats `x[i] y[i]` times.
+
+
+
 
 
 

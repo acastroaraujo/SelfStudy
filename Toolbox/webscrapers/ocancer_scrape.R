@@ -57,10 +57,12 @@ get_story <- function(path, progress_bar = NULL) {
     html_text()
   
   cat("\n", title, "\n")
+  
   if (!is.null(progress_bar)) {
     try(progress_bar$tick()$print()) ## pb <- dplyr::progress_estimated(length(links))
   }
-  Sys.sleep(sample(20:60, 1) / 10)   ## random wait time between 2 and 6 seconds
+  
+  Sys.sleep(runif(1, 2, 6))          ## random wait time between 2 and 6 seconds
   
   return(try(tibble(title, paste(story, collapse = "\n"), list(image))))
 }
@@ -69,7 +71,6 @@ get_story <- function(path, progress_bar = NULL) {
 # ***********************************************************************
 # Demo
 # ***********************************************************************
-
 
 url_list <- get_urls()
 pb <- dplyr::progress_estimated(length(url_list))
