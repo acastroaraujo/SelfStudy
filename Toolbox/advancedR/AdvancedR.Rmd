@@ -27,7 +27,7 @@ blockquote {
     padding: 10px 20px;
     margin: 0 0 20px;
     font-size: 14px;
-    color: #9C9C9C;
+    color: #828282;
     border-left: 10px solid #EEE;
 }
 </style>
@@ -822,7 +822,7 @@ We use `while` and `repeat` when we need to use loops, but we don't know in adva
 
 ## Functions
 
-### Basics
+### Fundamentals
 
 Two important ideas:
 
@@ -837,33 +837,274 @@ Two important ideas:
 The three parts of any function can be accessed with `formals()`, `body()`, and `environment()`.
 
 ```{r}
+add <- function(x, y) {
+  x + y ## this comment is self explanatory
+}
+
+formals(add)
+body(add)
+environment(add)
+```
+
+>Like all objects in R, functions can also possess any number of additional `attributes()`. One attribute used by base R is `srcref`, short for source reference. It points to the source code used to create the function. The `srcref` is used for printing because, unlike `body()`, it contains code comments and other formatting.
+
+```{r}
+attributes(add)
+```
+
+So-called _primitive functions_, which directly call C code, don't necessarily have three components.
+
+```{r}
+## For example
+is.primitive(sum)
+sum
+
+formals(sum)
+body(sum)             
+environment(sum)
+```
+
+These functions have either type `builtin` or type `special`.
+
+```{r}
+typeof(sum)
+typeof(`[`)
+```
+
+>Primitive functions are only found in the base package. While they have certain performance advantages, this benefit comes at a price: they are harder to write. For this reason, R-core generally avoids creating them unless there is no other option.
+
+R functions are often called ["first-class functions"](https://en.wikipedia.org/wiki/First-class_function).
 
 
+>Unlike in many other languages, there is no special syntax for defining and naming a function: you simply create a function object (with `function`) and bind it to a name with `<-`
+
+```{r}
+f01 <- function(x) {
+  sin(1 / x ^ 2)
+}
+```
+
+If you don't bind a function to a name, you get an _anonymous function_ (equivalent to Python's lambda functions).
+
+```{r}
+integrate(function(x) sin(x) ^ 2, lower = 0, upper = 1)
+purrr::map_int(mtcars, function(x) length(unique(x)))
+```
+
+You can also put functions inside a list:
+
+```{r}
+funs <- list(
+  half = function(x) x / 2,
+  double = function(x) x * 2
+)
+
+funs$double(33)
+```
+
+Note that we usually call a function by typing its arguments inside parentheses; e.g. `mean(1:10, na.rm = TRUE)`. But sometimes we want to use arguments that are already contained inside a data structure. We can use the `do.call()` function to "invoke" other functions.
+
+For example:
+
+```{r}
+args <- list(1:10, na.rm = TRUE)
+do.call(mean, args)
+purrr::invoke(mean, args) ## purrr equivalent
+```
+
+>_Exercise_. This code makes a list of all functions in the base package.
+
+```{r}
+objs <- mget(ls("package:base", all = TRUE), inherits = TRUE)
+funs <- Filter(is.function, objs)
+```
+
+>Use it to answer the following questions:
+
+```{r, message=FALSE}
+library(tibble)
+library(purrr)
+
+df <- tibble(
+  function_name = names(funs),
+  num_args = map(funs, formals) %>% map_int(length)
+)
+
+# *******************************************
+# Which base function has the most arguments?
+# *******************************************
+
+df[df$num_args == max(df$num_args), ]
+
+# *******************************************
+# How many base functions have no arguments? 
+# What’s special about those functions?
+# *******************************************
+
+nrow(df[df$num_args == 0, ])
+
+# Note that we are overcounting the number of functions
+# without arguments because formals() will return
+# NULL for primitive functions.
+
+# *******************************************
+# How could you adapt the code to find all 
+# primitive functions?
+# *******************************************
+
+funs <- Filter(is.primitive, objs)
 
 ```
 
-
-
-
-
-
 ### Composition
+
+There are two ways to compose function calls in base R:
+
+1. Nesting functions.
+
+    >Nesting, `f(g(x))`, is concise, and well suited for short sequences. But longer sequences are hard to read because they are read inside out and right to left.
+
+2. Saving intermediate results as variables.
+
+    >Intermediate objects, `y <- f(x); g(y)`, requires you to name intermediate objects. This is a strength when objects are important, but a weakness when values are truly intermediate.
+
+Additionally, the [__magrittr__](https://magrittr.tidyverse.org/) package provides a third option.
+
+3. The pipe operator.
+
+****
+
+_Example. Calculating the standard deviation of a numeric vector._
+
+```{r}
+square <- function(x) x^2
+deviation <- function(x) x - mean(x)
+x <- runif(100)
+
+# ****************************
+# 1. Nesting calls
+# ****************************
+
+sqrt(mean(square(deviation(x))))
+
+# ****************************
+# 2. Saving intermediate results
+# ****************************
+
+out <- deviation(x)
+out <- square(out)
+out <- mean(out)
+out <- sqrt(out)
+out
+
+# ****************************
+# 3. %>% %>% %>% %>% %>% %>% %>% 
+# ****************************
+
+x %>% 
+  deviation() %>% 
+  square() %>% 
+  mean() %>% 
+  sqrt()
+```
+
+>The pipe allows you to focus on the high-level composition of functions rather than the low-level flow of data; the focus is on what’s being done (the _verbs_), rather than on what’s being modified (the _nouns_). This style is common in Haskell and F#, the main inspiration for magrittr, and is the default style in stack based programming languages like Forth and Factor.
+
+>Piping, `x %>% f() %>% g()`, allows you to read code in straightforward left-to-right fashion and doesn’t require you to name intermediate objects. But you can only use it with linear sequences of transformations of a single object. It also requires an additional third party package and assumes that the reader understands piping.
 
 ### Lexical scoping
 
-### ???
+Scoping is the act of finding the _value_ associated with a _name_. Experienced R users find all of this very intuitive, but new users won't necessarily think the same way.
 
-### `...`
+```{r}
+x <- 10
+g01 <- function() {
+  x <- 20
+  x
+}
 
-### Exit
+g01()
+x
+```
 
-### Disguise
+>R uses __lexical scoping__: it looks up the values of names based on how a function is defined, not how it is called. "Lexical" here is [...] a technical CS term that tells us that the scoping rules use a parse-time, rather than a run-time structure.
+
+There are four main rules in R's lexical scoping:
+
+1. __Name masking__. Names defined inside a function mask names defined outside a function. And if a name isn't defined inside a function, R looks one level up.
+
+    ```{r}
+    x <- 2
+    
+    g03 <- function() {
+      y <- 1
+      c(x, y)
+    }
+    
+    g03()
+    x <- 9
+    g03()
+    ```
+
+    >The same rules apply if a function is defined inside another function. First, R looks inside the current function. Then, it looks where that function was defined (and so on, all the way up to the global environment). Finally, it looks in other loaded packages.
+
+2. __Functions versus variables__. Name masking also applies when applied to functions; after all, they're just ordinary R objects. However, there is a subtle distinction. 
+
+    >When you use a name in a function call, R ignores non-function objects when looking for that value.
+    
+    ```{r}
+    a <- function(x) x + 100
+    b <- function() {
+      a <- 10
+      a(a) ## R takes the "left a" from outside the function
+    }      ## environment, and the "inside a" one from within.
+    b()
+    ```
+
+3. __A fresh start__. Every time a function is called, a new environment is created to host its execution. In other words, is "invocation" is completely independent of each other.
+
+
+4. __Dynamic lookup__. Lexical scoping determines _where_, but not _when_ to look for values. 
+
+    >R looks for values when the function is run, not when the function is created. Together, these two properties tell us that the output of a function can differ depending on the objects outside the function’s environment.
+    
+    This means that
+    
+    >If you make a spelling mistake in your code, you won’t get an error message when you create the function. And depending on the variables defined in the global environment, you might not even get an error message when you run the function.
+    
+```{r}
+# Use the following to find all unbound symbols (external 
+# dependencies) within a function:
+codetools::findGlobals(g03)
+```
+
+>R relies on lexical scoping to find __everything__, from the obvious, like `mean()`, to the less obvious, like `+` or even `{`. This gives R’s scoping rules a rather beautiful simplicity.
+
+### Lazy evaluation
+
+In R, function arguments are only evaluated _if_ accessed. This is also known as _lazy evaluation_.
+
+```{r}
+h01 <- function(x) 10
+h01(asdASDFASDFdfasdfasdfasdfASADFEawef)
+```
+
+Lazy evaluation is powered by a data structure called a __promise__, or (less commonly) a [_thunk_](https://en.wikipedia.org/wiki/Thunk). 
+
+
+6.5.1 Promises
 
 
 
+### `...` (dot-dot-dot)
+
+### Exiting
+
+### Function forms
 
 
 
+>Lazy evaluation is powered by a data structure called a __promise__.
 
 
 
