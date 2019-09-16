@@ -21,7 +21,8 @@ library(magrittr)
 
 
 ```{r results="asis", echo=FALSE}
-cat('<style>
+cat('
+<style>
 blockquote {
     padding: 10px 20px;
     margin: 0 0 20px;
@@ -29,7 +30,8 @@ blockquote {
     color: #9C9C9C;
     border-left: 10px solid #EEE;
 }
-</style>')
+</style>
+')
 ```
 
 >Taken from Hadley Wickham. [__Advanced R__](https://adv-r.hadley.nz). CRC Press, 2019.
@@ -501,7 +503,7 @@ You can use `x[[i]] <- NULL` to delete an element of a list; or use `x[[i]] <- l
 
 ## Subsetting applications
 
-___Lookup tables (character subsetting)___
+### Lookup tables (character subsetting)
 
 ```{r}
 x <- c("m", "f", "u", "f", "f", "m", "m")
@@ -510,7 +512,7 @@ lookup[x]
 unname(lookup[x]) ## if you don’t want names in the result
 ```
 
-___Matching and merging by hand (integer subsetting)___
+### Matching and merging by hand (integer subsetting)
 
 >You can also have more complicated lookup tables with multiple columns of information. For example, suppose we have a vector of integer grades, and a table that describes their properties:
 
@@ -535,7 +537,7 @@ info[id, ]
 
 >Note that `match()` returns a vector of the positions of (first) matches of its first argument in its second.
 
-___Random samples and bootstraps (integer subsetting)___
+### Random samples and bootstraps (integer subsetting)
 
 >You can use integer indices to randomly sample or bootstrap a vector or data frame. Just use sample(n) to generate a random permutation of 1:n, and then use the results to subset the values:
 
@@ -544,7 +546,7 @@ df <- head(mtcars, n = 5) %>% tibble::as_tibble(rownames = "id")
 df[sample(nrow(df), 100, replace = TRUE), ]
 ```
 
-___Ordering (integer subsetting)___
+### Ordering (integer subsetting)
 
 >`order()` takes a vector as its input and returns an integer vector describing how to order the subsetted vector. 
 
@@ -564,19 +566,307 @@ df2[ , order(names(df2))]                     ## reorder rows according to first
 
 >You can sort vectors directly with `sort()`, or similarly `dplyr::arrange()`, to sort a data frame.
 
-___Expanding aggregated counts (integer subsetting)___
+### Expanding aggregated counts (integer subsetting)
 
 >Sometimes you get a data frame where identical rows have been collapsed into one and a count column has been added. `rep()` and integer subsetting make it easy to uncollapse, because we can take advantage of vectorisation: `rep(x, y)` repeats `x[i] y[i]` times.
 
+```{r}
+df <- tibble::tibble(x = c(2, 4, 1), y = c(9, 11, 6), n = c(3, 5, 1))
+str(df)
+rep(1:nrow(df), df$n)
+df[rep(1:nrow(df), df$n), ]
+```
 
+### Removing columns from data frames (character)
 
+>There are two ways to remove columns from a data frame. You can set individual columns to `NULL`:
 
+```{r}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3])
+df$z <- NULL
+```
 
+>Or you can subset to return only the columns you want:
 
-___Removing columns from data frames (character)___
+```{r}
+df <- tibble::tibble(x = 1:3, y = 3:1, z = letters[1:3])
+df[c("x", "y")]
 
-___Selecting rows based on a condition (logical subsetting)___
+## use set operations when you only know the columns you don’t want
+df[setdiff(names(df), "x")]
+```
 
+### Selecting rows based on a condition (logical subsetting)
+
+>Because logical subsetting allows you to easily combine conditions from multiple columns, it’s probably the most commonly used technique for extracting rows out of a data frame.
+
+```{r}
+mtcars[mtcars$gear == 5, ]
+mtcars[mtcars$gear == 5 & mtcars$cyl == 4, ]
+```
+
+<blockquote>
+Remember to use the vector boolean operators `&` and `|`, not the short-circuiting scalar operators `&&` and `||`, which are more useful inside if statements. And don’t forget De Morgan’s laws, which can be useful to simplify negations:
+
+- `!(X & Y)` is the same as `!X | !Y`
+
+- `!(X | Y)` is the same as `!X & !Y`
+</blockquote>
+
+### `which()`
 
 ___Boolean algebra versus sets (logical and integer)___
+
+<blockquote>
+It’s useful to be aware of the natural equivalence between set operations (integer subsetting) and Boolean algebra (logical subsetting). Using set operations is more effective when:
+
+You want to find the first (or last) `TRUE`.
+
+You have very few `TRUE`s and very many `FALSE`s; a set representation may be faster and require less storage.
+
+`which()` allows you to convert a Boolean representation to an integer representation.
+</blockquote>
+
+```{r}
+x <- sample(8) < 4
+x
+which(x)
+```
+
+>There’s no reverse operation in base R but we can easily create one:
+
+```{r}
+unwhich <- function(x, n) {
+  out <- rep_len(FALSE, length.out = n)
+  out[x] <- TRUE
+  return(out)
+}
+unwhich(which(x), 8)
+```
+
+<blockquote>
+When first learning subsetting, a common mistake is to use `x[which(y)]` instead of `x[y]`. Here the `which()` achieves nothing: it switches from logical to integer subsetting but the result is exactly the same. In more general cases, there are two important differences.
+
+- When the logical vector contains `NA`, logical subsetting replaces these values with `NA` while `which()` simply drops these values. It’s not uncommon to use `which()` for this side-effect, but I don’t recommend it: nothing about the name "which" implies the removal of missing values.
+
+- `x[-which(y)]` is __not__ equivalent to `x[!y]`: if `y` is all `FALSE`, `which(y)` will be `integer(0)` and `-integer(0)` is still `integer(0)`, so you’ll get no values, instead of all values.
+
+In general, avoid switching from logical to integer subsetting unless you want, for example, the first or last `TRUE` value.
+</blockquote>
+
+>Exercise. _How would you randomly permute the columns of a data frame? (This is an important technique in random forests.) Can you simultaneously permute the rows and columns in one step?_
+
+```{r}
+df <- head(mtcars, 10)
+df[sample(nrow(df)), sample(ncol(df))]
+```
+
+## Control Flow
+
+<blockquote>
+-__Choices__, like `if` statements and `switch()` calls, allow you to run different code depending on the input. 
+
+-__Loops__, like `for` and `while`, allow you to repeatedly run code, typically with changing options.
+</blockquote>
+
+___Choices___
+
+```{r, eval=FALSE}
+# The basic form of an "if" statement in R
+if (condition) true_action
+if (condition) true_action else false_action
+```
+
+`if` statements also return values, which in turn can be used for assignments.
+
+```{r}
+x <- if (TRUE) 1; x
+x <- if (FALSE) 1; x ## invisibly returns a NULL
+x <- if (FALSE) 1 else 2; x
+```
+
+>The `condition` should evaluate to a single `TRUE` or `FALSE`. Most other inputs will generate an error:
+
+```{r, error=TRUE}
+if ("x") 1
+if (logical()) 1
+if (NA) 1
+```
+
+>The exception is a logical vector of length greater than 1, which generates a warning:
+
+```{r}
+if (c(TRUE, FALSE)) 1
+```
+
+>In R 3.5.0 and greater, thanks to [Henrik Bengtsson](https://github.com/HenrikBengtsson/Wishlist-for-R/issues/38), you can turn this into an error by setting an environment variable:
+
+```{r, error=TRUE}
+Sys.setenv("_R_CHECK_LENGTH_1_CONDITION_" = "true")
+if (c(TRUE, FALSE)) 1
+```
+
+>Handling vectors of logical values is the job of `ifelse()`: a vectorised function with `test`, `yes`, and `no` vectors (that will be recycled to the same length).
+
+```{r}
+x <- 1:10
+ifelse(x %% 5 == 0, "XXX", as.character(x))
+ifelse(x %% 2 == 0, "even", "odd")
+```
+
+>Another vectorised equivalent is the more general `dplyr::case_when()`. It uses a special syntax to allow any number of condition-vector pairs:
+
+```{r}
+dplyr::case_when(
+  x %% 3 == 0 & x %% 5 == 0 ~ "fizz buzz", 
+  x %% 3 == 0 ~ "fizz",
+  x %% 5 == 0 ~ "buzz",
+  is.na(x) ~ "[?]",
+  TRUE ~ as.character(x)
+)
+```
+
+>Closely related to `if` is the `switch()` statement. It’s a compact, special purpose equivalent that lets you replace code like:
+
+```{r}
+x_option <- function(x) {
+  if (x == "a") {
+    "option 1"
+  } else if (x == "b") {
+    "option 2" 
+  } else if (x == "c") {
+    "option 3"
+  } else {
+    stop("Invalid `x` value")
+  }
+}
+```
+
+>with the more succint:
+
+```{r}
+x_option <- function(x) {
+  switch(x,
+    "a" = "option 1",
+    "b" = "option 2",
+    "c" = "option 3",
+    stop("Invalid `x` value")
+  )
+}
+```
+
+>The last component of a `switch()` should always throw an error, otherwise unmatched inputs will invisibly return `NULL`.
+
+___Loops___
+
+```{r, eval=FALSE}
+# The basic form of a "loop" in R
+for (item in vector) perform_action
+```
+
+>Note. `for` assigns the item to the current environment, overwriting any existing variable with the same name.
+
+_Two ways to terminate a loop early:_
+
+1. `next` exits the current iteration.
+
+2. `break` exits the entire loop.
+
+```{r}
+for (i in 1:10) {
+  if (i < 3) next
+
+  print(i)
+  
+  if (i >= 5) break
+}
+```
+
+_Three common pitfalls of `for` loops_
+
+1. If you’re generating data, make sure to preallocate the output container. Otherwise the loop will be very slow (see copy-on-modify semantics).
+
+    ```{r}
+    x <- 1:10
+    out <- vector("list", length(x))
+    for (i in 1:length(out)) out[[i]] <- rnorm(10, x[[i]])
+    ```
+
+2. Beware of iterating over `1:length(x)`, which will fail in unhelpful ways if `x` has length 0.
+
+    ```{r, error=TRUE}
+    x <- numeric()
+    out <- vector("list", length(x))
+    for (i in 1:length(out)) out[[i]] <- rnorm(10, x[[i]])
+    ```
+
+3. Loops typically strip the attributes of S3 vectors.
+
+```{r}
+xs <- as.Date(c("2020-01-01", "2010-01-01"))
+for (k in xs) print(k)  ## no longer a date
+for (k in seq_along(xs)) print(xs[[k]])
+```
+
+We use `while` and `repeat` when we need to use loops, but we don't know in advance the set of values that we want to iterate over.
+
+>You can rewrite any `for` loop to use `while` instead, and you can rewrite any `while` loop to use `repeat`, but the converses are not true. That means `while` is more flexible than `for`, and `repeat` is more flexible than `while.` It’s good practice, however, to use the least-flexible solution to a problem, so you should use `for` wherever possible.
+
+- `while(condition) action`: performs `action` while `condition` is `TRUE`.
+
+- `repeat(action)`: repeats `action` forever (i.e. until it encounters `break`).
+
+    Note that R doesn't have the common `do {action} while (condition)` syntax found in other languages.
+
+>Generally speaking you shouldn’t need to use for loops for data analysis tasks, as `map()` and `apply()` already provide less flexible solutions to most problems.
+
+## Functions
+
+### Basics
+
+Two important ideas:
+
+<blockquote>
+1. Functions are objects, just as vectors are objects.
+
+2. Functions can be broken down into three components: arguments, body, and environment.
+
+    There are exceptions to every rule, and in this case, there is a small selection of "primitive" base functions that are implemented purely in C.
+</blockquote>
+
+The three parts of any function can be accessed with `formals()`, `body()`, and `environment()`.
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
+### Composition
+
+### Lexical scoping
+
+### ???
+
+### `...`
+
+### Exit
+
+### Disguise
+
+
+
+
+
+
+
+
+
+
+
 
