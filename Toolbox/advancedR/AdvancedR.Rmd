@@ -34,7 +34,7 @@ blockquote {
 ')
 ```
 
->Taken from Hadley Wickham. [__Advanced R__](https://adv-r.hadley.nz). CRC Press, 2019.
+>All of this is taken from Hadley Wickham. [__Advanced R__](https://adv-r.hadley.nz). CRC Press, 2019.
 
 ****
 
@@ -44,12 +44,13 @@ Somethings about `R` are different from what you'd expect to see in other progra
 
 - Copy-on-modify semantics, which makes sense once we really understand the difference between an object and its name.
 
-- In `R`, almost everything is a vector. 
+- In `R`, _almost_ everything is a vector. 
 
 - There are three subsetting operators, `[[`, `[`, and `$`, and all of them interact in different ways with different vector types.
 
 - R has aspects of both functional and object-oriented (OO) programming languages.
 
+FINISH THIS SECTION AFTERWARDS
 
 ## Copy-on-modify semantics
 
@@ -1086,17 +1087,84 @@ In R, function arguments are only evaluated _if_ accessed. This is also known as
 
 ```{r}
 h01 <- function(x) 10
-h01(asdASDFASDFdfasdfasdfasdfASADFEawef)
+h01(asdASDFfasdfASDFawef) ## no error because asdASDFfasdfASDFawef is never used
 ```
 
-Lazy evaluation is powered by a data structure called a __promise__, or (less commonly) a [_thunk_](https://en.wikipedia.org/wiki/Thunk). 
+Lazy evaluation is powered by a data structure called a __promise__ (or a [_thunk_](https://en.wikipedia.org/wiki/Thunk)). 
 
+A promise has three components:
 
-6.5.1 Promises
+1. An _expression_ (e.g. `x + y`) which gives rise to the delayed computation.
 
+2. An _environment_ where the expression should be evaluated (i.e. the environment where the function is called). 
 
+3. A _value_, which is computed and cached the first time a promise is accessed when the expression is evaluated in the specified environment. _This ensures that the promise is evaluated at most once._
+
+>You cannot manipulate promises with R code. Promises are like a quantum state: any attempt to inspect them with R code will force an immediate evaluation, making the promise disappear.
+
+Note. An exception to this behavior is provided by the "quosure" object in the [__`rlang`__](https://rlang.r-lib.org/) package.
+
+Lazy evaluation allows for default values to be defined in terms of other arguments, or even in terms of variables defined inside the function. 
+
+```{r}
+h04 <- function(x = 1, y = x * 2, z = a + b) {
+  a <- 10; b <- 100 ## not recommended!!!
+  c(x, y, z)
+}
+
+h04()
+```
+
+```{r}
+ls()
+```
+
+>The evaluation environment is slightly different for default and user supplied arguments, as default arguments are evaluated inside the function. This means that seemingly identical calls can yield different results. It’s easiest to see this with an extreme example:
+
+```{r}
+h05 <- function(x = ls()) {
+  a <- 1
+  x
+}
+
+# ls() evaluated inside h05:
+h05()
+# ls() evaluated in global environment:
+h05(x = ls())
+```
+
+The `missing()` will help you determine if an argument's value comes from the user or from the default.
+
+```{r}
+h06 <- function(x = 10) list(missing(x), x)
+str(h06())
+str(h06(20))
+```
+
+This special function is behind `sample()`'s erratic behavior.
+
+```{r}
+formals(sample)
+body(sample)
+```
+
+```{r}
+sample(5)
+sample(5, size = 2)
+```
 
 ### `...` (dot-dot-dot)
+
+Functions with the `...` argument can take any number of additional arguments. You can also use `...` to pass those additional arguments to another function.
+
+For example:
+
+```{r}
+
+```
+
+
+
 
 ### Exiting
 
@@ -1104,7 +1172,6 @@ Lazy evaluation is powered by a data structure called a __promise__, or (less co
 
 
 
->Lazy evaluation is powered by a data structure called a __promise__.
 
 
 
