@@ -1450,7 +1450,27 @@ Control flow:
 
 ## Environments
 
+>The environment is the data structure that powers scoping.
 
+>Understanding environments is not necessary for day-to-day use of R. But they are important to understand because they power many important R features like lexical scoping, namespaces, and R6 classes, and interact with evaluation to give you powerful tools for making domain specific languages, like dplyr and ggplot2.
+
+>This chapter will use [__`rlang`__](https://rlang.r-lib.org/) functions for working with environments, because it allows us to focus on the essence of environments, rather than the incidental details.
+
+```{r}
+library(rlang)
+```
+
+>The `env_` functions in rlang are designed to work with the pipe: all take an environment as the first argument, and many also return an environment. 
+
+### Basics
+
+### Computing with environments
+
+### Special environments
+
+### Call stacks
+
+### Environments as data structures
 
 ## Conditions
 
