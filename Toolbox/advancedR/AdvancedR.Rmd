@@ -1,7 +1,7 @@
 ---
 title: "<strong>Advanced `R`</strong>"
 author: "andrés castro araújo"
-date: "`r Sys.Date()`"
+date: "`r format(Sys.Date(), '%b %d, %Y')`"
 output: 
   html_document: 
     theme: lumen
