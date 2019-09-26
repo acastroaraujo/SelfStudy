@@ -1541,16 +1541,65 @@ knitr::include_graphics(
 
 In these diagrams, every pale blue dot indicates the existence of a parent environment.
 
+>You can find the parent of an environment with `env_parent()`:
+
 ```{r}
-env_parent(e2b)
 env_parent(e2a)
+env_parent(e2b)
+```
+
+Only _the empty environment_ has no parents.
+
+```{r, error=TRUE}
+empty_env()
+env_parent(empty_env())
+```
+
+Actually, the ancestors of every environment will eventually lead back to the empty environment. You can see all ancestors with the `env_parents()` function:
+
+```{r}
+env_parents(e2b)
+
+e2c <- env(empty_env(), d = 4, e = 5)
+e2d <- env(e2c, a = 1, b = 2, c = 3)
+
+env_parents(e2d)
+```
+
+`env_parents()` stops when it gets to the global environment; the global environment's ancestors include every attached package, so this provides the most useful information. But we can always override this default behavior by adding an extra argument to the function call.
+
+```{r}
+env_parents(e2b, last = empty_env())
 ```
 
 
+ADD EXPLANATION OF SPECIAL ENVIRONEMNTS
+
+
+
+Ancestors of environments provide the basis for understanding the "super assignment" operator `<<-`.
+
+Unlike `<-`, the `<<-` operator never creates a variable in the current environment. Instead, it modifies an existing variable found in a parent environment.
+
+```{r}
+x <- 0
+f <- function() x <<- 1
+f()
+x
+```
+
+```{r}
+
+```
+
+
+### Other special environments
+
+inverted order 2
 
 ### Computing with environments
 
-### Special environments
+inverted order 1
 
 ### Call stacks
 
