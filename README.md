@@ -1,6 +1,6 @@
-Here you'll find materials I've used for self-studying over the years. Eventually, I'll get through all of them. I don't know how I'll organize these though, and I'll probably add an asortment of technical notebooks on various specific topics along the way.
+Here you'll find materials I've used for self-studying over the years. Eventually, after many years, I'll get through all of them.
 
-I claim no authorship for any of the documents collected in this repository!
+I claim no authorship for any of the documents collected in this repository! Expect to see a lot of copy-paste of relevant snippets.
 
 ## Probability and Statistics
 
@@ -18,7 +18,7 @@ I claim no authorship for any of the documents collected in this repository!
 
 - Gelman et al's ___Bayesian Data Analysis 3___
 
-- ~~Rasmussen & William's ___Gaussian Processes for Machine Learning___~~
+- Rasmussen & William's ___Gaussian Processes for Machine Learning___
 
 ## Machine Learning and Computer Science
 
@@ -26,9 +26,7 @@ I claim no authorship for any of the documents collected in this repository!
 
 - Jurafsky & Martin's ___Speech and Language Processing___
 
-- ~~Eugene Charniak's ___Statistical Language Learning___~~
-
-- ~~Gilbert Strang's ___Linear Algebra and Learning from Data___~~
+- Gilbert Strang's ___Linear Algebra and Learning from Data___
 
 - Francois Chollet's ___Deep Learning with Python___
 
@@ -48,6 +46,4 @@ I claim no authorship for any of the documents collected in this repository!
 
 - Easley & Kleinberg's ___Networks, Crowds, and Markets___
 
-## Toolbox
 
-This one contains stuff about SQL, Shiny, and specific packages used for webscraping and statistics (`rstanarm`, `sf`, `parsnip`, etc.).

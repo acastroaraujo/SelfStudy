@@ -1,1 +1,0 @@
-Introduction to shiny modules with leaflet example. This will be a lifesaver for creating custom (but semi-standard) data products.
