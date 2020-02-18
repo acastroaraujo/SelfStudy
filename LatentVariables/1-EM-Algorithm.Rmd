@@ -1,5 +1,5 @@
 ---
-title: "<strong>the EM algorithm</strong>"
+title: "<strong>mixture models</strong>"
 author: "andrés castro araújo"
 date: "`r Sys.Date()`"
 output: 
@@ -32,21 +32,17 @@ blockquote {
 </style>")
 ```
 
-
-
-rename? mixture models are a lot more interesting than I thought.
-
 ****
 
 Everything here comes from _Modern Statistics for Modern Biology_ [-@holmes2018modern, chap. 4] by Susan Holmes and Wolgang Huber, unless stated otherwise.
 
 ****
 
-## Mixture Models
+## introduction
 
 Simple probability distributions can be used as the building blocks for more complex and realistic statistical models.
 
-The following graph shows a mixture of two normal distributions. We call these _finite mixtures_. Other mixtures can involve almost as many distributions as we have observations. These we call _infinite mixtures_. 
+The following graph shows a mixture of two normal distributions. We call these __finite mixtures__. Other mixtures can involve almost as many distributions as we have observations. These are called __infinite mixtures__. 
 
 ```{r}
 draw_samples <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
@@ -57,7 +53,8 @@ draw_samples <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
         )
 }
 
-ggplot(tibble(value = draw_samples()), aes(x = value)) + 
+tibble(value = draw_samples()) %>% 
+  ggplot(aes(x = value)) + 
   geom_histogram(binwidth = 0.1, color = "steelblue1", 
                  fill = "steelblue1", alpha = 0.5)
 ```
@@ -65,7 +62,8 @@ ggplot(tibble(value = draw_samples()), aes(x = value)) +
 Note that as we increase the number of observations and bins, the histogram gets nearer to a smooth curve. This smooth limiting curve is called the density function of the random variable. 
 
 ```{r}
-ggplot(tibble(value = draw_samples(N = 1e6)), aes(x = value)) + 
+tibble(value = draw_samples(N = 1e6)) %>% 
+  ggplot(aes(x = value)) + 
   geom_histogram(bins = 500, color = "steelblue1", 
                  fill = "steelblue1", alpha = 0.5)
 ```
@@ -104,7 +102,7 @@ Suppose that a dataset was generated from a mixture of two normals with the foll
 $$
 \begin{align}
 &\mu_1 = -0.5 && \mu_2 = 1.5 \\
-&\sigma_1 = 1 && \sigma_2 = 1 \\
+&\sigma_1 = 0.75 && \sigma_2 = 0.75 \\
 \end{align}
 $$
 
@@ -119,6 +117,8 @@ x   <- rnorm(N, mean = mus[u], sd = 0.75)
 df  <- tibble(u, x)
 ```
 
+Number of observations in each group:
+
 ```{r}
 table(df$u)
 ```
@@ -129,13 +129,10 @@ $$
 f(x, u \mid \boldsymbol \theta) = \prod_{\{i: u_i = 1\}} \phi_1(x_i) \prod_{\{i: u_i = 2\}} \phi_2(x_i)
 $$
 
-Note that the MLE for the mean and variance of normal distributions are simply:
+Note that the maximization can be split into two independent pieces and solved as if we had two different MLEs to find. The MLE for the mean and variance of normal distributions are simply:
 
 $$
-\hat \mu = \frac{1}{n} \sum_{i = 1}^n x_i
-$$
-
-$$
+\hat \mu = \frac{1}{n} \sum_{i = 1}^n x_i \hspace{1cm} \text{and} \hspace{1cm}
 \hat \sigma^2 = \frac{1}{n} \sum_{i = 1}^n (x_i - \hat \mu)^2
 $$
 
@@ -145,13 +142,13 @@ df %>%
   summarize(mu_hat = mean(x), sd_hat = sd(x))
 ```
 
-The problem, however, is that _we won't know $u_i$ or the mixture proportions_ ( $\lambda_1, \lambda_2$). This is the problem that the EM algorithm is supposed to solve.
+The problem, however, is that _we won't know $u_i$ or the mixture proportions_ ( $\lambda_1, \lambda_2$). This is the problem that the EM algorithm is supposed to solve. 
 
-We can use the [__`mixtools`__](https://cran.r-project.org/web/packages/mixtools/index.html) package to provide a fast implementation of this algorithm and compare the results.
+For the time being, we can use the [__`mixtools`__](https://cran.r-project.org/web/packages/mixtools/index.html) package to provide a fast implementation of this algorithm and compare the results.
 
 ```{r}
 output <- mixtools::normalmixEM(df$x)
-output$lambda
+output$lambda ## Mixture proportions
 ```
 
 These are the new MLE estimators:
@@ -161,19 +158,19 @@ output$mu
 output$sigma
 ```
 
-## The EM Algorithm
+## the EM algorithm
 
-We can use the [_expectation-maximization algorithm_](https://en.wikipedia.org/wiki/Expectation–maximization_algorithm) to make inferences about hidden groupings (or latent variables) in our data [@holmes2018modern]. These can be any number $K$ of groupings.
+We can use the [_expectation-maximization algorithm_](https://en.wikipedia.org/wiki/Expectation–maximization_algorithm) to make inferences about hidden groupings (or latent variables) in our data. These can be any number $K$ of groupings.
 
 The EM algorithm is a popular procedure that alternates between two steps:
 
-- Pretending we know the probability with which each observation belongs to a component (or cluster) and estimating the distribution parameters of the components. We refer to these probabilities as the _weights_ of each individual data point ($w_{i,k}$)
+- Pretending we know the probability with which each observation belongs to a component (or cluster) and __estimating the distribution parameters__ of the components. We refer to these probabilities as the _weights_ of each individual data point ($w_{i,k}$)
 
-- Pretending we know the parameters of the component (or cluster) distributions and estimating the probability with which each observation belongs to them. 
+- Pretending we know the parameters of the component (or cluster) distributions and __estimating the probability with which each observation belongs to them__. 
 
 In other words, we solve a difficult optimization problem by iteratively pretending we know one part of the solution to compute the other part.
 
-For example, suppose we measure a variable $X$ on a series of objects. We think these measurements come from $K$ different groups (in this example we assume $K = 2$), but we don't know for sure. We then start by _augmenting_ the data with the unobserved (or missing or latent) group label, which we call $U$. We are now interested in discovering the values of $U$, and also the unknown parameters that describe the underlying densities (e.g. $\mu_1$, $\sigma_1$, $\mu_2$, $\sigma_2$). 
+For example, suppose we measure a variable $X$ on a series of objects. We also think that these measurements come from $K$ different groups (in this example we assume $K = 2$). We then start by _augmenting_ the data with the unobserved (or missing or latent) group label, which we call $U$. We are now interested in discovering the values of $U$, and also the unknown parameters that describe the underlying densities (e.g. $\mu_1$, $\sigma_1$, $\mu_2$, $\sigma_2$). 
 
 After starting with initial guesses about the cluster parameters and mixing proportions (i.e. $\lambda$), we then proceed to 
 
@@ -189,10 +186,9 @@ $$
 w_{i, k} = \frac{\overbrace{\lambda_k}^\text{prior} \ \overbrace{p(x_i \mid \boldsymbol \theta)}^\text{likelihood}}{\sum_{k = 1}^K \lambda_k \ p(x_i \mid \boldsymbol \theta)}
 $$
 
-### Identifiability
+### identifiability
 
-Before attempting to estimate our probability distributions, we need to make sure they are [_identifiable_](https://en.wikipedia.org/wiki/Identifiability), "that if we have distinct representations of the model, they make distinct observational claims" [@shalizi2013advanced, chap. 19]. Mixture models can exhibit many issues with identifiability. For example __label degeneracy__, which means that "we can always swap the labels of any two clusters with no effect on anything observable at all --- if we decide that cluster A is now cluster number B and vice versa, that doesn’t
-change the distribution of $X$ at all" [@shalizi2013advanced].
+Before attempting to estimate our probability distributions, we need to make sure they are [_identifiable_](https://en.wikipedia.org/wiki/Identifiability), "that if we have distinct representations of the model, they make distinct observational claims" [@shalizi2013advanced, chap. 19]. Mixture models can exhibit many issues with identifiability. For example __label degeneracy__, which means that "we can always swap the labels of any two clusters with no effect on anything observable at all --- if we decide that cluster A is now cluster number B and vice versa, that doesn’t change the distribution of $X$ at all" [@shalizi2013advanced].
 
 Another coin flip example:
 
@@ -214,7 +210,7 @@ After seeing both contingency tables, do you feel that you could uniquely estima
 
 More generally, the problem of identifiability arises when there are too many degrees of freedom in the parameters.
 
-### Zero inflated data
+### zero inflated data
 
 Mixture models are useful whenever we have observations that can be related to different causes. Note that these models can incorporate different probability distributions to model the same outcome $y$. 
 
@@ -227,7 +223,7 @@ f_{ZI}(y) = \lambda \ \delta(y) + (1 - \lambda) \ f_{\text{count}}(y)
 $$
 Here, the $\delta$ is Dirac's delta function, which represents a probability distribution that has all its mass at 0. 
 
-### Closing remarks
+### closing remarks
 
 Here is why Holmes and Huber [-@holmes2018modern] think the EM algorithm is instructive:
 
@@ -237,8 +233,89 @@ Here is why Holmes and Huber [-@holmes2018modern] think the EM algorithm is inst
 ><br><br>
 >3. The method employed here can be extended to the more general case of __model-averaging__ (Hoeting et al. 1999). It can be sometimes beneficial to consider several models simultaneously if we are unsure which one is relevant for our data. We can combine them together into a weighted model. The weights are provided by the likelihoods of the models.
 
+### implementation
 
-## Bootstrap
+Here we go back to the example we used in the introduction:
+
+```{r}
+set.seed(123)
+N   <- 500
+mus <- c(-0.5, 1.5)
+u   <- sample(1:2, N, replace = TRUE)  ## label
+x   <- rnorm(N, mean = mus[u], sd = 0.75)
+df  <- tibble(u, x)
+```
+
+
+```{r}
+
+
+# initialization
+init_cluster <- sample(c(TRUE, FALSE), size = length(x), replace = TRUE)
+sds <- c(1, 0.5)
+mus <- c(0.1, -0.1)
+lambdas <- c(0.5, 0.5)
+
+df$x
+# 1. expectation
+#E <- function(mus, sds, lambdas) {
+  c1 <- dnorm(df$x, mean = mus[[1]], sd = sds[[1]]) * lambdas[[1]]
+  c2 <- dnorm(df$x, mean = mus[[2]], sd = sds[[2]]) * lambdas[[2]]
+  
+  w1 <- c1 / (c1 + c2)
+  w2 <- c2 / (c1 + c2)
+  
+  loglikelihood <- sum(log(c1 + c2))
+  posterior <- cbind(c1, c2)
+#}
+
+# wls - weighted least squares
+wls <- function(X, Y, W) {
+  solve(t(X) %*% W %*% X) %*% t(X) %*% W %*% Y
+}
+  
+# 2. maximization
+#M <- function(x, posterior) {
+
+  mus <- 1 / colSums(posterior) * colSums(posterior * df$x)
+  sds <- colSums(posterior * (x - mus)^2) * 1 / colSums(posterior)
+  lambdas <- colMeans(posterior)
+#}
+  
+m_step <- function(x, posterior.df) {
+  comp1.n <- sum(posterior.df[, 1])
+  comp2.n <- sum(posterior.df[, 2])
+
+  comp1.mu <- 1/comp1.n * sum(posterior.df[, 1] * x)
+  comp2.mu <- 1/comp2.n * sum(posterior.df[, 2] * x)
+
+  comp1.var <- sum(posterior.df[, 1] * (x - comp1.mu)^2) * 1/comp1.n
+  comp2.var <- sum(posterior.df[, 2] * (x - comp2.mu)^2) * 1/comp2.n
+
+  comp1.alpha <- comp1.n / length(x)
+  comp2.alpha <- comp2.n / length(x)
+
+  list("mus" = c(comp1.mu, comp2.mu),
+       "sds" = c(comp1.var, comp2.var),
+       "lambdas" = c(comp1.alpha, comp2.alpha))
+}
+
+
+
+  c1 <- dnorm(df$x, mean = mus[[1]], sd = sds[[1]]) * lambdas[[1]]
+  c2 <- dnorm(df$x, mean = mus[[2]], sd = sds[[2]]) * lambdas[[2]]
+  
+  w1 <- c1 / (c1 + c2)
+  w2 <- c2 / (c1 + c2)
+  
+  loglikelihood <- sum(log(c1 + c2))
+  posterior <- cbind(c1, c2)
+  m_step(df$x, posterior) %>% list2env(envir = globalenv())
+```
+
+
+
+## bootstrap
 
 
 The sampling distribution is the set of possible data sets that could have been observed, if the data collection process had been repeated many many times. The true sampling distribution of a statistic (e.g. mean, variance, etc) is often hard to know as it requires many different data samples. 
