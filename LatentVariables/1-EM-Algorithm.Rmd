@@ -235,85 +235,7 @@ Here is why Holmes and Huber [-@holmes2018modern] think the EM algorithm is inst
 
 ### implementation
 
-Here we go back to the example we used in the introduction:
-
-```{r}
-set.seed(123)
-N   <- 500
-mus <- c(-0.5, 1.5)
-u   <- sample(1:2, N, replace = TRUE)  ## label
-x   <- rnorm(N, mean = mus[u], sd = 0.75)
-df  <- tibble(u, x)
-```
-
-
-```{r}
-
-
-# initialization
-init_cluster <- sample(c(TRUE, FALSE), size = length(x), replace = TRUE)
-sds <- c(1, 0.5)
-mus <- c(0.1, -0.1)
-lambdas <- c(0.5, 0.5)
-
-df$x
-# 1. expectation
-#E <- function(mus, sds, lambdas) {
-  c1 <- dnorm(df$x, mean = mus[[1]], sd = sds[[1]]) * lambdas[[1]]
-  c2 <- dnorm(df$x, mean = mus[[2]], sd = sds[[2]]) * lambdas[[2]]
-  
-  w1 <- c1 / (c1 + c2)
-  w2 <- c2 / (c1 + c2)
-  
-  loglikelihood <- sum(log(c1 + c2))
-  posterior <- cbind(c1, c2)
-#}
-
-# wls - weighted least squares
-wls <- function(X, Y, W) {
-  solve(t(X) %*% W %*% X) %*% t(X) %*% W %*% Y
-}
-  
-# 2. maximization
-#M <- function(x, posterior) {
-
-  mus <- 1 / colSums(posterior) * colSums(posterior * df$x)
-  sds <- colSums(posterior * (x - mus)^2) * 1 / colSums(posterior)
-  lambdas <- colMeans(posterior)
-#}
-  
-m_step <- function(x, posterior.df) {
-  comp1.n <- sum(posterior.df[, 1])
-  comp2.n <- sum(posterior.df[, 2])
-
-  comp1.mu <- 1/comp1.n * sum(posterior.df[, 1] * x)
-  comp2.mu <- 1/comp2.n * sum(posterior.df[, 2] * x)
-
-  comp1.var <- sum(posterior.df[, 1] * (x - comp1.mu)^2) * 1/comp1.n
-  comp2.var <- sum(posterior.df[, 2] * (x - comp2.mu)^2) * 1/comp2.n
-
-  comp1.alpha <- comp1.n / length(x)
-  comp2.alpha <- comp2.n / length(x)
-
-  list("mus" = c(comp1.mu, comp2.mu),
-       "sds" = c(comp1.var, comp2.var),
-       "lambdas" = c(comp1.alpha, comp2.alpha))
-}
-
-
-
-  c1 <- dnorm(df$x, mean = mus[[1]], sd = sds[[1]]) * lambdas[[1]]
-  c2 <- dnorm(df$x, mean = mus[[2]], sd = sds[[2]]) * lambdas[[2]]
-  
-  w1 <- c1 / (c1 + c2)
-  w2 <- c2 / (c1 + c2)
-  
-  loglikelihood <- sum(log(c1 + c2))
-  posterior <- cbind(c1, c2)
-  m_step(df$x, posterior) %>% list2env(envir = globalenv())
-```
-
-
+___Hand code an example here.___
 
 ## bootstrap
 
@@ -365,9 +287,7 @@ ggplot(tibble(medians = meds), aes(x = medians)) +
 
 ```
 
-Use rsample and bootstrap
 
-gelman
 
 
 ## Infinite Mixtures
