@@ -181,7 +181,7 @@ After starting with initial guesses about the cluster parameters and mixing prop
 
 ```{r}
 ## We start with data, in this case: df$x
-## And the number of clusters too look for
+## And the number of clusters too look for: k = 2
 
 x <- df$x
 k <- 2
@@ -196,8 +196,8 @@ lambda <- rep(1 / k, k)
 # Calculate weights, assuming we know lambda, mu, and sigma
 
 w <- map(1:k, function(k) lambda[[k]] * dnorm(x, mu[[k]], sigma[[k]]))
-denominator <- purrr::reduce(w, `+`)
-weights <- do.call(cbind, w) / denominator  ## see weights equation
+denominator <- do.call(`+`, w)
+weights <- do.call(cbind, w) / denominator  ## See weights equation
 
 # M Step ------------------------------------------------------------------
 # Calculate lambda, mu, sigma, assuming we know weights
