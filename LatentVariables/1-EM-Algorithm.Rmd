@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: 
   html_document: 
     code_folding: show
-    theme: lumen
+    theme: paper
     toc: yes
     toc_float:
       collapsed: yes
@@ -21,12 +21,16 @@ theme_set(theme_minimal(base_family = "Avenir Next Condensed", base_line_size = 
 ```
 
 
-```{css, include=FALSE}
+```{css, echo=FALSE}
 blockquote {
     padding: 10px 20px;
     margin: 0 0 20px;
+    font-size: 12px;
+    color: #828282;
+    border-left: 14px solid #EEE;
+}
+body {
     font-size: 14px;
-    border-left: 5px solid #eee;
 }
 ```
 
@@ -180,59 +184,67 @@ After starting with initial guesses about the cluster parameters and mixing prop
 ### implementation
 
 ```{r}
-## We start with data, in this case: df$x
-## And the number of clusters too look for: k = 2
+EM <- function(x, k) {
 
-x <- df$x
-k <- 2
+  # Initial Guesses -------------------------------------------------
+  # There are better ways to do this...
+  sigma <- rep(1, k)
+  mu <- sample(x, k) ## k random data points serve as initial means
+  lambda <- rep(1 / k, k)
+  
+  # Convergence is generally detected by computing the value of the log-likelihood
+  # after each iteration and halting when it appears not to be changing in a
+  # significant manner from one iteration to the next
+  
+  iter <- 0
+  ll_init <- 999
+  ll_diff <- 999
+  
+  while (ll_diff >= 0.00001) {
+  
+    # E Step ------------------------------------------------------------------
+    # Calculate weights, assuming we know lambda, mu, and sigma
+    
+    w <- map(1:k, function(k) lambda[[k]] * dnorm(x, mu[[k]], sigma[[k]]))
+    denominator <- do.call(`+`, w)
+    weights <- do.call(cbind, w) / denominator  ## See weights equation
+    
+    # M Step ------------------------------------------------------------------
+    # Calculate lambda, mu, sigma, assuming we know weights
+    
+    NK <- colSums(weights)
+    lambda <- NK / nrow(weights)
+    mu <- colSums(weights * x) / NK 
+    sigma <- purrr::map_dbl(1:k, function(k) sqrt(sum(weights[, k] * (x - mu[[k]])^2) / NK[[k]]))
+    
+    # Likelihood --------------------------------------------------------------
+    
+    ll <- sum(log(denominator))
+    
+    # Loop Stuff --------------------------------------------------------------
+    
+    iter <- iter + 1
+    ll_diff <- abs(ll - ll_init)
+    ll_init <- ll
+  
+  }
+  
+  message(iter, " iterations!")
+  list(mu = mu, sigma = sigma, lambda = lambda, x = x, posterior = weights, loglikelihood = ll)
 
-# Step 1: Initial Guesses -------------------------------------------------
-# Usually the mu's come from a K-Means Clustering for speed
-sigma <- rep(1, k)
-mu <- sample(x, k) ## two random data points serve as initial means
-lambda <- rep(1 / k, k)
+}
 
-# E Step ------------------------------------------------------------------
-# Calculate weights, assuming we know lambda, mu, and sigma
-
-w <- map(1:k, function(k) lambda[[k]] * dnorm(x, mu[[k]], sigma[[k]]))
-denominator <- do.call(`+`, w)
-weights <- do.call(cbind, w) / denominator  ## See weights equation
-
-# M Step ------------------------------------------------------------------
-# Calculate lambda, mu, sigma, assuming we know weights
-
-NK <- colSums(weights)
-lambda <- NK / nrow(weights)
-mu <- colSums(weights * x) / NK 
-sigma <- purrr::map_dbl(1:k, function(k) sqrt(sum(weights[, k] * (x - mu[[k]])^2) / NK[[k]]))
-
-# Likelihood --------------------------------------------------------------
-
-ll <- sum(log(denominator))
-
-# Convergence is generally detected by computing the value of the log-likelihood
-# after each iteration and halting when it appears not to be changing in a
-# significant manner from one iteration to the next
-
-# TURN THIS INTO A WHILE LOOP
-
-iter <- 1
-
-cat("Iteration ", iter,
-    "\nLogLikelihood:", ll,
-    "\nMu:", mu,
-    "\nSigma:", sigma, 
-    "\nLambda: ", lambda, "\n\n")
+new_output <- EM(df$x, k = 2)
+new_output[c("lambda", "mu", "sigma")]
 ```
 
 Here is how Holmes and Huber [-@holmes2018modern] describe the usefulness of the EM algorithm:
 
->1. It shows us how we can tackle a difficult problem with too many unknowns by alternating between solving simpler problems. In this way, we eventually find estimates of hidden variables.
-><br><br>
->2. It provides a first example of _soft_ averaging i.e., where we don’t decide whether an observation belongs to one group or another, but allow it to participate in several groups by using probabilities of membership as weights, and thus obtain more nuanced estimates.
-><br><br>
->3. The method employed here can be extended to the more general case of __model-averaging__ (Hoeting et al. 1999). It can be sometimes beneficial to consider several models simultaneously if we are unsure which one is relevant for our data. We can combine them together into a weighted model. The weights are provided by the likelihoods of the models.
+>It shows us how we can tackle a difficult problem with too many unknowns by alternating between solving simpler problems. In this way, we eventually find estimates of hidden variables.
+
+>It provides a first example of _soft_ averaging i.e., where we don’t decide whether an observation belongs to one group or another, but allow it to participate in several groups by using probabilities of membership as weights, and thus obtain more nuanced estimates.
+
+>The method employed here can be extended to the more general case of __model-averaging__ (Hoeting et al. 1999). It can be sometimes beneficial to consider several models simultaneously if we are unsure which one is relevant for our data. We can combine them together into a weighted model. The weights are provided by the likelihoods of the models.
 
 ### identifiability
 
