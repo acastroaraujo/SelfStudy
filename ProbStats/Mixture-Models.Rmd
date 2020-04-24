@@ -36,7 +36,7 @@ body {
 
 ****
 
-Everything here comes from _Modern Statistics for Modern Biology_ [-@holmes2018modern, chap. 4] by Susan Holmes and Wolgang Huber, unless stated otherwise.
+Most of this notebook comes straight from from [__Modern Statistics for Modern Biology__](http://web.stanford.edu/class/bios221/book/index.html) [-@holmes2018modern, chap. 4] by Susan Holmes and Wolgang Huber.
 
 ****
 
@@ -47,7 +47,7 @@ Simple probability distributions can be used as the building blocks for more com
 The following graph shows a mixture of two normal distributions. We call these __finite mixtures__. Other mixtures can involve almost as many distributions as we have observations. These are called __infinite mixtures__. 
 
 ```{r}
-draw_samples <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
+draw_normal_mixture <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
   mix <- sample(c(TRUE, FALSE), N, replace = TRUE, prob = c(0.5, 0.5))
   output <- rnorm(n = length(mix), 
         mean = ifelse(mix, means[[1]], means[[2]]),
@@ -57,19 +57,17 @@ draw_samples <- function(N = 1e3, means = c(-1, 1), sds = c(0.5, 0.5)) {
   data.frame(x = output)
 }
 
-draw_samples() %>% 
+draw_normal_mixture() %>% 
   ggplot(aes(x)) + 
-  geom_histogram(binwidth = 0.1, color = "steelblue", 
-                 fill = "steelblue", alpha = 0.5)
+  geom_histogram(binwidth = 0.1, color = "white", fill = "steelblue")
 ```
 
 Note that as we increase the number of observations and bins, the histogram gets nearer to a smooth curve. This smooth limiting curve is called the density function of the random variable. 
 
 ```{r}
-draw_samples(N = 1e6) %>% 
-  ggplot(aes(x)) + 
-  geom_histogram(bins = 500, color = "steelblue", 
-                 fill = "steelblue", alpha = 0.5)
+draw_normal_mixture(N = 1e6) %>% 
+  ggplot(aes(x, y = ..density..)) + 
+  geom_histogram(bins = 500, color = NA, fill = "steelblue")
 ```
 
 In this case, each of the two normals can be written explicitly as
@@ -83,22 +81,9 @@ And the mixture density in our previous example can simply be written as:
 
 $$
 \begin{align}
-f(x) = \lambda_1 \ \phi_1(x) +  \lambda_2 \ \phi_2(x), && \underbrace{\lambda_1 = \lambda_2 = \frac{1}{2}}_\text{mixing proportions}
+f(x) = \lambda_1 \ \phi_1(x) +  \lambda_2 \ \phi_2(x), && \underbrace{\lambda_1 + \lambda_2 = 1}_\text{mixing proportions}
 \end{align}
 $$
-
-
-```{r}
-normal_mixture <- function(x, f1 = c(mu = -1, sd = 0.5), f2 = c(mu = 1, sd = 0.5), probs = c(0.5, 0.5)) {
-    probs[[1]] * dnorm(x, f1[[1]], f1[[2]]) + 
-    probs[[2]] * dnorm(x, f2[[1]], f2[[2]])
-}
-
-ggplot() +
-  geom_area(aes(x = -3:3), stat = "function", fun = normal_mixture, 
-    fill = "steelblue") +
-  labs(y = "mixture density", x = "x")
-```
 
 ****
 
@@ -106,19 +91,33 @@ Suppose that a dataset was generated from a mixture of two normals with the foll
 
 $$
 \begin{align}
-&\mu_1 = -0.5 && \mu_2 = 1.5 \\
-&\sigma_1 = 0.75 && \sigma_2 = 0.75 \\
+&\mu_1 = -1 && \mu_2 = 1 \\
+&\sigma_1 = 0.5 && \sigma_2 = 0.75 \\
+&\lambda_1 = 0.7 && \lambda_2 = 0.3 \\
 \end{align}
 $$
+
+```{r}
+normal_mixture_pdf <- function(x, mu = c(-1, 1), sigma = c(0.5, 0.75), lambda = c(0.7, 0.3)) {
+    lambda[[1]] * dnorm(x, mu[[1]], sigma[[1]]) + 
+    lambda[[2]] * dnorm(x, mu[[2]], sigma[[2]])
+}
+
+ggplot() +
+  geom_area(aes(x = -4:4), stat = "function", fun = normal_mixture_pdf, 
+    fill = "steelblue") +
+  labs(y = "mixture density", x = "x")
+```
 
 Here is an example of a dataset generated out of such model.
 
 ```{r}
 set.seed(123)
 N   <- 500
-mus <- c(-0.5, 1.5)
-u   <- sample(1:2, N, replace = TRUE)  ## label
-x   <- rnorm(N, mean = mus[u], sd = 0.75)
+mus <- c(-1, 1)
+u   <- sample(1:2, N, replace = TRUE, prob = c(0.7, 0.3))  ## label
+sigmas <- c(0.5, 0.75)
+x   <- rnorm(N, mean = mus[u], sd = sigmas[u])
 (df  <- tibble(u, x))
 ```
 
@@ -144,7 +143,8 @@ $$
 ```{r}
 df %>% 
   group_by(u) %>% 
-  summarize(mu_hat = mean(x), sd_hat = sd(x))
+  summarize(mu_hat = mean(x), sd_hat = sd(x), NK = n()) %>% 
+  mutate(lambda = NK / sum(NK))
 ```
 
 The problem, however, is that _we won't know $u_i$ or the mixture proportions_ ( $\lambda_1, \lambda_2$). This is the problem that the __EM algorithm__ is supposed to solve. 
@@ -189,7 +189,7 @@ EM <- function(x, k) {
   # Initial Guesses -------------------------------------------------
   # There are better ways to do this...
   sigma <- rep(1, k)
-  mu <- sample(x, k) ## k random data points serve as initial means
+  mu <- sample(x, k) 
   lambda <- rep(1 / k, k)
   
   # Convergence is generally detected by computing the value of the log-likelihood
@@ -203,25 +203,25 @@ EM <- function(x, k) {
   while (ll_diff >= 0.00001) {
   
     # E Step ------------------------------------------------------------------
-    # Calculate weights, assuming we know lambda, mu, and sigma
+    # Calculate weights (assuming we know lambda, mu, and sigma)
     
     w <- map(1:k, function(k) lambda[[k]] * dnorm(x, mu[[k]], sigma[[k]]))
-    denominator <- do.call(`+`, w)
-    weights <- do.call(cbind, w) / denominator  ## See weights equation
+    denominator <- reduce(w, `+`)
+    weights <- do.call(cbind, w) / denominator 
     
     # M Step ------------------------------------------------------------------
-    # Calculate lambda, mu, sigma, assuming we know weights
+    # Calculate lambda, mu, and sigma (assuming we know weights)
     
     NK <- colSums(weights)
     lambda <- NK / nrow(weights)
     mu <- colSums(weights * x) / NK 
     sigma <- purrr::map_dbl(1:k, function(k) sqrt(sum(weights[, k] * (x - mu[[k]])^2) / NK[[k]]))
     
-    # Likelihood --------------------------------------------------------------
+    # Log likelihood ----------------------------------------------------------
     
     ll <- sum(log(denominator))
     
-    # Loop Stuff --------------------------------------------------------------
+    # Convergence Stuff -------------------------------------------------------
     
     iter <- iter + 1
     ll_diff <- abs(ll - ll_init)
@@ -279,63 +279,86 @@ Mixture models are useful whenever we have observations that can be related to d
 The zero inflated model will usually look something like this:
 
 $$
-f_{ZI}(y) = \lambda \ \delta(y) + (1 - \lambda) \ f_{\text{count}}(y)
+f_{ZI}(y) = \lambda \ \delta_0(y) + (1 - \lambda) \ f_{\text{count}}(y)
 $$
-Here, the $\delta$ is Dirac's delta function, which represents a probability distribution that has all its mass at 0. 
+Here, the $\delta_0$ is Dirac's delta function, which represents a probability distribution that has all its mass at 0. 
 
 ## bootstrap
 
+The __sampling distribution__ is the set of possible data sets that could have been observed, if the data collection process had been repeated many many times. The true sampling distribution of a statistic $\hat\tau$ (e.g. mean, variance, etc) is often hard to know as it requires many different data samples. 
 
-The sampling distribution is the set of possible data sets that could have been observed, if the data collection process had been repeated many many times. The true sampling distribution of a statistic (e.g. mean, variance, etc) is often hard to know as it requires many different data samples. 
-
-
-We use the standard error –which is nothing more than the estimated standard deviation of the sampling distribution– to characterize the variability of an estimator.
+Thus, we use the standard error –which is nothing more than the _estimated_ standard deviation of the sampling distribution– to characterize the variability of an estimator.
 
 ```{r}
+set.seed(1234)
 sim <- tibble(dist = replicate(1e5, mean(rnorm(n = 100, mean = 1, sd = 2))))
-
 one_draw <- rnorm(n = 100, mean = 1, sd = 2)
-ggplot(sim, aes(x = dist)) + 
-  geom_density(color = "steelblue", fill = "steelblue", alpha = 0.5) +
-  geom_vline(xintercept = mean(one_draw), color = "tomato", linetype = "dashed")
 
-## bootstrap
+ggplot(sim, aes(x = dist, fill = "sampling distribution")) + 
+  geom_density(color = NA) +
+  geom_vline(xintercept = mean(one_draw), color = "pink", linetype = "dashed") + 
+  scale_fill_manual(values = "steelblue") + 
+  labs(x = "x", fill = NULL)
+```
+
+A popular alternative to calculating standard errors analytically, is using a computational approximation called the __bootstrap__.
+
+```{r}
 B <- 5000
 bmeans <- replicate(B, {
   i = sample(100, 100, replace = TRUE)
-  sd(one_draw[i])
+  mean(one_draw[i])
 })
 
-ggplot(NULL, aes(x = bmeans)) + 
-  geom_density(color = "steelblue", fill = "steelblue", alpha = 0.5) +
-  geom_vline(xintercept = median(one_draw), color = "tomato", linetype = "dashed")
-
-bmeans %>% mean
-sd(one_draw) / sqrt(length(one_draw))
+ggplot(NULL) + 
+  geom_density(aes(x = sim$dist, fill = "sampling distribution"), color = NA) +
+  geom_density(aes(x = bmeans, fill = "bootstrap means"), color = NA, alpha = 0.5) +
+  geom_vline(xintercept = mean(one_draw), color = "pink", linetype = "dashed") + 
+  scale_fill_manual(values = c("pink", "steelblue")) +
+  labs(x = "x", fill = NULL)
 ```
 
-```{r}
-HistData::ZeaMays
-```
+The so-called non-parametric bootstrap can be conceived as an extreme case of mixture models: _we model our sample of $n$ data points as a mixture of $n$ point masses_.
 
+The the __empirical cumulative distribution function__ (ECDF) for a sample of size $n$ is:
 
-```{r}
-B <- 5000
-meds <- replicate(B, {
-  i = sample(15, 15, replace = TRUE)
-  median(HistData::ZeaMays$diff[i])
-})
+$$
+\hat F_n(x) = \sum_{i = n}^n 1_{x \leq x_i}
+$$
 
-ggplot(tibble(medians = meds), aes(x = medians)) +
-  geom_histogram(bins = 30, fill = "purple") 
-  geom_vline(xintercept = HistData::ZeaMays$diff %>% mean)
+Now we can now write the _density_ of our sample data as a mixture of $n$ point masses (each one of them with its own delta function $\delta_{x_i}$):
 
+$$
+\hat f_n(x) = \sum_{i = n}^n \lambda_i \delta_{x_i}(x) = \frac{1}{n} \sum_{i = n}^n \delta_{x_i}(x) 
+$$
 
-```
+This is a lot of notation just to say that the probability mass at each point is simply $\frac{1}{n}$.
 
-
-
+>The bootstrap principle approximates the true sampling distribution of $\hat\tau$ by creating new samples drawn from the empirical distribution built from the original sample. We _reuse_ the data (by considering it a mixture distribution of $\delta$s) to create new "datasets" by taking samples and looking at the sampling distribution of the statistics computed on them. This is called the nonparametric bootstrap resampling approach.
 
 ## infinite mixtures
+
+
+
+
+
+Sometimes mixtures can be useful even if we don’t aim to assign a label to each observation or, to put it differently, if we allow as many "labels" as there are observations. If the number of mixture components is as big as (or bigger than) the number of observations, we say we have an __infinite mixture__. Let’s look at some examples.
+
+
+
+
+ADD STUFF FROM BDA
+
+Infinite mixture models are good for constructing new distributions (such as the gamma-Poisson or the Laplace) out of more basic ones (such as binomial, normal, Poisson). Common examples are
+
+mixtures of normals
+
+beta-binomial mixtures
+
+gamma-Poisson
+
+gamma-exponential
+
+
 
 ## References
