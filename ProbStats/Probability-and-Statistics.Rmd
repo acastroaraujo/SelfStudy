@@ -1,0 +1,57 @@
+---
+title: "Probability and Statistics"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float:
+      collapsed: yes
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center",
+                      fig.width = 5, fig.height = 3)
+
+library(tidyverse)
+theme_set(theme_minimal(base_family = "Avenir Next Condensed", base_line_size = 0))
+```
+
+
+```{css, echo=FALSE}
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 12px;
+    color: #828282;
+    border-left: 14px solid #EEE;
+}
+body {
+    font-size: 14px;
+}
+```
+
+****
+
+Most of this notebook comes straight from Susan Holmes and Wolgang Huber's [__Modern Statistics for Modern Biology__](http://web.stanford.edu/class/bios221/book/index.html) [-@holmes2018modern, chap. 1-2].
+
+****
+
+
+Take stuff from here:
+
+- http://web.stanford.edu/class/bios221/book/Chap-Generative.html
+
+- http://web.stanford.edu/class/bios221/book/Chap-Models.html
+
+The difference between probability and statistical inference is succintly described by [@wasserman2013all]:
+
+- __Probability:__ _Given a data generating process, what are the properties of the outcomes?_
+
+- __Statistical Inference:__ _Given the outcomes, what can we say about the process that generated the data?_
+
+
+## References

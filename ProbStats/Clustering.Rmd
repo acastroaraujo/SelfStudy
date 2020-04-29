@@ -1,0 +1,113 @@
+---
+title: "<strong>clustering</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float:
+      collapsed: yes
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center",
+                      fig.width = 5, fig.height = 3)
+
+library(tidyverse)
+theme_set(theme_minimal(base_family = "Avenir Next Condensed", base_line_size = 0))
+```
+
+
+```{css, echo=FALSE}
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 12px;
+    color: #828282;
+    border-left: 14px solid #EEE;
+}
+body {
+    font-size: 14px;
+}
+```
+
+****
+
+Most of this notebook comes straight from Susan Holmes and Wolgang Huber's [__Modern Statistics for Modern Biology__](http://web.stanford.edu/class/bios221/book/index.html) [-@holmes2018modern, chap. 5].
+
+****
+
+This notebook is about methods for finding meaningful clusters (or groups) in data.
+
+These methods will always find clusters, even when there are none. Thus, we also need to talk about cluster __validation__.
+
+_Note. There are over 100 packages that provide clustering tools in [CRAN](https://CRAN.R-project.org/view=Cluster)._
+
+## similarity
+
+>_Birds of a feather flock together_
+
+The clustering results will depend on the _features_ we choose and how they are combined into a single _distance metric_.
+
+Here's a selection of choices:
+
+- __Euclidean__
+
+- __Manhattan__
+
+- __Maximum__
+
+- __Weighted Euclidean distance__
+
+- __Edit, Hamming__
+
+- __Binary__
+
+- __Jaccard Distance__
+
+- __Correlation based distance__
+
+
+We can also compare the distances between complex objects using other metrics that we won't cover here (e.g. shortest paths between nodes in graph).
+
+>Distances and dissimilarities are also used to compare images, sounds, maps and documents. A distance can usefully encompass domain knowledge and, if carefully chosen, can lead to the solution of many hard problems involving heterogeneous data. 
+
+## partitioning methods
+
+The EM algorithm and other forms of _parametric_ mixture modeling will not work well in high-dimensional settings (see ["curse of dimensionality"](https://en.wikipedia.org/wiki/Curse_of_dimensionality)). This is why we use __partitioning__ or __iterative relocation methods__ instead.
+
+For example, the __PAM__ (partitioning around medoids) method is as follows:
+
+1. Start from a matrix of $p$ features measured on a set of $n$ observations.
+
+2. Randomly pick $k$ distinct cluster centers out of the $n$ observations ("seeds").
+
+    Recall that, besides the distance measure, the main choice to be made is the number of clusters $k$. 
+
+3. Assign each of the remaining observation to the group to whose center is closest.
+
+4. For each group, _choose a new center from the observations in the group, such that the sum of the distances of group members to the center is minimal_. This is called _the medoid_.
+
+5. Repeat steps 3 and 4 until the groups stabilize.
+
+Note that different initial seeds will be picked in Step 2 each time the algorithm is run. This can lead to different final results. A popular implementation is the `cluster::pam()` function.
+
+The __$k$-means method__ is a slight
+
+
+
+
+>These so-called 
+k
+-methods are the most common off-the-shelf methods for clustering; they work particularly well when the clusters are of comparable size and convex (blob-shaped). On the other hand, if the true clusters are very different in size, the larger ones will tend to be broken up; the same is true for groups that have pronounced non-spherical or non-elliptic shapes.
+
+## agglomerative methods
+
+## validation
+
+## references
+
+

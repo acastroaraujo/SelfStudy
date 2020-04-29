@@ -36,7 +36,7 @@ body {
 
 ****
 
-Most of this notebook comes straight from from [__Modern Statistics for Modern Biology__](http://web.stanford.edu/class/bios221/book/index.html) [-@holmes2018modern, chap. 4] by Susan Holmes and Wolgang Huber.
+Most of this notebook comes straight from Susan Holmes and Wolgang Huber's [__Modern Statistics for Modern Biology__](http://web.stanford.edu/class/bios221/book/index.html) [-@holmes2018modern, chap. 4].
 
 ****
 
@@ -197,10 +197,10 @@ EM <- function(x, k) {
   # significant manner from one iteration to the next
   
   iter <- 0
-  ll_init <- 999
-  ll_diff <- 999
+  loglikelihood <- -Inf
+  delta <- Inf
   
-  while (ll_diff >= 0.00001) {
+  while (delta >= 0.00001) {
   
     # E Step ------------------------------------------------------------------
     # Calculate weights (assuming we know lambda, mu, and sigma)
@@ -219,18 +219,19 @@ EM <- function(x, k) {
     
     # Log likelihood ----------------------------------------------------------
     
-    ll <- sum(log(denominator))
+    previous_loglikelihood <- loglikelihood
+    loglikelihood <- sum(log(denominator))
     
     # Convergence Stuff -------------------------------------------------------
     
     iter <- iter + 1
-    ll_diff <- abs(ll - ll_init)
-    ll_init <- ll
-  
+    delta <- abs(loglikelihood - previous_loglikelihood)
+    
   }
   
   message(iter, " iterations!")
-  list(mu = mu, sigma = sigma, lambda = lambda, x = x, posterior = weights, loglikelihood = ll)
+  list(mu = mu, sigma = sigma, lambda = lambda, x = x, posterior = weights, 
+       loglikelihood = loglikelihood)
 
 }
 
@@ -294,11 +295,13 @@ set.seed(1234)
 sim <- tibble(dist = replicate(1e5, mean(rnorm(n = 100, mean = 1, sd = 2))))
 one_draw <- rnorm(n = 100, mean = 1, sd = 2)
 
-ggplot(sim, aes(x = dist, fill = "sampling distribution")) + 
-  geom_density(color = NA) +
+g <- ggplot() +  
+  geom_density(aes(x = sim$dist, fill = "sampling distribution"), color = NA) +
   geom_vline(xintercept = mean(one_draw), color = "pink", linetype = "dashed") + 
-  scale_fill_manual(values = "steelblue") + 
   labs(x = "x", fill = NULL)
+
+g + scale_fill_manual(values = "steelblue") 
+
 ```
 
 A popular alternative to calculating standard errors analytically, is using a computational approximation called the __bootstrap__.
@@ -306,16 +309,12 @@ A popular alternative to calculating standard errors analytically, is using a co
 ```{r}
 B <- 5000
 bmeans <- replicate(B, {
-  i = sample(100, 100, replace = TRUE)
+  i <- sample(100, 100, replace = TRUE)
   mean(one_draw[i])
 })
 
-ggplot(NULL) + 
-  geom_density(aes(x = sim$dist, fill = "sampling distribution"), color = NA) +
-  geom_density(aes(x = bmeans, fill = "bootstrap means"), color = NA, alpha = 0.5) +
-  geom_vline(xintercept = mean(one_draw), color = "pink", linetype = "dashed") + 
-  scale_fill_manual(values = c("pink", "steelblue")) +
-  labs(x = "x", fill = NULL)
+g + geom_density(aes(x = bmeans, fill = "bootstrap means"), color = NA, alpha = 0.5) +
+    scale_fill_manual(values = c("pink", "steelblue")) 
 ```
 
 The so-called non-parametric bootstrap can be conceived as an extreme case of mixture models: _we model our sample of $n$ data points as a mixture of $n$ point masses_.
@@ -338,27 +337,77 @@ This is a lot of notation just to say that the probability mass at each point is
 
 ## infinite mixtures
 
+>Sometimes mixtures can be useful even if we don’t aim to assign a label to each observation or, to put it differently, if we allow as many "labels" as there are observations. If the number of mixture components is as big as (or bigger than) the number of observations, we say we have an __infinite mixture__.
+
+Infinite mixtures are great for building complicated probability distributions (or _hierachical models_) out of more basic ones (such as binomial, normal, Poisson).
+
+For example:
+
+$$
+w \sim \text{exponential}(\lambda = 1) \\
+x \sim \text{normal}(\mu = 0.5, \ \sigma^2 = w)
+$$
+
+```{r}
+# Create a sample of Ws from an exponential distribution.
+w <- rexp(1e5, rate = 1)
+# The Ws serve as the variances of normal variables with mean generated using rnorm.
+mu <- 0.5
+x <- rnorm(length(w), mu, sqrt(w))
+
+ggplot() + geom_histogram(aes(x), fill = "steelblue", color = "white", binwidth = 0.1) +
+  labs(caption = "Laplace distribution")
+```
+
+This distribution is named after Pierre-Simon Laplace, who proved that the median is a good estimator of its location parameter $\theta$ and that the median absolute deviation can be used to estimate its scale parameter $\phi$. 
+
+_Note. In Bayesian regression analysis, using the Laplace distribution as a prior on the coefficients amounts to a **lasso** regression._
+
+### the gamma-Poisson mixture
+
+The __gamma distribution__ is an extension of the one-parameter _exponential distribution_, but it also has a _shape_ parameter which makes it more flexible.
+
+> The gamma distribution is positive-valued and continuous. While the density of the exponential has its maximum at zero and then simply decreases towards 0 as the value goes to infinity, the density of the gamma distribution has its maximum at some finite value. 
+
+```{r, warning=FALSE, fig.height=6, fig.width=8}
+stat_gamma <- function(shape, rate = 1) {
+  stat_function(aes(color = shape),
+                fun = dgamma, 
+                args = list(shape, rate), 
+                n = 300)
+  }
+
+ggplot(data.frame(x = c(0, 10)), aes(x)) + 
+  map(seq(1, 5, 0.5), stat_gamma, rate = 1) + 
+  labs(color = "shape", y = "density", caption = "Gamma distribution") + 
+  scale_color_gradient(breaks = seq(1, 5, 0.2)) +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(guide = "legend", nrow =  1, label.position = "bottom", keywidth = 1))
+```
+
+To generate a gamma-Poisson mixture (or negative binomial), we use a hierarchical model:
+
+1. Generate a set of parameters $\mathbf \lambda$ from a gamma distribution.
+
+2. Use these to generate a set of Poisson random variables, one for each $\lambda_i$
+
+```{r, fig.width=7}
+lambda <- rgamma(1e5, shape = 10, rate = 3/2)
+gp <- rpois(length(lambda), lambda)
+
+ggplot() + geom_bar(aes(gp), fill = "steelblue", color = "white", width = 1/4) +
+  labs(caption = "gamma-Poisson distribution") + 
+  scale_x_continuous(breaks = 0:25)
+```
+
+
+ADD mathematical derivation of the negative binomial.
 
 
 
 
-Sometimes mixtures can be useful even if we don’t aim to assign a label to each observation or, to put it differently, if we allow as many "labels" as there are observations. If the number of mixture components is as big as (or bigger than) the number of observations, we say we have an __infinite mixture__. Let’s look at some examples.
 
 
 
 
-ADD STUFF FROM BDA
-
-Infinite mixture models are good for constructing new distributions (such as the gamma-Poisson or the Laplace) out of more basic ones (such as binomial, normal, Poisson). Common examples are
-
-mixtures of normals
-
-beta-binomial mixtures
-
-gamma-Poisson
-
-gamma-exponential
-
-
-
-## References
+## references
