@@ -1,0 +1,391 @@
+---
+title: "Eight Schools"
+output: 
+  html_document:
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float: 
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+
+## Packages
+library(tidyverse)
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+library(bayesplot)
+bayesplot_theme_set(theme_minimal(base_family = "Avenir"))
+theme_set(theme_minimal(base_family = "Avenir"))
+
+## Extra functions and settings
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+make_table <- function(df, digits = 3) {
+  knitr::kable(df, "html", digits = digits) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+
+options(digits = 3)
+set.seed(9999); color_sample <- sample(colors(), size = 8)
+```
+
+**Last updated**: `r format(Sys.time(), '%B %d, %Y')`
+
+****
+
+This example is mostly taken from the [**BDA3**](http://www.stat.columbia.edu/~gelman/book/). 
+
+It's divided into three sections:
+
+1. A brief description of the 8 schools example, with an introduction to non-centered parameterization.
+
+2. A textbook exercise.
+
+3. A brief introduction to *posterior predictive checking* (PPC), taken from chapter 6 of BDA3 and using the [**`bayesplot`**](https://mc-stan.org/bayesplot/articles/graphical-ppcs.html) package developed by [Jonah Gabry](https://jgabry.github.io/).
+
+****
+
+## Introduction
+
+A study was perform for ETS to analyze the effects of special coaching programs on test scores. The outcome variable in each study was the score on a special administration of the SAT, used to help colleges make admissions decisions. The results of the experiments are summarized in the following table:
+
+| School 	| Estimated Treatment Effect 	| Standard Error of Estimate 	|
+|:-------:|:---------------------------:|:--------------------------:	|
+| A      	| 28                         	| 15                         	|
+| B      	| 8                          	| 10                         	|
+| C      	| -3                         	| 16                         	|
+| D      	| 7                          	| 11                         	|
+| E      	| -1                         	| 9                          	|
+| F      	| 1                          	| 11                         	|
+| G      	| 18                         	| 10                         	|
+| H      	| 12                         	| 18                         	|
+
+```{r}
+school <- LETTERS[1:8]
+y <- c(28, 8, -3, 7, -1, 1, 18, 12)         ## J y_bar
+sigma <- c(15, 10, 16, 11, 9, 11, 10, 18)   ## J schools
+stan_data <- list(y = y, sigma = sigma, J = length(y))
+```
+
+If we fit a separate model for each of the eight experiments (*no pooling*), we can see that these estimates are fairly indistinct from each other.
+
+```{r, fig.width=8, fig.height=3}
+grid <- seq(-50, 80, length.out = 500)
+plot_settings()                                             ## ignore
+plot(grid, rep(0, 500), type = "n", ylim = c(0, 0.05),      ## all
+     xlab = "treatment effect", ylab = "density",           ## of this
+     xaxt = "n"); axis(side = 1, at = seq(-50, 80, 10))     ## stuff
+
+for (j in seq(8)) {
+  curve(dnorm(x, y[j], sigma[j]), from = -50, to = 100, 
+        add = TRUE, ylim = c(0, 0.05), col = color_sample[j], lwd = 2)
+}
+legend(65, 0.05, paste(school, " = ", y), color_sample)
+```
+
+```{r, comment=""}
+readLines("programs/8S_no_pooling.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+fit_no_pooling <- stan("programs/8S_no_pooling.stan", data = stan_data)
+```
+
+```{r}
+print(fit_no_pooling)
+```
+
+If, on the other hand, we try to get a *pooled estimate* (which suggests that all experiments might be estimating the same quantity), we end up with a common effect of 7.7 and a standard error of 4.6.
+
+```{r, comment=""}
+readLines("programs/8S_complete_pooling.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+fit_complete_pooling <- stan("programs/8S_complete_pooling.stan", data = stan_data)
+```
+
+```{r}
+print(fit_complete_pooling)
+```
+
+$$
+\textsf{effect} = \frac{\sum_{j=1}^8 \frac{y_j}{\sigma_j^2}}{\sum_{j=1}^8 \frac{1}{\sigma_j^2}} \approx 7.6 \hspace{1cm} \textsf{standard error} = \sum_{j=1}^8 \frac{(y_j - \bar y)^2}{\sigma_j^2} \approx 4.1
+$$
+
+Instead, we would like a compromise that combines information from all eight experiments without assuming all the $\theta_j$s to be equal (*partial pooling*). This is why we need a **hierarchical model**.
+
+$$
+\begin{align}
+&\theta_j \sim \textsf{normal}(\mu, \tau) \\\\
+&y_j \sim \textsf{normal}(\theta_j, \sigma_j)
+\end{align}
+$$
+
+Thus, we draw from the posterior distribution by simulating the random variables $\tau$, $\mu$, and $\theta$, in that order, from their posterior distribution. The
+sampling standard deviations, $\sigma_j$, are assumed known and equal to the values in the table. And we assume independent uniform prior densities on $\mu$ and $\tau$.
+
+Note that the *no pooling* scenario corresponds to setting $\tau \to \infty$.
+
+$$
+\underset{\tau \to \infty}{\textsf{normal}}(\theta_j \mid \mu, \tau) \longrightarrow \textsf{uniform}(\theta_j) 
+$$
+
+And that the *complete pooling* scenario corresponds to setting $\tau = 0$.
+
+```{r}
+readLines("programs/8S_cp.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+fit_cp <- stan("programs/8S_cp.stan", data = stan_data)
+```
+
+```{r}
+print(fit_cp)
+```
+
+```{r, fig.width=8, fig.height=3}
+draws <- extract(fit_cp)
+plot_settings()
+hist(draws$tau, breaks = 40, probability = TRUE, col = "skyblue",
+     main = "centered parameterization", xlab = expression(tau)) 
+lines(density(draws$tau), lwd = 3, col = "pink")
+```
+
+
+The `cp` in the model name stands for "centered parameterization", which *may* be inconvenient for computational reasons. Notice that we get a message about divergent transitions, which are caused by the so-called "funnel effect" or "whirlpool distribution". This is a common problem when fitting multilevel models.
+
+In this particular case, when $\tau$ approaches zero, all $\theta_j$s "shrink" towards $\mu$; but when $tau$ gets larger, all $\theta_j$s spread out. This is what we expect from the outset, but MCMC algorithms have trouble sampling from this kind of parameter space.
+
+```{r}
+check_divergences(fit_cp)
+```
+
+Any multilevel model can be written down in several different ways or "parameterizations". Mathematically, these alternative parameterizations are equivalent, but inside Stan they're not. With non-centered parameterization (NCP), all of the parameters of the prior are smuggled out and into the linear model. Essentially, we are subtracting the mean and factoring out the standard deviation from the normal distribution. The goal is to avoid funnel in the model fitting stage, and then recreate the funnel *afterwards*.
+
+$$
+\begin{align}
+&\textbf{CP: }\hspace{0.4cm} y \sim \textsf{normal}(\mu, \sigma_y) \\\\
+&\textbf{NCP: }\ \eta_y \sim \textsf{normal}(0, 1) \\\
+&\hspace{1.2cm}\ y = \mu + \tau\ \eta_y 
+\end{align}
+$$
+
+In different words: In a non-centered parameterization we do not try to fit the group-level parameters directly, rather we fit a latent variable $\eta$ from which we can recover the group-level parameters with a scaling and a translation.
+
+```{r, comment=""}
+readLines("programs/8S_ncp.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+fit_ncp <- stan("programs/8S_ncp.stan", data = stan_data)
+```
+
+```{r}
+print(fit_ncp, pars = c("theta", "mu", "tau"))
+```
+
+```{r, fig.width=8, fig.height=3}
+draws <- extract(fit_ncp)
+plot_settings()
+hist(draws$tau, breaks = 40, probability = TRUE, col = "skyblue",
+     main = "non-centered parameterization", xlab = expression(tau)) 
+lines(density(draws$tau), lwd = 3, col = "pink")
+```
+
+```{r}
+check_divergences(fit_ncp)
+```
+
+If you compare both histograms for $\tau$, you'll notice that the "centered parameterization" has problems sampling values close to zero because of the "funnel" problem!
+
+****
+
+**An alternative model**
+
+This model is pooling the private schools toward the private schools, and the public schools toward the public schools.
+
+$$
+\begin{align}
+&\theta_j \sim \textbf{normal}(\mu, \tau) \\\\
+&\mu = a + b u_j \hspace{1cm}
+u_j = \begin{cases} 
+  0 &\text{if public} \\
+  1 &\text{if private}
+\end{cases}
+\end{align}
+$$
+
+****
+
+## Exercise 5.3
+
+*Use the posterior simulations to estimate (i) for each school $j$, the probability that its coaching program is the best of the eight.*
+
+****
+
+```{r}
+draws <- extract(fit_ncp)
+colnames(draws$theta) <- school
+dim(draws$theta)
+
+best_per_row <- apply(draws$theta, MARGIN = 1, max)
+head(draws$theta == best_per_row)
+colMeans(draws$theta == best_per_row)
+```
+
+****
+
+*Use the posterior simulations to estimate for each pair of schools, $j$ and $k$, the probability that the coaching program in school $j$ is better than that in school $k$.*
+
+****
+
+```{r}
+output <- matrix(NA, nrow = 8, ncol = 8, 
+                 dimnames = list(school, school))
+
+for (k in 1:8) {
+  for (j in 1:8) {
+    output[k, j] <- mean(draws$theta[ , k] > draws$theta[ , j])
+  }
+}
+output <- round(output, 2)
+output
+```
+
+****
+
+*Repeat the above, but for the simpler model with $\tau$ set to $\infty$ (that is, separate estimation for the eight schools). In this case, the probabilities (i) and (ii) can be computed analytically.*
+
+****
+
+```{r}
+draws_no_pooling <- extract(fit_no_pooling)
+colnames(draws_no_pooling$theta) <- school
+
+best_per_row <- apply(draws_no_pooling$theta, MARGIN = 1, max)
+colMeans(draws_no_pooling$theta == best_per_row)
+```
+
+```{r}
+output <- matrix(NA, nrow = 8, ncol = 8, 
+                 dimnames = list(school, school))
+
+for (k in 1:8) {
+  for (j in 1:8) {
+    output[k, j] <- mean(draws_no_pooling$theta[ , k] >
+                           draws_no_pooling$theta[ , j])
+  }
+}
+output <- round(output, 2)
+output
+```
+
+****
+
+*Discuss how the answers differ*
+
+****
+
+The Bayesian estimates are "shrunk". In other words, they are being regularized by the fact of being modeled as comming from a common population distribution. Notice, for example, that our Bayesian estimates for the treatment effects aren't wildly different; whereas the zero pooling are very different (although these differences wouldn't pass a test of "statistical significance").
+
+In other, other, words: the Bayesian estimates are more conservative.
+
+****
+
+## Model checking
+
+****
+
+The inference presented for the 8 schools example is based on several model assumptions: 
+
+i. Normality of the estimates $y_j$ given $\theta_j$ and $\sigma_j$, where the values $\sigma_j$ are assumed known.
+
+    The assumption of normality with a known variance is made routinely when a study is summarized by its estimated effect and standard error. The research design (randomization, large samples, etc.) make this assumption justifiable.
+
+ii. Exchangeability of the prior distribution of the $\theta_j$’s;
+
+    Exchangeability means you don't have enough information to distinguish the group parameters ($\theta_j$'s) from each other, *not* that they are the same! This just means that *a priori* we have no reason to believe that the effect is larger for school A than for school B.  In other words, *the exchangeability assumption means that we will let the data tell us about the relative ordering and similarity of effects in the schools.*
+    
+    However, note that if for example we had information that some schools are private and others a public, then the exchangeability assumption will probably *not* hold. In this case, we may create hierarchical model, where each group has its own submodel, but the group properties are unknown. This will make the $\theta$'s *conditionally exchangeable*.
+
+iii. Normality of the prior distribution of each $\theta_j$ given $\mu$ and $\tau$; and 
+
+iv. Uniformity of the hyperprior distribution of $(\mu, \tau)$.
+
+    The third and fourth modeling assumptions are harder to justify than the first two. Why should the school effects be normally distributed rather than say, Cauchy distributed, or even asymmetrically distributed, and why should the location and scale parameters of this prior distribution be uniformly distributed? Mathematical tractability is one reason for the choice of models, but if the family of probability models is inappropriate, Bayesian answers can be misleading.
+
+There are two things we can do to check the model:
+
+1. Comparing posterior inferences to our substantive knowledge about educational testing.
+
+2. Posterior Predictive Checking (PPC).
+
+Here we focus on PPC. 
+
+**Brief overview of PPC**
+
+The intuition is simple: *if the model fits, then replicated data generated under the model should look similar to observed data.* And any systematic differences between the simulations and the data indicate potential failings of the model.
+
+- Let $y$ be the observed data and $\boldsymbol \theta$ be the vector of parameters (including all the hyperparameters if the model is hierarchical).
+
+- We define $y^\text{rep}$ as the replicated data that could have been observed, or, to think predictively, as the data we would see tomorrow if the "experiment" (or "process") that produced $y$ today were replicated with the same generative model and the same value of $\boldsymbol \theta$ that produced the observed data.
+
+- We distinguish between $y^\text{rep}$ and $\widetilde y$, our general notation for predictive outcomes: $\widetilde y$ is any future observable value or vector of observable quantities, whereas $y^\text{rep}$ is *specifically a replication* just like $y$. For example, if the model has explanatory variables, $x$, they will be identical for $y$ and $y^\text{rep}$, but $\widetilde y$ may have its own explanatory variables, $\widetilde x$.
+
+$$
+p(\mathbf y^\text{rep} \mid \mathbf y) = \int p(\mathbf y^\text{rep} \mid \boldsymbol \theta) p(\boldsymbol \theta \mid \mathbf y)d\boldsymbol \theta
+$$
+
+- We define **test quantities** as the aspects of the data we wish to check (e.g. the *mean*, certain *quantiles*, outliers through *min* and *max*, and so forth). A test quantity (or *discrepancy measure*) $T(y, \theta)$ is a scalar summary of parameters *and* data used as a standard for comparing data to predictive simulations. Test quantities play the role in Bayesian model checking that test statistics play in classical testing. Thus, we use the notation $T(y)$ for classical *test statistics*.
+
+In Stan, we can use the `generated quantities` block to get $y^\text{rep}$, which will save a lot of time. Otherwise, we can just use the output generated by Stan and use that to generate replicated $y$'s in R:
+
+```{r}
+S <- nrow(draws$theta)
+J <- length(y)
+y_rep <- array(NA, dim = c(S, J))
+for (j in 1:J) {
+  y_rep[ , j] <- rnorm(S, draws$theta[ , j], sigma[j])
+}
+colnames(y_rep) <- school
+dim(y_rep)
+```
+
+We will use the **`bayesplot`** package to do graphical PPC.
+
+```{r, fig.width=8, fig.height=2, message=FALSE}
+ppc_stat(y, y_rep, stat = mean)
+ppc_stat(y, y_rep, stat = sd)
+ppc_stat(y, y_rep, stat = max)
+ppc_stat(y, y_rep, stat = min)
+```
+
+We could also compute a numerical test statistic such as the difference between the best and second-best of the 8 coaching programs:
+
+```{r, fig.width=8, fig.height=2, message=FALSE}
+custom_test <- function(y){
+  y_sort <- sort(y, decreasing = TRUE)
+  return(y_sort[1] - y_sort[2])
+}
+ppc_stat(y, y_rep, stat = custom_test)
+```
+
+At this point, we can check for almost anything we can think of. 
+
+
+

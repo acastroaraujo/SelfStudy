@@ -1,0 +1,23 @@
+---
+title: 'Two problems one solution: Multilevel models in Stan'
+author: "Andrés Castro Araújo"
+date: "7/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(reticulate)
+```
+
+## Introduction
+
+One problem, take a conservative solution.
+
+Second problem, abandon the conservative solution.
+
+https://youtu.be/ZmbrsbYwRWw
+
+
+

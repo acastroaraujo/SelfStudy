@@ -1,0 +1,211 @@
+---
+title: "Golf Putting"
+output:
+  html_document:
+    code_folding: show
+    theme: paper
+    toc: yes
+    toc_float:
+      collapsed: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 4, fig.height = 3, fig.align = "center",
+                      comment = "")
+
+## Packages
+library(tidyverse)
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+## Extra functions and settings
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+theme_set(theme_classic(base_family = "Avenir"))
+
+options(digits = 3)
+```
+
+```{r}
+URL <- "http://www.stat.columbia.edu/~gelman/bda.course/data/golf.txt"
+
+golf_data <- read.table(URL, skip = 2, header = TRUE) %>% 
+  mutate(prop = y/n) %>% 
+  mutate(lower = prop - sqrt(prop*(1 - prop) / n),
+         upper = prop + sqrt(prop*(1 - prop) / n)
+         )
+
+g <- golf_data %>% 
+  ggplot(aes(x, prop, ymin = lower, ymax = upper)) +
+  geom_pointrange(size = 0.2) + 
+  labs(y = "Probability of success",
+       x = "Distance from hole (feet)")
+```
+
+See more about this example [here](http://www.stat.columbia.edu/~gelman/research/published/golf.pdf).
+
+Note. Andrew Gelman has uploaded this example as a [case study](https://mc-stan.org/users/documentation/case-studies/golf.html), rendering this notebook redundant.
+
+The following graph shows data on the proportion of successful golf putts as a function of distance from the hole. Unsurprisingly, the probability of making the shot declines as a function of distance:
+
+```{r}
+g
+```
+
+How can we model the probability of success in golf putting as a function of distance from the hole? The usual statistical practice would indicate that we need to use a logistic regression:
+
+$$
+\begin{align}
+&p_j = \text{logit}^{-1}(a + bx_j) \\ \\
+&y_j \sim \textsf{binomial}(n_j, p_j)
+\end{align}
+$$
+
+```{r, comment=""}
+readLines("programs/golf_logistic.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+golf_data_list <- with(golf_data, list(
+  dist = x, 
+  n = n, 
+  success = y, 
+  J = nrow(golf_data)
+  ))
+
+golf_logistic <- stan("programs/golf_logistic.stan", 
+     data = golf_data_list)
+```
+
+```{r}
+print(golf_logistic, probs = c(0.025, 0.5, 0.975))
+```
+
+```{r, fig.width=8, fig.height = 3}
+posterior_logistic <- extract(golf_logistic)
+
+df_logistic <- as_tibble(posterior_logistic) %>% 
+  gather(a, b, key = "parameter", value = "estimate")
+
+df_logistic %>% 
+  ggplot(aes(x = estimate, fill = parameter)) + 
+  geom_density(show.legend = FALSE, alpha = 0.5) +
+  facet_wrap(~parameter, ncol = 2, scales = "free") +
+  labs(x = NULL, y = "posterior density")
+```
+
+Note that this model doesn't actually fit the data really well. For starters, the probability of success isn't predicted to be 1 when the distance is zero! This point isn't sufficiently emphasized: with enough data, we can obtain very precise estimates from a wrong model.
+
+```{r}
+invlogit <- function(a, b, x) {
+  linpred <- a + b*x
+  1 / (1 + exp(-linpred))
+}
+
+g_logistic <- g
+for (i in sample(4000, 200)) {
+  g_logistic <- g_logistic + 
+    stat_function(fun = invlogit, 
+                  args = list(
+                    a = posterior_logistic$a[i], 
+                    b = posterior_logistic$b[i]), 
+                  alpha = 0.01, color = "pink")
+}
+
+g_logistic + 
+  stat_function(fun = invlogit,
+                args = list(
+                  a = mean(posterior_logistic$a),
+                  b = mean(posterior_logistic$b)
+                  ), linetype = "dashed") +
+  labs(title = "Logistic regression")
+
+```
+
+**Modeling from first principles**
+
+As an alternative to logistic regression, Gelman builds a model from first principles. The graph below shows a simplified sketch of a golf shot. The dotted line represents the angle within which the ball of radius $r$ must be hit so that it falls within the hole of radius $R$. This threshold angle is as follows:
+
+$$
+\theta = \sin^{-1} \left(\frac{R-r}{x}\right)
+$$
+
+```{r, out.width="80%", fig.cap="golf diagram", echo=FALSE}
+knitr::include_graphics("figures/golfpicture.png")
+```
+
+The next step is to model *human error*. The golfer is attempting to hit the ball completely straight but  many small factors interfere with this goal, so that the actual angle follows a normal distribution centered at 0 with standard deviation $\sigma$.
+
+The probability that the ball goes in the hole is then the probability that the angle is less than the threshold:
+
+$$
+p_i = 2 \Phi \left(\frac{\theta_i}{\sigma}\right) - 1
+$$
+
+where $\Phi$ is the Normal cumulative distribution function (centered at zero). Note that the angle $\theta$ is the *only* random variable in this model and that $\sigma$ is the only parameter that we actually need to estimate.
+
+**Note**. This formula is equivalent to the following:
+
+$$
+p_i = 1 - 2 \Phi \left(- \frac{\theta_i}{\sigma}\right)
+$$
+
+*Why do we use a normal distribution?* Because we are aiming at zero and there are many contributing additive factors that skew the ball one way or the other. We could have also used a $t$-distribution, which is just a *mixture* of normal distributions with different variances (e.g. some players are better than others, some courses are easier, and so on).
+
+```{r, comment=""}
+readLines("programs/golf_geometry.stan") %>% 
+  writeLines()
+```
+
+```{r, results="hide"}
+golf_data_list$r <- 1.68 / 12      ## 1.68 inches in feet
+golf_data_list$R <- 4.25 / 12      ## 4.25 inches in feet
+
+golf_geometry <- stan("programs/golf_geometry.stan", 
+     data = golf_data_list)
+```
+
+```{r}
+print(golf_geometry, probs = c(0.025, 0.5, 0.975))
+```
+
+```{r}
+posterior_geometry <- extract(golf_geometry)
+
+golf_link <- function(sigma, x) {
+  r <- 1.68 / 12
+  R <- 4.25 / 12 
+  return(2*pnorm((1/sigma) * asin((R - r) / x)) - 1)
+}
+
+g_golf <- g
+
+for (i in sample(4000, 200)) {
+  g_golf <- g_golf +
+      stat_function(fun = golf_link, 
+                args = list(
+                  sigma = posterior_geometry$sigma[i]),
+                alpha = 0.01, color = "pink")
+}
+
+g_golf + 
+  stat_function(fun = golf_link, 
+                args = list(
+                  sigma = mean(posterior_geometry$sigma)),
+                linetype = "dashed") +
+  labs(title = "Custom non-linear model") +
+  coord_cartesian(ylim = c(0, 1))
+```
+
+
+
+
+
+
+

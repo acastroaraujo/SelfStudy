@@ -1,0 +1,75 @@
+---
+title: "<strong>Ten Great Ideas About Chance</strong>"
+author: "andrés castro araújo"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    code_folding: show
+    theme: lumen
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", comment = "")
+
+library(tidyverse)
+```             
+
+```{css, echo=FALSE}
+blockquote {
+    padding: 10px 20px;
+    margin: 0 0 20px;
+    font-size: 14px;
+    color: #828282;
+    border-left: 10px solid #EEE;
+}
+
+body {
+    font-size: 14px;
+}
+```
+
+## The Weak Law of Large Numbers
+
+>As an illustration [Bernoulli] considers an urn containing 3000 white pebbles and 2000 black pebbles and postulates independent draws with replacement of the pebble drawn. He asks whether one can find a number of draws so that it becomes "morally certain" that the ratio of white pebbles to black ones becomes approximately 3:2. He then chooses a high probability as moral certainty and establishes a number of draws sufficient to provide a positive answer.
+
+```{r}
+urn <- c(rep("white", 3e3), rep("black", 2e3)) %>% sample()
+draws <- sample(urn, size = 1e4, replace = TRUE)
+result <- cumsum(draws == "white") / cumsum(draws == "black")
+
+tibble(result) %>% 
+  mutate(draw = row_number()) %>% 
+  ggplot(aes(x = draw, result)) + 
+  geom_hline(yintercept = 1.5, color = "red") + 
+  geom_line() 
+
+result[length(result)]
+```
+
+```{r}
+N <- 100
+output <- vector("list", length = N)
+for (i in seq_along(output)) {
+  draws <- sample(urn, size = 1e4, replace = TRUE)
+  output[[i]] <- cumsum(draws == "white") / cumsum(draws == "black")
+}
+
+names(output) <- paste0("s", 1:N)
+df <- as_tibble(output)
+
+df %>% 
+  mutate(draw = row_number()) %>% 
+  pivot_longer(-draw) %>% 
+  ggplot(aes(draw, value, group = name)) + 
+  geom_line(alpha = 0.1) + 
+  coord_cartesian(ylim = c(1, 2))
+```
+
+
+
+BIRTHDAY AND COINCIDENCES
+
+

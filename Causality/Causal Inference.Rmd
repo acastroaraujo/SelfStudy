@@ -1,0 +1,1311 @@
+---
+title: "Causal Inference"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+## Chunk settings
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center",
+                      fig.width = 4, fig.height = 3
+                      )
+
+## Packages
+library(arm)
+library(tidyverse)
+
+## Extra functions and settings
+aesthetics <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+options(digits = 3)
+```
+
+
+# Introduction
+
+Taken from Paul Rosenbaum (2017). *Observation and Experiment: An Introduction to Causal Inference.* Harvard University Press
+
+****
+
+- ...
+
+- ...
+
+**** 
+
+
+## Graphical Causal Models
+
+http://bactra.org/notebooks/graphical-causal-models.html
+
+
+https://youtu.be/wPYFuIgad_4 (tasks and dimensions)
+
+## Potential Outcomes
+
+Taken from Paul W. Holland (1986). "Statistics and causal inference." *Journal of the American statistical Association*, 81(396), 945-960.
+
+****
+
+- What can a statistical model say about causation?
+
+- The emphasis here will be on measuring the *effects of causes* because this seems to be a place where statistics, which is concerned with measurement, has contributions to make.
+
+- $\text{Causal Framework} = \underset{\text{assumptions}}{\text{Theory}} + \ \text{Regression}$
+
+****
+
+Statistical models used to draw *causal inferences* are distinctly different from those used to draw *associational inferences*.
+
+**Models for associational inference.**
+
+The standard statistical model relates *variables* over a *population*.
+
+- The model begins with a **population** or universe $U$ of "units." A unit in $U$ will be denoted by $u$.
+ 
+- A **variable** is simply a real-valued function defined on every element in $U$.  The value of a variable for a given unit $u$ is the number assigned by some measurement process to $u$.
+    
+Both correspond to the mathematical concepts of a set and real-valued functions defined on the elements of the set.
+
+Here, all probabilities, distributions, and expected values are computed over $U$. 
+    
+- A *probability* will mean nothing more nor less than a proportion of units in $U$. 
+    
+- And the *expected value* of a variable is merely its average value over all of $U$.
+    
+- The *joint distribution* of $Y$ and $A$ over $U$ is given by $\Pr(Y = y, A = a)$ or the proportion of $u$ in $U$ for which $Y(u) = y$ and $A(u) = a$.
+    
+- The *conditional distribution* describes how the distribution of $Y$ values changes over $U$ as $A$ varies:
+
+$$
+\Pr(Y = y \mid A = a) = \frac{\Pr(Y = y, A = a)}{\Pr(A = a)}
+$$
+
+- *Conditional expected values* are averages over *subsets* of elements, where the subsets are defined by conditioning on certain values of variables.
+
+    The **conditional expectation** of $Y$ on $A$ (or "simple regression") is just:
+
+$$
+\text{Regression: } \ \ E(Y \mid A = a)
+$$
+
+Associational inference consists of making statistical inferences (estimates, tests, posterior distributions, etc.) about the associational parameters relating $Y$ and $A$ on the basis of data gathered about $Y$ and $A$ from units in $U$. *In this sense, associational inference is simply descriptive statistics*.
+
+**Rubin's Model for Causal Inference**
+
+- This model also begins with a population of units, $U$. Units in the model for causal inference are the objects of study on which causes or treatments may act. The terms **cause** and **treatment** are used interchangeably.
+
+    The key notions are **potential exposure** and **potential outcomes**.
+    
+- $S(u)$ indicates *exposure* of $u$ to a specific cause.
+    
+    $$S = \overset{\text{treatment}}{\{ \ t}, \underset{\text{control}}{c \ \}}$$
+
+    The critical feature of the notion of cause in this model is that the value of $S(u)$ for each unit *could have been different*.
+
+    In a controlled study, $S$ is constructed by the experimenter (i.e. the simplest setting for thinking about causality).
+    
+- $A(u)$ indicates a property or characteristic of $u$. 
+
+    Note the *role of time* for thinking about the $A$'s, and the distinction between **pre-exposure** and **post-exposure** (where we have the $Y$'s or response variables).
+
+- The **effect of the cause $t$** on $u$, as measured by $Y$ and relative to cause $c$, is the difference between $Y_t (u)$ and $Y_c (u)$:
+
+    $$Y_t (u) - Y_c (u)$$
+
+    Note that *the effect of a cause is always relative to another cause.*
+
+**The Fundamental Problem of Causal Inference**: *it is impossible to observe $Y_t$ and $Y_c$ on the same unit*. Therefore, it's impossible to observe the effect of $t$ on $u$.
+
+There are two general solutions to this fundamental problem, that rely on different sets of *untestable assumptions*. 
+
+- The **scientific solution** is to exploit various *homogeneity*
+ or *invariance* assumptions. These assumptions are usually based on a careful work of standardizing lab materials. 
+ 
+    1. *Temporal Stability and Causal Transience*. The assumption of temporal stability asserts the constancy of response over time (i.e. "the value of $Y_c (u)$ does not depend on when the sequence "apply $c$ to $u$ then measure $Y$ on $u$" occurs"). The assumption of causal transcience asserts that the the measurement process that results in $Y_t (u)$ is  unaffected by the prior exposure of $u$ to $c$ (and vice versa).
+    
+        For example, if $u$ is a room in a house, $t$ means that I flick on the light switch in that room, $c$ means that I do not, and $Y$ indicates whether the light is on or not a short time after applying either $t$ or $c$, then I might be inclined to *believe* that I can *know* the values of both $Y_t (u)$ and $Y_c (u)$ by simply flicking the switch. This is called an **invariance assumption**, which usually doesn't hold for more interesting examples such as the effect of a certain school program ($t$) on children's ($u$) test scores ($Y$).
+    
+    2. *Unit homogeneity*. A second way of applying the scientific solution is to assume that $Y_t (u_1) = Y_t (u_2)$ and $Y_c (u_1) = Y_c (u_2)$ for two units $u_1$ and $u_2$. This is the assumption of unit homogeneity. Here, the causal effect of $t$ (*not* the *average* of $t$ over $U$) is taken to be $Y_t (u_1) - Y_c (u_2)$, This, too, is often applicable to work done in scientific laboratories and is also a causal workhorse of everyday life.
+
+- The **statistical solution** is different and makes use of the population $U$ in a typically statistical way. The *average causal effect* of $t$ over $U$ is the expected value of the difference $Y_  t(u) - Y_c (u)$ over the $u$'s in $U$.
+
+    $$\text{ATE} = E(Y_t - Y_c ) = E(Y_t) - E(Y_c)$$
+
+    Although this does not look like much, it reveals that information on *different* units that can be observed can be used to gain knowledge about $\text{ATE}$.
+    
+    Note that the exact way that units would be selected for exposure to $t$ or $c$ is very important and involves all of the usual considerations of good statistical design of experiments. 
+
+    1. *Independence*. The units in $U$ have been assigned to $S$ at *random.* Otherwise, there's no reason to believe that the average value of $Y_t (u)$ over *all* $u$ is equal to the average value of $Y_t (u)$ over only those $u$ that were exposed to $t$.
+    
+    2. The *constant effect* (or additivity) assumption refers to the relevance of the average effect to every unit in $U$. For example, if the variability in the causal effects $Y_t (u) - Y_c (u)$ is large over $U$, then $\text{ATE}$ may not represent the causal effect of a specific unit very well. In other words, $\text{ATE}$ may be irrelevant, no matter how carefully we estimate it.
+
+        (Note that the constant effect assumption is implied by the unit homogeneity assumption).
+        
+    There are many methods for causal inference in observational studies. These methods emphasize ways in which pre-exposure variables can be used to replace the independence assumption with less stringent *conditional independence* assumptions.
+    
+****
+
+**What can be a cause?**
+
+It may seem very extreme to some to limit the notion of cause to the sense used here. Aristotle set the stage for this, however, by distinguishing more than one meaning to the word cause. It might be better to ask, what can be an "efficient cause" in his sense? 
+
+Causes are only those things that can, in principle, be *treatments* in an experiment; sometimes hypothetical and sometimes "natural" experiments. Causes needs to be **manipulable** (i.e. *no causation without manipulation*). Can we at least *imagine* an experiment?
+
+Note, then, that we should not confuse causes with *attributes*. 
+
+For example:
+
+- "She did well on the exam because she is a woman [*attribute*]"
+
+    An attribute cannot be a cause in an experiment; thus, the only way for an attribute to change its value is for the same unit to undergo transformative change. Here, gender is a whole lived experience. 
+    
+    (However, attributes might be central to understand *heterogeneous treatment effects*)
+    
+- "She did well on the exam because she studied for it [*unclear*]"
+
+    Here, the "cause" is ascribed to some voluntary activity she performed. The voluntary nature of much of human activity makes causal statements difficult. This is because there is ambiguity to whether "studying" is an attribute or a cause. Furthermore, it's not clear that we could expose a person to studying or not in any verifiable sense.
+    
+- "She did well on the exam because she was coached by her teacher [*treatment*]".
+
+    This is ok.
+
+****
+
+*Is this an unnecessary restriction?*
+
+Holland argues that non-manipulable causes are ill-defined and that there effects are unmeasurable. But we can usually find ways of accommodating complex social phenomena to this framework. For example, Greiner and Rubin (2011) argue that shifting "attributes" to "*perceptions* of attributes" makes them amenable to the potential outcomes framework. 
+
+For example, sometimes you can get at parts of gender through, for example, audit surveys. In those cases, the manipulable "part" of gender is usually a name.
+
+The other restrictive aspect of this framework is the unique focus on "effects of causes", leaving aside questions about "causes of effects".
+
+Gelman (2011) considers this problem in terms of two broad classes of problems:
+
+1. *Forward causal inference* (estimating "effects of causes"). What might happen if we do $X$? What are the effects of smoking on health, the effects of schooling on knowledge, the effect of campaigns on election outcomes, and so forth?
+
+2. *Reverse causal inference* (estimating "causes of effects") What causes $Y$? Why do more attractive people earn more money? Why do many poor people vote for Republicans and rich people vote for Democrats? Why did the economy collapse?
+
+Here is what Andrew Gelman in the context of the social sciences:
+
+- *As has long been realized, the effects of action $X$ flow naturally forward in time, while the causes of outcome $Y$ cannot be so clearly traced backward. Did the North Vietnamese win the American War because of the Tet Offensive, or because of American public opinion, or because of the military skills of General Giap, or because of the political skills of Ho Chi Minh, or because of the conflicted motivations of Henry Kissinger, or because of Vietnam’s rough terrain, or ...? To ask such questions is to reveal the impossibility of answering them.*
+
+However, Gelman also provides also argues that reverse causal inference is related to [model checking and hypothesis generation ](#abductive_analysis) (what others like to call "abductive analysis").
+    
+# Bias
+
+Taken from Andrew Gelman, Jenifer Hill & Aki Vehtari (forthcoming). *Regression and Other Stories*. Cambridge University Press
+
+NOTE: ADD RANDOMIZED EXPERIMENTS CHAPTER 17 WHEN THE BOOK IS OUT. SUTVA (NO INTERFERENCE BETWEEN UNITS OR STABLE UNIT TREATMENT VALUE ASSUMPTION)
+
+****
+
+- In the usual regression context, predictive inference relates to comparisons *between* units, whereas causal inference addresses comparisons of different treatments if applied to the *same* units. More generally, causal inference can be viewed as a special case of prediction in which the goal is to predict *what would have happened* under different treatment options. 
+
+- Causal interpretations of regression coefficients can only be justified by relying on much stricter assumptions than are needed for predictive inference. 
+
+****
+
+Remember that, in this framework, study units (or individuals) are usually divided into a *treatment group* and a *control group*. Furthermore, we usually have at least three sorts of measurements on each individual $i$:
+
+1. The pre-treatment measurements, also called *covariates* $x_i$ (which are not strictly required for causal inference).
+
+2. The *treatment* $z_i$ which equals $1$ for treated units and $0$ for controls.
+
+3. The outcome measurement $y_i$, which we label as $y_i^1$ (or $y_i^T$) when the unit is exposed to the treatment and $y_i^0$ (or $y_i^C$) otherwise. This is the notation for *potential outcomes* under different treatments. 
+
+(Note that there can be *multiple* pre-treatment, treatment, and outcome measurements)
+
+## Confounding
+
+Causal inference is challenging for many reasons. For example, suppose we have a medical experiment with 100 patients in "control" and another 100 patients in "treatment". Lets further suppose that the treatment effect is zero, but that the treated and control groups systematically differ so that healthier patients tend to receive the treatment. This scenario leads to a positive *predictive comparison* between both groups, even though the causal effect is zero. This type of confounding is sometimes called *self-selection bias* if the participants are selecting themselves into different treatments.
+
+Similarly, we can have scenarios in which the treatment works, but the predictive comparison is zero. In this scenario, the treatment has a positive effect for all patients, regardless of their previous health status. But if sicker patients are given the treatment, then it's possible to see equal average outcomes for both groups of patients, with sick patients who received the treatment canceling out healthy patients who received the control. 
+
+In both cases, the previous health status plays an important role. Thus we need to compare treated and control patients *conditional* on previous health status. We can do this by following a subclassification strategy (i.e. only compare current health status measurements *within* each previous health status category). Another, easier, way is to regress the outcome on both treatment indicator and confounding covariates. In general, causal effects can be estimated using regression when the model is correct and includes *all* confounding covariates.
+
+**The omitted variable bias**
+
+Suppose the "correct" specification is as follows:
+
+$$
+y_i = \beta_0 + \underset{\text{treatment}}{\beta_1 z_i} + \underset{\text{covariate}}{\beta_2 x_i} + \epsilon_i
+$$
+
+If the confounding covariate is ignored, we have a different model:
+
+$$
+y_i = \beta^*_0 + \beta^*_1 z_i + \epsilon_i^*
+$$
+
+To understand the relation between these two models, it helps to define a third regression:
+
+$$
+x_i = \gamma_0 + \gamma_1 z_i + u_i
+$$
+
+If we then substitute this representation of $x$ into the original "correct" equation, and rearrange the terms, we get:
+
+$$
+y_i = \underbrace{(\beta_0 + \beta_2 \gamma_0)}_{\beta_0^*} + \underbrace{(\beta_1 + \beta_2 \gamma_1)}_{\beta_1^*} z_i + \underbrace{(\epsilon_i + u_i)}_{\epsilon_i^*}
+$$
+
+This correspondence helps understand the definition of a confounding covariate. If there is no association between the treatment and the purported confounder (i.e. $\gamma_1 = 0$), then there is no bias.
+
+Note that this formula is usually presented in the context of the "exogeneity assumption". However, this term has little meaning outside of the context of causal inference.
+
+The addition of predictors will help adjust for systematically unbalanced characteristics across groups. Suppose we want to find the difference-in-means between a treatment and control group $\theta$. To do this, we can run a simple regression:
+
+$$
+y_i = \alpha + \theta z_i + \beta x_i + \epsilon_i \hspace{1cm} \text{where } \hspace{0.2cm} \underbrace{z = \{0, 1\}}_\text{treatment}
+$$
+
+Thus, we have the following equations:
+
+$$
+\begin{align}
+(1) \hspace{0.5cm} &\bar y = \alpha + \hat \theta z_i + \hat \beta x_i \\ \\
+(2) \hspace{0.5cm} &\bar y_{z = 1} = \alpha + \hat \theta + \hat \beta x_i \\ \\
+(3) \hspace{0.5cm} &\bar y_{z = 0} = \alpha + \hat \beta x_i
+\end{align}
+$$
+
+A little algebra will show the way in which including the covariate provides an adjustment for $\hat \theta$:
+
+$$
+\begin{align}
+\hat \theta &=  (\bar y_{z = 1} - \hat \beta \bar x_{z=1}) - (\bar y_{z = 0} - \hat \beta \bar x_{z = 0}) \\ \\ &= 
+(\bar y_{z = 1} - \bar y_{z = 0}) - \underbrace{\hat \beta(\bar x_{z = 1} - \bar x_{z=0})}_{\text{correction}}
+\end{align}
+$$
+
+(Note: In the literature, "control" and "adjust" are synonyms. However, it's useful to distinguish between them: "control" for *design* and "adjust" for *analysis*)
+
+## Post-treatment bias
+
+**Do not control for post-treatment variables**
+
+It is usually not a good idea to control for variables measured *after* the treatment. 
+
+(Note: Judea Pearl calls this *the problem of conditioning on a collider variable*. See Elwert & Winship [(2014)](https://www.annualreviews.org/doi/abs/10.1146/annurev-soc-071913-043455))
+
+The following simulation shows how we can *induce* an association between treatment and outcome, just by conditioning on a post-treatment covariate.
+
+```{r}
+treatment <- rnorm(1000)
+y <- rnorm(1000) ## independent of treatment
+collider <- rnorm(1000, mean = y + treatment)
+
+## No correlation
+lm(y ~ treatment) %>% display()
+
+## Conditioning on a collider variable
+lm(y ~ treatment + collider) %>% display()
+```
+
+The problem of post-treatment variables applies just as well to observational studies as it does to experiments. But in experiments, it can be easy to tell which variables are pre-treatment and which are post-treatment, In observational studies, it is harder to know.
+
+**An example**
+
+Suppose we have a child care policy that increases children's IQ by an average of 10 points after three years. Furthermore, we would also like to understand the extent to which these results are *also* the result of improved parenting practices. Sometimes this question is phrased as: "What is the *direct* effect of the treatment, net of the effect of parenting?" As it turns out, we cannot answer this question (at least not without making further assumptions).
+
+Yet, it's not unusual to see people trying to answer this question by running a regression of the outcome on the treatment *and* the (post-treatment) "parenting" measure. In this model, the treatment coefficient creates a comparison between treatment and control groups, within subgroups defined by post-treatment parenting practices. But this comparison loses the advantages originally imparted by randomization, and it's no longer clear what it represents. In other words, this approach will lead to a biased estimate of the average treatment effect.
+
+In short, the benefits of randomization are generally destroyed by including post-treatment variables. Estimation strategies that allow us to estimate causal effects conditional on intermediate outcomes require further assumptions. 
+
+# Observational studies
+
+****
+
+- In observational studies, treatment exposure is observed rather than manipulated. Thus, there will be systematic differences between groups that receive different treatments with respect to key covariates. 
+
+- Approaches that adjust for confounding covariates include *regression adjustments*, *stratification*, *matching*, and *weighting.* These methods all make use of the estimated "propensity scores", an important one-number summary of the covariates.
+
+- All of these strategies rest on the crucial, but untestable, structural assumption that all confounding covariates have been measured (i.e. *strong ignorability*).
+
+****
+
+**Regression assumptions**
+
+When doing regression for causal inference, we still need to be concerned with the typical assumptions embedded in the typical regression model, such as validity, additivity, linearity, etc. In addition, the exploration of balance and overlap (also called "common support") can help understand the extent to which our model may be robust to misspecification. Imbalance and lack of complete overlap forces us to rely more on modeling than if covariate distributions were the same across treatment groups.
+
+Before discussing "common support", however, we need a better understanding of the ignorability assumption. 
+
+## Ignorability
+
+**Assumption of ignorable treatment assignment in an observational study**
+
+Recall that completely randomized experiments make the distribution of potential outcomes ($y^C, y^T$) the same across levels of the treatment variable $z$. In other words, there's independence between the potential outcomes and the treatment indicator.
+
+$$
+y^0, y^1 \perp z
+$$
+
+The key structural assumption underlying the methods here is that the distribution of potential outcomes is the same across different levels of the treatment variable, *conditional on the covariates* $x$ *used in the analysis*. The term "structural" is used to convey the fact that it can be described independent of any particular model for the data. This assumption can be formalized by the conditional independence statement.
+
+$$
+y^0, y^1 \perp z \mid x
+$$
+
+Thus, this means that we assume that the distribution of the potential outcomes ($y^0, y^1$) is the same across levels of the treatment $z$, once we condition on the confounding covariates represented by $x$.
+
+The term "ignorability" reflects that this assumption allows the researcher to *ignore* the model for the treatment assignment. In other words, if ignorability holds, then causal inferences can be made without modeling the treatment assignment mechanism.
+
+(Note: This same assumption is referred to as the "conditional independence assumption" in econometrics, and "exchangeability" in the epidemiology literature)
+
+## Balance and overlap
+
+Causal inference is straightforward when the units that receive treatment are comparable to those assigned to the control group. In observational studies this will never happen, but we can get away with it if "ignorability" holds. Here we explore two common departures from comparability: *imbalance* and *lack of complete overlap*. These issues force us to rely more heavily on model specification and less on direct support from the data.
+
+
+**Imbalance and model sensitivity**
+
+Imbalance occurs if the distributions of confounders differ for the treatment and control groups. Thus, the simple comparison of group averages ($\bar y_1 - \bar y_0$) is not a good estimate of the average treatment effect. 
+
+The following figure provides two examples of imbalance with respect to covariate $x$. In the first case, the groups have different means (dotted vertical lines) and different skews. In the second case, the groups have the same mean but different skews. We could also imagine an example in which imbalance comes from differences in standard deviation.
+
+```{r, echo=FALSE, fig.width=10}
+aesthetics(); par(mgp = c(0.5, 0.5, 0), mfrow = c(1, 2))
+curve(dbeta(x, shape1 = 5, shape2 = 2), from = 0, to = 1, xlab = "x", ylab = "",
+      xaxt = "n", yaxt = "n", frame.plot = TRUE) 
+  curve(dbeta(x, shape1 = 2, shape2 = 5), from = 0, to = 1, add = TRUE)
+  abline(v = c(0.4, 0.6), lty = "dashed")
+  
+curve(dbeta(x, shape1 = 3, shape2 = 2.2), from = 0, to = 1, xlab = "x", ylab = "",
+      xaxt = "n", yaxt = "n", frame.plot = TRUE) 
+  curve(dbeta(x, shape1 = 2.2, shape2 = 3), from = 0, to = 1, add = TRUE)
+  abline(v = 0.5, lty = "dashed")
+```
+
+*Imbalance creates problems primarily because it forces us to rely more on the correctness of our model than we would have to if the samples were balanced.*
+
+**An example**
+
+Suppose we want to make inferences about the effect of a treatment variable on $y$, while adjusting for a crucial confounding covariate $x$. Here, the true treatment effect is $\theta$ and the relationship between $y$ and $x$ is quadratic, as follows:
+
+
+$$
+\begin{align}
+\text{treated:} \hspace{0.5cm} &y_i = \beta_0 + \theta + \beta_1 x_i + \beta_2 x_i^2 + \text{error}_i \\ \\
+\text{control:} \hspace{0.5cm} &y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \text{error}_i
+\end{align}
+$$
+
+Averaging over each group separately and then solving for $\theta$, yields the following estimate:
+
+$$
+\hat \theta = (\bar y_1 - \bar y_0) - \underbrace{\hat \beta_1 (\bar x_1 - \bar x_0) - \hat \beta_2 (\bar x_1^2 - \bar x_0^2)}_\text{adjustement}
+$$
+
+Notice that if we don't include the quadratic term in the linear model, the estimate of $\theta$ will be off by $\beta_2 (\bar x_1^2 - \bar x_0^2)$. 
+
+However, the closer the distributions of $x$ across treatment and control groups, the smaller the differences in means. And thus we need to worry less about model specification when the $x$s are balanced.
+
+Methods that match or weight to create balance may help to create some immunity from failure to correctly specify the model. Another option is to use some sort of nonparametric fitting algorithm.
+
+**Lack of complete overlap and model extrapolation**
+
+"Common support" describes the extent to which the *range* of the covariate data is the same between the treatment and control groups. Thus, the term "overlap" is more meaningful. Lack of complete overlap creates problems because in this setting there are treatment observations for which we have *no empirical counterfactuals* (and vice versa). Thus, in regions of non-overlap, knowledge about treatment effects is inherently limited.
+
+The following figure shows what lack of complete overlap (with respect to $x$) might look like:
+
+```{r, fig.width=10, echo=FALSE}
+aesthetics(); par(mgp = c(0.5, 0.5, 0), mfrow = c(1, 3), cex = 0.9)
+
+## No overlap
+curve(dnorm(x, -1, 1), from = -4, to = 10, main = "No overlap", lty = "dashed",
+      ylab = "", xaxt = "n", yaxt = "n", frame.plot = TRUE)
+  curve(dnorm(x, 7, 1), from = -4, to = 10, add = TRUE)
+  
+## Partial overlap
+curve(dnorm(x, 1, 1), from = -4, to = 10, main = "Partial overlap", lty = "dashed",
+      ylab = "", xaxt = "n", yaxt = "n", frame.plot = TRUE)
+  curve(dnorm(x, 4, 1), from = -4, to = 10, add = TRUE)
+
+## Partial overlap
+curve(dnorm(x, 7, 1), from = -4, to = 10, main = "Partial overlap",
+      ylab = "", xaxt = "n", yaxt = "n", frame.plot = TRUE)
+  curve(dnorm(x, 2, 3), from = -4, to = 10, add = TRUE, lty = "dashed")
+
+```
+
+Here, the dashed line represents people in the control group, and the solid line represents people in the treatment group.
+
+Note that any inferences regarding areas with no overlap will have to rely on modeling assumptions, instead of direct support from the data. In fact, in the first scenario, it's impossible to make purely data-based causal inferences about any of the observations. On the other hand, in the last scenario, there is sufficient overlap for estimating the effect of the *treatment on the treated*; however, there is insufficient overlap for estimating the effect of the *treatment on controls* or the average treatment effect for everyone in the sample.
+
+(Note that it makes sense to choose different estimands based on the level of empirical support in the data)
+
+Also note that a traditional model fitted to data without complete overlap is *forced to extrapolate* beyond the support of the data. The following figure shows an example of this. Here, the solid curved lines represent the true relation between pre-treatment measurements ($x$) and outcome ($y$), among two treatment groups.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+real_value <- function(x, treatment = TRUE) {
+  if (treatment) {
+    return(1.3*x - 0.003*x^2)
+  }
+  
+  if (!treatment) {
+    return(-3*log(x) + 0.008*x^2 + 0.000009*x^3)
+  }
+}
+
+df <- data_frame(x = 1:100, 
+           y0 = rnorm(100, mean = real_value(1:100, treatment = FALSE), sd = 8),
+           y1 = rnorm(100, mean = real_value(1:100, treatment = TRUE), sd = 8)) %>% 
+  mutate(y0 = ifelse(x < 60 & x > 10, y0, NA), y1 = ifelse(x > 40, y1, NA)) %>% 
+  gather(y0, y1, key = treatment, value = y) %>% 
+  drop_na()
+
+lmodel <- lm(y ~ x + treatment, data = df)$coefficients
+  
+graph <- df %>% 
+  ggplot(aes(x, y, color = treatment)) +
+  geom_point(show.legend = FALSE) +
+  stat_function(fun = real_value, color = "tomato", args = list(treatment = FALSE)) +
+  coord_cartesian(xlim = c(0, 100)) +
+  stat_function(fun = real_value, color = "#00BFC4", args = list(treatment = TRUE)) +
+  theme_classic(base_family = "Avenir")
+
+graph +
+  geom_abline(intercept = lmodel[1] + lmodel[3], slope = lmodel[2], linetype = "dashed") +
+  geom_abline(intercept = lmodel[1], slope = lmodel[2], linetype = "dashed") 
+  
+
+```
+
+The first thing to note is that these lines are not parallel to each other. Since the treatment effect at each level of $x$ is represented by the vertical distance between the two lines, we can clearly see that the effect of the treatment varies substantially across observations with different $x$'s.
+
+The estimated linear regression lines for these data are superimposed as dotted lines. It's obvious that the linear model has problems fitting the true nonlinear relation, and this problem is compounded by the lack of overlap between both groups. These two problems combine to create a substantial *overestimate* of the true average treatment effect (also called "population average treatment effect").
+
+And allowing for an interaction, as shown in the following figure, will not fix this problem.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+lmodel2 <- lm(y ~ x * treatment, data = df)$coefficients
+
+graph +
+  geom_abline(intercept = lmodel2[1] + lmodel2[3], 
+              slope = lmodel2[2] + lmodel2[4], 
+              linetype = "dashed") +
+  geom_abline(intercept = lmodel2[1], slope = lmodel2[2], linetype = "dashed") 
+```
+
+Note, however, that even the incorrectly specified linear regression lines don't provide a bad fit *in the overlapping region*. In other words, the *local average treatment* effect doesn't even require model extrapolation, especially if the regression lines are fitted using only the more restricted sample with overlap, as follows:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+max_value <- max(df$x[df$treatment == "y0"])
+min_value <- min(df$x[df$treatment == "y1"])
+
+lmodel3 <- lm(y ~ x + treatment, data = df, 
+              subset = x < max_value & x > min_value)$coefficients
+
+gridExtra::grid.arrange(ncol = 2,
+
+graph + 
+  geom_vline(xintercept = c(min_value, max_value), alpha = 0.5, size = 1.5),
+
+graph + 
+  geom_abline(intercept = lmodel3[1] + lmodel3[3], slope = lmodel3[2], 
+              linetype = "dashed") +
+  geom_abline(intercept = lmodel3[1], slope = lmodel3[2], linetype = "dashed") + 
+  coord_cartesian(xlim = c(min_value, max_value))
+
+)
+```
+
+## Subclassification
+
+Subclassification (also known as "stratification") is perhaps the simplest approach to deal with bias, besides regression adjustments. 
+
+Suppose we have the following table of information, which summarizes the results of a child care intervention on test scores:
+
+```{r, echo=FALSE}
+m_educ <- c("Not a high school graduate", "High school graduate", "Some college", 
+            "College graduate")
+t_effect <- c(9.3, 4, 7.9, 4.6)
+s_error <- c(1.3, 1.8, 2.3, 2.1)
+n_treated <- c(126, 82, 48, 34)
+n_control <- c(1358, 1820, 837, 366)
+
+data_frame(`Mother's education` = m_educ, 
+           `Treatment effect estimate` = t_effect,
+           `Standard error` = s_error,
+           `Treatment sample size` = n_treated, 
+           `Control sample size` = n_control) %>% 
+  knitr::kable("html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+The results point to positive effects for all participants, with by far the largest estimates for the children whose mothers had not graduated from high school. Note that there is overlap across the treatment and control groups, as evidenced by the sample size values in each group.
+
+To get an estimate of the average treatment effect, the subclass-specific estimates could be combined using a weighted average where the weights are defined by the number of children in each group:
+
+$$
+\begin{align}
+\text{Average treatment effect} &= \frac{(9.3 \times 1484) + (4 \times 1902) + (7.9 \times 885) + (4.6 \times 400)}
+{1484 + 1902 + 885 + 400} \\ \\ &= 6.5
+\end{align}
+$$
+
+A similar result can be obtained by running a regression with indicators for each education attainment level, and interactions. However, note that this strategy chooses to avoid modeling altogether; therefore, assumptions about the parametric relation between the response and confounding covariates are avoided altogether.
+
+But this strategy has many drawbacks. For example, when adjusting for continuous covariates, some information will be lost in the process of discretizing $x$. A more substantial drawback is that it's difficult to adjust for many variables at once.
+
+**Average treatment effects. Whom are we making inferences about?**
+
+The previous table shows varying treatment effects over different subpopulations. One implication of this is that we should probably be careful about what types of treatment effects we are measuring to answer a particular research question. For example, if a policy intervention is targeted at children living in poverty --and not for typical children-- there is less interest in comparisons with well-off children who would even be eligible to participate. Thus, from a policy perspective, we can argue that what matters is estimating the treatment effect averaged over just a subset of these children. 
+
+This is an example of an alternative to the ATE called the *average effect of the treatment on the treated* (ATT). This estimand is advantageous in situations where the treatment would only ever be administered to certain types of people. 
+
+$$
+\begin{align}
+\text{Estimated effect on the treated} &= \frac{(9.3 \times 126) + (4 \times 82) + (7.9 \times 48) + (4.6 \times 34)}
+{126 + 82 + 48 + 34} \\ \\ &= 6.5 \\ \\
+\text{Standard error} &= \sqrt{\frac{(1.3 \times 126)^2 + (1.8 \times 82)^2 + (2.3 \times 48)^2 + (2.1 \times 34)^2}{(126 + 82 + 48 + 34)^2}} \\ \\ &= 0.9
+\end{align}
+$$
+
+Had we weighted instead by the number of *control* children in each subclass, we would have obtained an estimate of the ATC (*average treatment effect on controls*). Note that we should average over he portion of our analysis sample that is representative of the group about who we are most interested in making inferences. 
+
+Another framing of this issue involves the idea of post-stratification. Thus, we can think of the ATT as a post-stratified version the estimated average treatment effect. 
+
+## Matching
+
+**Removing data to get overlap and balance**
+
+*Matching* refers to a variety of procedures that restrict the original sample in preparation for a statistical analysis. In a causal inference setting, matching occurs across treatment and control groups. The goal is to create a sample that *looks like* it was created from a randomized experiment. 
+
+Matching if often a first step that allows for reduced reliance on parametric assumptions of the model we end up fitting to estimate the treatment effect. Just as with a randomized experiment, the intuition is that if we can create sufficient overlap and balance between treatment and control groups, then we should get a reasonable estimate of the treatment effect (even if we misspecify the model used to estimate it). 
+
+**Distance metrics**
+
+Matching on one confounding covariate is straightforward. For instance, if targeting the effect of the treatment on the treated (ATT), one could simply choose for each treated unit the untreated unit with the closes value for that covariate. And if there were several such observations we could randomly choose one or we could average the outcomes of all of them. (These choices, however, have different implications on the variance estimate).
+
+- Matching on one binary and one continuous covariates is straightforward. A simple approach would be to stratify within subgroups defined by the binary variable, and then match on the continuous variable within each group.
+
+- Matching on two continuous covariates is tricky. One strategy might be to first create a subset of potential matches within a certain distance of one variable, and then choose the observation closest with regard to the second variable. But what happens when we have more than two confounding variables?
+
+- Alternatively, we can define a univariate distance metric between observations as a function of the observed covariates. *Euclidean distance* is a simple option, but it's not scale invariant and it also ignores the correlation structure of the covariates. *Mahalanobis distance* addresses both of these shortcomings because it scales the distance by the variance-covariance metric. However, both metrics can be criticized on the grounds that they implicitly over-privilege higher order interactions between variables (i.e. each defines defines proximity based on what are arguably very specialized neighborhoods of the covariate space).
+
+- **Propensity score matching.** The *propensity score* for the $i^{\text{th}}$ individual is defined as the probability that $i$ receives the treatment, given observed pre-treatment covariates. This is arguably the most popular distance metric for matching that currently exists.
+
+With a binary treatment, we have that $\Pr(Z \mid x) = E(Z \mid x)$. This highlights that the propensity score can be conceptualized as a regression (broadly defined as a conditional expectation) with a binary response. As such, propensity scores can be estimated using standard models such as logistic or probit regression. Then, after using the fitted model to predict estimated propensity scores, matches can be found by choosing for each treatment observation the control observation with the closest estimated propensity score. 
+
+If the covariates included in the propensity score model are sufficient to satisfy ignorability, then conditioning on the propensity score is also sufficient to satisfy ignorability. Formaly, we say that if $e(\mathbf{x})$ denotes the propensity score then:
+
+$$
+y^0, y^1 \perp \mathbf{x} \hspace{0.3cm} \to \hspace{0.3cm} y^0, y^1 \perp e(\mathbf{x})
+$$
+
+And we also have that
+
+$$
+\begin{align}
+E(y^c \mid \mathbf{x}) &= E(y^c \mid e(\mathbf{x})) \\ \\ 
+E(y^t \mid \mathbf{x}) &= E(y^t \mid e(\mathbf{x}))
+\end{align}
+$$
+
+**Matching algorithms**
+
+Once we have defined a measure of distance between units, we need to decide on an algorithm for matching. There are multiple options available.
+
+- *One-to-one versus other options*. The simplest for of matching is *one-to-one*. That is, for each member of the group we want to make inferences about (e.g. the treatment group if we want to estimate the ATT), we find exactly one match from among the other group. 
+
+    Another option is to match a pre-specified number of controls to each member of the inferential group (also known as $k$-to one matching). This can help to use more observations in the sample, but lacks flexibility with regard to finding close matches. For example, it could be the case that some treated units easily have 8 close matches, and some only have one or two, or even none (it depends on the overlap among groups).
+    
+    Caliper matching addresses the issue of diferential numbers of "good matches". The basic idea is to define a symmetric window of a specified width around each observation in the inferential group and accept all control units within this window as matches for that observation. Sometimes the contribution of these matches is weighted by a function (often called a *kernel*), which downweightes matches in the window that are farthest from the inferential unit to which they are being matched.
+    
+- *Matching with or without replacement*. This will be a particularly important consideration when there are fewer comparison units than inferential units. When matching *without* replacement, if a comparison observation is chosen as a match for one inferential unit, it cannot be use as a match for another (similar to something like a randomized pair design). Usually, this strategy makes more sense. In contrast, matching *with* replacement allows for more flexbility. A disadvantage of this practice, however, is that it will likely reduce the number of independent observations which could increase the variance of our treatment effect estimate. 
+
+- *Choice of matching algorithm*. When matching without replacement, the order in which units are matched can affect which units end up getting shosen for the matched comparison group. The simplest option for programming such a matching algorithm is to order the inferential units in some way. For example, after ordering the inferential from largest to smallest propensity scores, we find the comparison unit that's closest with respect to a given distance metric. This type of strategy is referred to as a "greedy algorithm" because it does not consider how the choices at one step affect the choices down the line. The consequence is that the resulting matches may not result in the best balance overall. An alternative is to implement a matching algorithm that jointly considers the consequences to all units. Some algorithms (e.g. "full matching" and "generalized full matching") optimize over the full set of matches in order to minimize the total distance between units.
+
+**Iterating between estimating propensity scores and checking balance**
+
+...
+
+*Balance diagnostics should include more than just difference in means*.
+
+...
+
+**Approximate inverse probability of treatment weighting**
+
+We can think of matching as a crude weighting scheme for our data. For instance, in one-to-one matching, each observation is implicitly assigned a wight of either 1 or 0 (retained in the matched sample or not). More complicated matcing methods map to more complmicated weights. For instance, in $k$-to-one matching (without replacement), each treated observation has an implicit weight of 1 and each control observation has an implicit weight of $\frac{1}{k}$. 
+
+A common use of propensity scores is or approximate inverse probability of treatment weighting. The basic idea, akin to survey sampling, is to weight the sample to be representative of a pseudo-population that is unconfounded and represents the population of interest. 
+
+PUT EXAMPLE FROM BOOK.
+
+
+****
+
+The [**`MatchIt`**](https://cran.r-project.org/web/packages/MatchIt/index.html) package was created as a companion to Ho, Imai, King, & Stuart ([2007](https://www.cambridge.org/core/journals/political-analysis/article/matching-as-nonparametric-preprocessing-for-reducing-model-dependence-in-parametric-causal-inference/4D7E6D07C9727F5A604E5C9FCCA2DD21)) to facilitate matching techniques for causal inference in `R`; an overview and tutorial for the package are provided in Ho, Imai, King, & Stuart ([2011](https://imai.princeton.edu/research/files/matchit.pdf)).
+
+```{r}
+arm::matching
+
+```
+
+
+
+## Common misunderstandings
+
+*Do propensity score approaches reduce the dimensionality of the problem?*
+
+Sometimes propensity score approaches are marketed as a dimension reduction technique since, in theory, tehy allow us to condition on just one variable (the propensity score) when estimating causal effects. However, this is a flawed argument. For instance, we still need *all* the covariates to estimate the propensity score. Then, we choose an appropriate propensity score model by checking for balance across all potential confounders. Furthermore, we shoul also be checking for balance across other moments of the joint distribution (e.g. associations across pairs of confounders). Thus, when done properly, balance checking is a *high dimensional* task.
+
+*Overlap and overfit*
+
+One issue that is usually not considered with regard to propensity score estimation is whether or not the propensity socre model has been *overfit* to the sample. Models that produce overfitting will not generalize to broader populations; the same holds for predicted propensity socres. 
+
+...
+
+More importantly, fitting a model with a binary outcome conditional on many covariates (estimating the propensity score) has the potential to be more problematic than fitting a model with a continuous response conditional on the same set of covariates (estimating the treatment effect). COLLAPSIBILITY.
+
+...
+
+## Additional considerations
+
+**Defining a manipulable "treatment" variable**
+
+A causal effect for a particular sample (or population) need to be defined with respect to an intervention. And we need to be able to conceive of the treatment as being *manipulable* such that each unit could potentially experience any level of the treatment variable.
+
+A common in which the treatment definition is unclear is the "effect" of height on earnings. This quantity is ill-defined without reference to the particular treatment that could change one's height. This quantity is ill-defined without a reference to the particular treatment that could change one's height. Otherwise, what does it mean to define a potential outcome for a person that would occur *if* she had been shorter or taller? This could occur with a hypothetical swapping of genes, a change in the fetal environment, or changing a child's diet; and all this scenarios should have different effects.
+
+Consider a different example, a study that examines children who were randomly assinged to families for adoption. This "natural experiment" allows for rair comparisons across conditions such as being raised in one-parent versus two-parent households. Here, there's no attempt to compare *parents* who are similar to each other except in terms of marital status; instead, it's the *children* who are similar on average at the outset. The treatment in question has to do with considering the child's placement in a family, and *not* with considering whether a couple should get married.
+
+**Temporal ordering of variables**
+
+Causal effects must be measure *after* a treatment has been assigned and administered. Outcomes may be measured five minutes or five years later, but they must reflect post-treatment phenomena. And careful thought is often given regarding the optimal timing for measuring outcomes to ensure that enough time has elapsed for an outcome to manifest, or to understand whether effects fade over time. We must also avoid *post-treatment bias*.
+
+Note that in a retrospective obervational study (especially cross-sectional data), the temporal ordering of the variables may be less clear. 
+
+**Multiple treatment factors**
+
+In an obsercational study, it is difficult to directly intepret more than one input variable causally. Suppose we are interested in estimating the effect of low self-esteem and stressful events on the "level of depression". But to estimate both effects at once, we would have to imagine a manipulation of low self-esteem that leaves stressful events unchanged and a manipulation of stressful events that leaves self-esteem unchanged. And in observational studies, it is difficult to envision both these interventions happening independently. 
+
+In this example, if we knew that self-esteem was measured before the measure of stressful events in time (or logical sequence), then we could estimate the effect of stresfful events adjusting for self-esteem *but not the reverse* (post-treatment bias). 
+
+**Thought experiment: what is the ideal randomized design?**
+
+If you find yourself confused about what can be estimated and how to define the various aspects of your study, a simple strategy is to try and define the randomized experiment you would have liked to have done to answer the causal question at hand. And because a perfect mapping rarely exists between this thought experiment and the data, often you will be forced instead to figure out what randomized experiment could have generated such data (also known as [abduction](http://www.commens.org/dictionary/term/abduction)).
+
+Futhermore, just as in a randomized experiment, *all causal inference requires a comparison of at least two treatments*. The difference is that in observational studies the treatment may be clear, but the control is not. And different control conditions imply different counterfactual states, and thus generate different causal effects.
+
+
+
+
+
+
+# More advanced topics
+
+****
+
+- Some causal inference strategies don't rely on the assumption of "ignorability", but instead rely on a slightly different set of assumptions that may be more plausible in certain settings. These strategies are:
+
+    + Instrumental variables.
+    
+    + Regression discontinuity
+    
+    + Fixed effects and difference-in-difference approaches.
+    
+- A different approach altogether involves assesing the *sensitivity* of our treatment effect estimates.
+
+****
+
+## Instrumental variables
+
+When the argument for ignorability of the treatment assignment seems weak, there may exist another variable which does appear to be randomly assinged (or conditionally randomly assinged). If this variable, called the *instrument*, is predictive of the treatment, we *may* be able to use it to isolate a particular kind of targeted causal estimand. Economists go around the world looking for instrumental variables (i.e. acts of god, acts of government, and other sources of randomness).
+
+*An example: Sesame Street*
+
+```{r, echo=FALSE}
+LINK <- "http://www.stat.columbia.edu/~gelman/arm/examples/sesame/sesame.dta"
+sesame <- haven::read_dta(LINK) %>% haven::zap_formats() %>% select(-rownames)
+
+sesame <- sesame %>% 
+  rename(y = postlet,
+         watched = regular,
+         encouraged = encour,
+         pretest = prelet)
+
+```
+
+Suppose we wanted to estimate the effect of wathing Sesame Street on letter recognition. We might consider implementing a randomized experiment where the participants are preschool children, the treatment is watching Sesame Street, the control is not watching, and the outcome is the score on a test. Note that, in any case, it's not possible for an experimenter to force children to watch a TV show or refrain from watching. Thus, *watching* cannot be randomized. Instead, when this study was actually perforemd, what was randomized was *encouragement* to watch the show (this is called a *randomized encouragement design*).
+
+A simple comparison of outcomes across randomized groups in this study will yield an estimate of the effect of *encouraging* these children to watch the show, not an estimate of the effect of actually viewing the show. This estimand is often referred to as the *intention-to-treat* (ITT) effect. However, we may be able to use randomized encouragement as an instrument that induces variation in the treatment and, thus, estimate the causal effect of watching for at least some people in the study. 
+
+*Conceptual framework and assumptions*
+
+It's useful to categorize the children who participated in the study by their compliance behavior (i.e. the extent to which their viewing behavior matched what they were encouraged to do). 
+
+In this study, only some the children's viewing behavior is affected by the encouragement. And we can only conceptualize counterfactuals for those children whose viewing patterns could be altered by encouragement. Thus, a comparison of the potential outcomes for these children (the "compliers") will make sense. These are the only children for whom we will make inferences about the effect of watching Sesame Street, and this effect is referred to as the *complier average causal effect* (CACE).
+
+What other types of children exist in the study?
+
+- The "never takers": children who were encouraged to watch Sesame Street but did not; we might plausibly assume that these children would also not watch the show in the absence of encouragement.
+
+- The "always takers": children who watched Sesame Street even when they were not encouraged; plausibly, these children would also watch the show in the presence of encouragement. 
+
+(Note that both these children have unobservable counterfactuals)
+
+*Assumptions*
+
+Causal inference with instrumental variables relies on several key assumptions.
+
+- *Ignorability of the instrument* with respect to the potential outcomes (for both outcome and treatment variables). This is trivially satisfied in a well conducted randomized experiment, where $y^0, y^1 \perp z$.
+
+- *Monotonicity*. In defining "never takers" and "always takers", we left out an important category: the "defiers" (e.g. children who would always do the opposite of what they were encouraged to do). Formally, this is called the *monotonicity assumption* and in some circumstances it will not hold. However, this assumption is plausible in many situations; for example, in some studies it will be impossible for the participants in the non-encouraged group to gain access to the treatment of interest. In such circumstances, neither defiers nor always takers are possible.
+
+- *Nonzero association between instrument and treatment variable*. The following table shows that 91% of those encouraged watched the show regulary, whereas only 55% of those not encouraged did the same thing. Thus, if we are interested in the effect of actually viewing the show, we should focus on the 36% of the treatment population who decided to watch the show because they were encouraged, but who otherwise would not have watched the show. 
+
+    ```{r, echo=FALSE}
+    sesame %>% 
+      group_by(encouraged) %>% 
+      summarize(`%` = mean(watched)) %>% 
+      knitr::kable("html") %>% 
+      kableExtra::kable_styling(full_width = FALSE)
+    ```
+
+    If the instrument (encouragement) did not affect regular watching, then we could not proceed. Fortunately, this assumption is empirically verifiable.
+    
+- *Exclusion restriction*. To estimate the CACE, we must make another assumption about never takers and always takers: there is no effect of encouragement on outcomes. Technically, the assumptions regarding always takers and never takers represent distinct exclusion restrictions. Using more complicated estimation strategies, it can be helpful to consider these assumptions separately as it may be possible to weaken one or the other.
+
+    It is not difficult to come up with a story that violates the exclusion restriction. Consider, for instance, the conscientious parents who do not let their children watch television and are concerned with providing them a good start educationally. The materials used to encourage the children to watch Sesame Street for its educational benefits might instead have motivated some parents to purchase other types of educational materials for them or to read to them more often.
+    
+The following table summarizes this discussion.
+
+```{r, echo=FALSE}
+set.seed(12345)
+C <- c(rep("complier", 4), rep("always taker", 4), rep("never taker", 4))
+Encouragement <- c(rep(0:1, 6))
+T0 <- case_when(
+  C == "complier" ~ 0,
+  C == "always taker" ~ 1,
+  C == "never taker" ~ 0
+  )
+
+T1 <- ifelse(C == "complier", 1 - T0, T0)
+Y0 <- ifelse(T0 == 0, round(rnorm(10, 70, 3), 0), round(rnorm(10, 80, 3), 0))
+Y1 <- case_when(
+  C == "always taker" ~ Y0,
+  C == "never taker" ~ Y0,
+  C == "complier" ~ round(rnorm(12, 80, 3), 0)
+  )
+
+df <- data_frame(Encouragement, T0, T1, C, Y0, Y1) %>% 
+  arrange(Encouragement, T0, T1) %>% 
+  mutate(Unit = 1:12) %>% select(Unit, everything()) %>% 
+  mutate(Effect = Y1 - Y0) %>% 
+  mutate(T0 = ifelse(Encouragement == 0, paste("$\\mathbf{", T0, "}$"), T0),
+         T1 = ifelse(Encouragement == 1, paste("$\\mathbf{", T1, "}$"), T1),
+         Y0 = ifelse(Encouragement == 0, paste("$\\mathbf{", Y0, "}$"), Y0),
+         Y1 = ifelse(Encouragement == 1, paste("$\\mathbf{", Y1, "}$"), Y1))
+
+df %>% 
+  rename(`Unit $i$` = Unit,
+         `$T_i^0$` = T0, `$T_i^1$` = T1,
+         `$y_i^0$` = Y0, `$y_i^1$` = Y1,
+         `Unobserved categorization` = C,
+         `$z_i$` = Encouragement) %>% 
+  knitr::kable("html") %>% 
+  kableExtra::kable_styling(full_width = FALSE, bootstrap_options = "bordered")
+
+```
+
+In this table, the hypothetical *observed* data is in bold face, whereas everything else is *unobservable*. Note that, because of the exclusion restriction, the potential outcomes are the same for the always takers and never takers, regardless of the encouragement. They don't have to be *exactly* the same, but this simplifies the exposition a lot.
+
+The true intent-to-treat effect for these 12 observations is the an average of the effects for the 4 induced watchers, along with 8 zeroes that correspond to the encouragement effects for the always takers and never takers. 
+
+```{r, echo=FALSE}
+summarize(df, ITT = mean(Effect),
+          CACE = sum(Effect) / 4) %>% 
+  knitr::kable("html") %>% 
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+Thus, the effect of watching Sesame Street on the letter recognition (for the *compliers*) is 9. This means that the CACE is algebraically equivalent to the intent-to-treat efffect divided by the proportion of compliers.
+
+$$
+\begin{align}
+\text{ITT} &= \frac{10 + 8 + 12 + 6 + 0 + \dots + 0}{12} \\ \\ &=
+\underbrace{\left(9 \ \ \ \times \ \ \ \frac{4}{12} \right)}_{\text{CACE} \ \ \times \ \ \text{propotion of compliers}} + \ \ \ \ \ \ \ \left(0 \times \frac{8}{12}\right) &= \ \ \ 3
+\end{align}
+$$
+
+*Deconstructing the complier average causal effect*
+
+We can better understand the CACE by considering a more general formulation. We start by conceptualizing the intention-to-treat effect as a weighted average of four different ITT effects (one for each of the four types of compliance classifications):
+
+$$
+\begin{align}
+\underset{\text{total}}{\text{ITT}} = 
+\underset{\text{complier}}{\text{ITT}} \ \ \Pr(c = \text{complier}) \ \ +
+\underset{\text{never taker}}{\text{ITT}} \Pr(c = \text{never taker}) \ \ + \dots \\ \\ \dots
+\underset{\text{always taker}}{\text{ITT}} \Pr(c = \text{always taker}) \ \ + \ \ \ \
+\underset{\text{defier}}{\text{ITT}} \ \  \ \Pr(c = \text{defier}) 
+\end{align}
+$$
+
+Here, $\underset{\text{total}}{\text{complier}}$ denotes the effect of the *instrument* on the outcomes for the compliers; the other ITT effects in the expression are similarly defined.
+
+Note a few things:
+
+1. The *exclusion restriction* means that 
+
+$$\underset{\text{never taker}}{\text{ITT}} = \underset{\text{always taker}}{\text{ITT}} = 0$$
+
+2. The *monotonicity assumption* means that 
+
+$$\Pr(c = \text{defier}) = 0$$
+
+Thus, the general expression is simplified to
+
+$$
+\begin{align}
+\underset{\text{total}}{\text{ITT}} &=  \underset{\text{complier}}{\text{ITT}} \times \Pr(\text{c = complier}) \\ \\ \frac{\text{ITT}_\text{total}}{\Pr(\text{c = complier})} &=
+\ \underbrace{\text{ITT}_\text{complier}}_\text{CACE}
+\end{align} 
+$$
+
+*Assumption violations*
+
+*Violations of the ignorability assumption*. The ignorability assumption is arguably the most essential to the instrumental variables framework presented here, it is required to unbiasedly estimate both the numerator and the denominator in the previous equation. This bias will also be exacerbated in situations when the estimated proportion of compliers is small.
+
+*Violations of the exclusion restriction*. Consider a scnearion in which the effect of th instrument on the never takers is $\alpha$. This changes the expanded ITT formula in the following way:
+
+$$
+\text{ITT} = \text{CACE} \times \Pr(c = \text{complier}) + \alpha \times \Pr(c = \text{never taker})
+$$
+
+The ensuing bias can then be understood as follows:
+
+$$
+\frac{\text{ITT}_\text{total}}{\Pr(c = \text{complier})} = \underbrace{\text{ITT}_\text{complier}}_\text{CACE} + \underbrace{\alpha \times \frac{\Pr(c = \text{never taker})}{\Pr(c = \text{complier})}}_\text{Bias}
+$$
+
+Note that this provides further caution against use of instruments that are *not* strongly predictive of the treatment (i.e. with a high ratio of never takers to compliers): such studies will be highly vulnerable to violations of the exclusion restriction.
+
+*Local average treatment effect (LATE) vs intent-to-treat effect (ITT)*
+
+The estimated complier average causal effect (CACE) applies only to those children whose treatment receipt is dictated by their randomized instrument assingment; this is a special case of what economists usually call a *local average treatment effect* (LATE). Some researchers argue that *intent-to-treat* effects are more interesting from a policy perspective, because they accurately reflect that not all targeted individuals will participate in the intended program. However, the intent-to-treat effect only parallels a true policy effect if in the subsequent policy implementation the compliance rate remains unchanged. Thus, it's usually better to estimate both effects.
+
+****
+
+*Sesame Street IV estimate*
+
+```{r}
+# We first estimate the percentage of children induced to watch Sesame Street.
+# This is the coefficient on the instrument in the following regression:
+
+lmodel_1 <- lm(watched ~ encouraged, data = sesame)
+display(lmodel_1)
+
+# We then compute the intent-to-treat estimate, obtained in this case using the
+# regression of the outcome on the instrument.
+
+lmodel_2 <- lm(y ~ encouraged, data = sesame)
+display(lmodel_2)
+
+# The estimated coefficient of "encouraged" is 2.9, which we then inflate by
+# dividing by the percentage of children affected by the intervertion.
+
+coef(lmodel_2)["encouraged"] / coef(lmodel_1)["encouraged"]
+
+# The estimated effect of regularly viewing Sesame Street is 7.9 points on the
+# letter recognition test. This type of ratio estimator is sometimes called a
+# "Wald estimator"
+```
+
+We can also use the `AER` package's `ivreg()` function to perform the same calculation:
+
+```{r}
+AER::ivreg(y ~ watched | encouraged, data = sesame)
+
+# Remember that we end up replacing the whole predictor "watched" with only the
+# part of the predictor that is due to the effect of the randomness induced by
+# "encouraged"
+```
+
+## IVs and regression
+
+Instrumental variables models and estimators can also be derived by focusing on the mean structure of the regression model, allowing us to more easily extend the basic concepts discussed earlier.
+
+A general instrumental variables model with (potentially continuous) instrument $z$ and (potentially continuous) treatment $T$ can be written as follows:
+
+$$
+\begin{align}
+y_i &= \beta_0 + \beta_1 T_i + \epsilon_i \\
+T_i &= \gamma_0 + \gamma_1 z_i + v_i
+\end{align}
+$$
+
+With this, the previous assumptions can now be expressed in a slightly different way. The ignorability assumption and exclusion restriction turn into the "instrument only affects the outcome throug its effect on the treatment" assumption:
+
+$$
+\text{Corr}(z, T) \neq 0 \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Corr}(z, \epsilon) = 0 \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Corr}(z, v) = 0 \hspace{0.5cm} \text{and} \hspace{0.5cm} 
+\text{Corr}(z, y) = 0
+$$
+
+*Identifiability*
+
+Generally speaking, *identifiability* refers to whether the data contain sufficient information for unique estimation of a given parameter (or set of parameters) in a particular model.  
+
+If we did not impose the exclusion restriction for our basic model, then ic could be re-written as follows:
+
+$$
+\begin{align}
+y_i &= \beta_0 + \beta_1 T_i + \beta_2 z_i + \epsilon_i \\
+T_i &= \gamma_0 + \gamma_1 z_i + v_i
+\end{align}
+$$
+
+Our goal is to estimate $\beta_1$ (the treatment effect), but $T$ has not been randomly assigned; because it's an observational study, $T$ can be correlated with $\epsilon$. Thus, we *cannot* estimate $\beta_1$ by running the first regression. 
+
+However, we *can* estimate $\beta_1$ using instrumental variables. Substituting the formula for $T$ inside the formula for $y$ yields the following:
+
+$$
+\begin{align}
+y_i &= \beta_0 + \beta_1 T_i + \beta_2 z_i + \epsilon_i \\\\ &=
+\beta_0 + \beta_1 (\gamma_0 + \gamma_1 z_i + v_i) + \beta_2 z_i + \epsilon_i \\\\ &=
+\underbrace{(\beta_0 + \beta_1 \gamma_0)}_{\delta_0} + \underbrace{(\beta_1 \gamma_1 + \beta_2)}_{\delta_1} z_i + \underbrace{(\beta_1 v_i + \epsilon)}_\text{error}
+\end{align}
+$$
+
+Note that we are still interested in estimating $\beta_1$, which we can solve for with the following equation:
+
+$$
+\begin{align}
+\delta_1 &= \beta_1 \gamma_1 + \beta_2 \\\\
+\beta_1 &= \frac{\delta_1 - \beta_2}{\gamma_1}
+\end{align}
+$$
+
+In this equation, $\gamma_1$ can easily be estimated by regressing $T$ on $z$; whereas $\delta_1$ can be estimated by regressing $y$ on $z$ *and by assuming that $\beta_2$ is zero*. This is given once again the exclusion restriction. 
+
+Thus, we have what is sometimes called a "Wald estimator":
+
+$$
+\beta_1 = \frac{\delta_1}{\gamma_1}
+$$
+
+There are other ways to achieve identifiability in this two-equation setting. For example, a selection correction model (e.g. a probit model) could be used for the regression of $T$ on $z$.
+
+**Two-stage least squares**
+
+Going back to the Sesame Street example, we can describe a more general estimation strategy known as *two-stage least squares*.
+
+The first step is to regress the treatment variable (`watched`) on the randomized instrument (`encouraged`). The second step is to plug the predicted values of `watched` into the equation predicting `y` from `watched`:
+
+```{r}
+## First stage
+first <- lm(watched ~ encouraged, data = sesame)
+
+## Second stage
+second <- lm(y ~ first$fitted, data = sesame)
+
+## Results
+display(second)
+```
+
+This two-stage estimation strategy is especially useful for more complicated versions of the model; for example, when multiple instruments are included. However, the estimated standard error will not be correct. 
+
+*Adjusting for covariates in an instrumental variables framework*
+
+The randomization for this particular experiment took place within sites and settings. Therefore, it is appropriate to adjust for these covariates in estimating the treatment effect. Additionally, pre-test scores --which are highly predictive of post-test scores-- are available. Our preferred model would adjust for all of these predictors. 
+
+We can calculate the same ratio as before (the ITT effect divied by the effect of encouragement on viewing) using models that include these additional predictors, but pulling out only the coefficients on `encouraged`.
+
+```{r}
+## First stage
+first <- lm(watched ~ encouraged + pretest + as.factor(site) + setting, data = sesame)
+
+## Second stage
+second <- lm(y ~ first$fitted + pretest + as.factor(site) + setting, data = sesame)
+
+## Results
+display(second)
+```
+
+Thus, the estimated effect of watching Sesame Street on the compliers is about 14 points on the letter recognition test. Again, *we do not trust this standard error*.
+
+As before, we can also use the `AER::ivreg()` function to do this.
+
+*Standard errors for instrumental variables estimates*
+
+The second step of two-stage regression yields the IV estimate, but the standard error calculation is complicated because we cannot simply look at the second regression in isolation. How do we adjust the standard error to account for the uncertainty in both stages of the model?
+
+```{r}
+# Save the predictor matrix from the second step, with x = TRUE
+second <- lm(y ~ first$fitted + pretest + as.factor(site) + setting, 
+             data = sesame,
+             x = TRUE)
+
+# Compute the standard deviation of the adjusted residuals
+X_adj <- second$x
+X_adj[ , "first$fitted"] <- sesame$watched
+residual_sd_adj <- sd(sesame$y - X_adj %*% coef(second))
+se_adj <- se.coef(second)["first$fitted"] * residual_sd_adj / sigma.hat(second)
+se_adj
+```
+
+What are we doing here? 
+
+We are computing the standard deviation of the adjusted residuals:
+
+$$
+r_i^\text{adj} = y_i - \mathbf{X}_i^\text{adj} \boldsymbol{\hat \beta}
+$$
+
+Here, $\mathbf{X}_i^\text{adj}$ is the predictor matrix from the second stage regression, but with the column of predicted treatment values replaced by observed treatment values. 
+
+We then take the standard error of the predicted `watched` values from the `second` regression and scale them by the adjusted residual standard deviations, divided by the residual standard deviation from `second` itself.
+
+So the adjusted standard errors are calculated as the square roots of the diagonal elements of $(\mathbf{X}^\top\mathbf{X})^{-1} \hat \sigma_\text{TSLS}$ rather than $(\mathbf{X}^\top\mathbf{X})^{-1} \hat \sigma$, where $\hat \sigma$ is the residual standard deviation from `second` and $\hat \sigma_\text{TSLS}$ is calculated using the residuals from an equation that predicts the outcome from `watched` (not `first$fitted`) using the two-stage least squares estimate of the coefficient.
+
+The resulting standard error is 3.8, which is actually a bit smaller than the unadjusted standard error of 4.04.
+
+*Continuous treatment variables or instruments*
+
+When using two-stage least squares, the models we have discussed can easily be extended to accomodate continous treatment variables and instruments, although at the cost of complicating the interpretation of the causal effects.
+
+However, a *binary* instrument cannot identify a *continous* treatment or dosage effect (without further assumptions). If we map this back to a randomized experiment, the randomization assigns someone only to be encouraged or not. This is equivalent to a setting with many differnt treatments (one at each dosage level) but only one instrument; thus, the model lacks *identifiability*.  
+
+*Have we really avoided the ignorability assumption?*
+
+In the context of a randomized experiment, the "ignorability of the instrument" assumption should be trivially satified. However, in practice, an instrumental variables approach is also reasonable in the context of a *natural experiment* (i.e. acts of god, acts of government, or other sources of randomness). The idea is to trade one ignorability assumption ("ignorability of the treatment variable") for another one ("ignorability of the instrument") when we believe the later to be more plausible. Broadly speaking, if the ignorability assumption is not highly plausible, the expected gains from performing an IV analysis are not likely to outweigh the potential for bias. 
+
+*Weak instruments*
+
+The only assumption that can be directly tested is that the instrument and treatment variables have a non-zero correlation. Thus, the "first stage" model should be examined closely to assess the strength of the instrument. The weaker the instrument (e.g. the smaller the proportion of compliers), the bigger the bias that results from failure to satisfy the IV assumptions.
+
+Additionally, we might be concerned that the compliers (i.e. the group for which the data is informative with regard to causal effects) may not be particularly representative of the full population interest. *This is a form of sampling bias that is subtle because we cannot directly observe whether individuals are compliers*; we can only use statistical methods to infer characteristics of compliers and noncompliers in the sample and the population. 
+
+A model in which the number of instruments exceeds the number of treatment variables is called an overidentified model. issues with overidentified models --> weak instruments.
+
+
+## Regression discontinuity
+
+**Known assignment mechanism but no overlap**
+
+We can design observational studies for which the assignment mechanism is entirely known (as with a randomized experiment) but that involves no explicit randomization. 
+
+Suppose we wanted to evaluate the effect of an afterschool tutoring program , but the school district felt that it was important to give priority to the children whe were struggling the most academically. Thus, if there is funding for 100 students (out of 1000), then the program administrators would simply choose the 100 students with the *lowest* score on some pre-treatment evaluation. 
+
+For example, lets say that the 100 lowest scores are all bellow 60, whereas the rest are above 60. Here, the assignment to treatment $T$ is completely deterministic: $\Pr(T = 1 \mid \text{test} < 60) = 1$ and $\Pr(T = 1 \mid \text{test} > 60) = 0$. Another way of framing this property is by saying that the pre-treatment evaluation is our only confounding variable. 
+
+By construction, the design of a regression discontinuity analysis leads to a situation in which tere is absolutely *no overlap* across treatment groups with respect to our only confounder: the "assignment variable" or "forcing variable". (There must also be substantial imbalance in these distributions due to lack of overlap). Thus, with a pure regression discontinuity design, there is no hope of achieving either balance or overlap. How then do we proceed to make causal inferences?
+
+Note that the cut-off of 60 is somewhat arbitrary, especially from the point of view of those students very close to each other at either side of the cut-off. For example, if the standard deviation on the test were 15, would we really think that students who received scores of 57 were different in important ways to those who received 63? If the answer is no, then maybe we can consider the data from students with scores in this range to be nearly equivalent to data that were genreated by a randomized experiment. (In practice we might not trust this assumption too closely and would therefore want to adjust for our pre-treatment score as well).
+
+Note that students near the cut-off are comparable, but the other ones are *not*; we have limiting the number and type of students about whom we can make inferences. 
+
+The `R` code for this sort of analysis, in its simplest form, is very straightforward.
+
+```{r, eval=FALSE}
+lm(y ~ treatment_indicator + x1 + x2, data = data,
+   subset = range) ## This is the only thing that changes
+```
+
+Remember: causal inference fo the full sample implicitly requires a belief that model extrapolation is appropriate because.
+
+Subsetting the data this way will cause all sorts of problem with the "statistical" inference part; for example, the standar errors around the coefficients will get higher. 
+
+**Assumptions**
+
+If we simply used a difference in means to estimate the causal effect of being below the threshold $z$ in a narrow range defined by the assignment variable $x$, we would need the ignorability assumption to hold in that range.
+
+$$
+y^0, y^1 \perp z \hspace{0.5cm} \text{for } \ x \in (C-a, C+a)
+$$
+
+where $C$ represents the threshold for assignment (or cut-off point). 
+
+In practice, however, we always want to condition on the assignment variable $x$ by incorporating it as a predictor in our estimation model. This allows us to weaken the ignorability assumption. 
+
+$$
+y^0, y^1 \perp z \mid x \hspace{0.5cm} \text{for } \ x \in (C-a, C+a)
+$$
+
+However, we then require that we can appropriately model $E(y^0 \mid x)$ and $E(y^1 \mid x)$, even without any "common support".
+
+**Fuzzy regression discontinuity and instrumental variables**
+
+What happens when the discontinuity is not starkly defined (i.e. treatment and control observations fall on the opposide side of the cut-off from where they were assigned)? This is sometimes called "fuzzy" regression discontinuity (as opposed to "sharp"). This situation creates partial overlap between the treatment and control groups in terms of the variable that should be the sole confounding covariate (the forcing variable).  Given our concern about the lack of overlap, this migh seem a preferable scenario; unfortunately, the overlap arises out of deviations from the stated assignment mechanism. If the reasons for these deviations are well defined (and measurable), then ignorability can be maintained by adjusting for the appropriate covariates. Similarly, if the reasons for these deviations are independent of the potential outcome of interest, there is no need for concern.
+
+An alternative strategy is to approach the causal effect estimation from an *instrumental variables perspective.* In this framework, the indicator for whether an observation falls above or below the threshold $z$ ("elegibility" in the school example) acts as the instrument. The causal variable of interest $T$ is the indicator for whether the program or treatment was actually received. For this strategy to be successful, *all of the standard instrumental variable assumptions must hold.* For example, the instrument must be predictive of the treatment variable; if the cut-off that determines "elegibility" is unrelated to the probability that observations receive the treatment, then we cannot make progress.
+
+Note: as with standard instrumental variables estimation, this procedure will only estimate the treatment effect for the compliers.
+
+
+## Using variation within and between groups
+
+**Comparison within groups using varying-intercept ("fixed effects") models**
+
+Repeated observations within groups (or individuals) can provide a means for adjusting the unobserved characteristics of these groups. If comparisons are made across the observations *within* a group, implicitly such comparisons hold constant all characteristics instrinsic to the group that do not vary across members of the group.
+
+For example, suppose we want to examine the effect of low birth weight on children's mortality and other health outcomes. The trouble in establishing a causal effect is that low birth weight children are also typically disadvantaged in all sorts of unmeasured (or unmeasurable) attributes, ranging from genetic endownments to the socioeconomic characteristics of the family. Rather than trying to directly adjust for all of these covariates, however, one could implicitly adjust for them by comparing outcomes across children within a pair of twins. In other words, we may be able to consider birth weight to be randomly assigned (i.e. *ignorable*) *within* twin pairs. Theoretically, if there is enough variation in birth weight, within sets of twins, we can estimate the effect of birth weight on subsequent outcomes. 
+
+A regression model commonly used to approximate this comparison simply allows for each group (e.g. twin pair) to have its own intercept:
+
+$$
+y_{ij} = \beta_0 + \tau \ \text{weight}_{ij} + \alpha_i + \epsilon_{ij}
+$$
+
+We *could* try to regress outcomes on birth weight (i.e. the "treatment") as well as one indicator variable for each pair of twins (keeping one pair as a baseline category to avoid collinearity), but this approach is computationally inefficient. Thus, differencing strategies are typically used in practice. For example, in the case of groups (indexed by $i$) of sieze 2, we would replace each pair of observations with a single differenced observation (e.g. $y_{j2} - y_{j1}$) for each variable:
+
+$$
+y_{i2} - y_{i1} = \tau \ (\text{weight}_{i2} - \text{weight}_{i1}) + (\epsilon_{i2} - \epsilon_{i1}) + \underbrace{(\alpha_i - \alpha_i)}_0
+$$
+
+(Note in examples with more than two observations per group, a more general strategy would be to subtract the group specific means of each variable fom each individual level value; i.e., use $\bar y_i$ instead of $y_{i1}$ in the equation above).
+
+****
+
+The [**`plm`**](https://cran.r-project.org/package=plm) package will fit this model (by using the "within" option) and will produce standard errors that adjust for the fact that the group-level means are estimated.
+
+Also, at this point, it's usually better to fit a *multi-level model* to gain regularized estimates and the possibility of including group-level predictors and varying coefficients for each group at the same time, which cannot be done using classical regression. 
+
+****
+
+*Assumptions*
+
+- *The causal predictor needs to vary within groups*. If the treatment variable does not vary within group, inference is impossible. Also, if it only varies for *some* groups, then inference is applicable only to those groups. 
+
+- The structural assumption required for varying-intercept regression models to identify a causal effect can be conceived as an extension of the standard ignorability assumption.
+
+    $$y^0, y^1 \perp z \mid \alpha$$
+    
+    Here, we are conditioning on all unmeasured group-specific confounders that are common to all memembers of the group. We can map this to a situation in which we have a separate randomized experiment within each group. 
+    
+**Within-person controls**
+
+The most common use of varying intercepts when estimating causal effects occurs in the context of panel data (i.e. data in which the same individuals are surveyed over time). These researchers usually like to partition error into two parts:
+
+$$
+y_{it} = \beta_0 + \beta_1 x_{it} + \underbrace{\alpha_i + u_{it}}_\text{error}
+$$
+
+In which $\alpha_i$ are the unobserved time-*invariant* factors that affect $y_{it}$; and $u_{it}$ are the idiosyncratic time-varying factors that affect $y_{it}$. 
+
+Researchers have justified the use of varying-intercept regressions in this setting by arguing that they implicitly adjust for the unobserved characteristics of each individual that do not vary over time. However, when these models also condition on confounding covariates that could be affected by the treatment, they might end up introducing post-treatment bias. Note that this means we should omit any covariate that could potentially be affected by the treatment; unfortunately, this may render ignorability completely implausible.
+
+**Comparisons within and between groups: difference-in-difference estimation**
+
+*Difference-in-difference* strategies make use of time as a source of variation in outcomes to help adjust for potential (observed and unobserved) differences across groups. For this to be a valid approach, we must assume that the underlying change over time (or trend) would have been the same for both treatment and control groups. This is called the *parallel trend assumption.*
+
+*Regression framework*
+
+$$
+y_i = \beta_0 + \beta_1 z_i + \beta_2 P_i + \tau z_i P_i + \epsilon_i
+$$
+
+- $z = \{0, 1\}$ denotes the treatment.
+
+- $P = \{0, 1\}$ denotes the time period; $P = 0$ references pre-exposure and $P = 0$ references the post-exposure time period.
+
+- $\beta_1$ denotes the difference between treatment and control in the pre-exposure period (assumed to be constant over time).
+
+- $\tau$ denotes the difference-in-difference estimand, how much more (or less) did the treatment group changed in comparison to the control group.
+
+Rather than assuming that potential outcomes are the same across treatment groups, one only has to assume that the potential *changes* in outcomes over time are the same across groups. 
+
+Finally, a word of caution: It might be tempting to apply difference-in-difference estimation to situations where the data arise from a prospective or retrostpective regression discontinuity design. After all, in this setting we have an exposed and a unexposed group, and also a measure of an outcome variable both before and after the treatment group is exposed. But this is a mistake. A simple application of difference-in-differences is likely to suffer from bias due to *regression to the mean*. (See the example about causal estimates produced in the *absence* of a real treatment effect: if there's no treatment effect, then we can still estimate a *negative* treatment.) The regression discontinuity design, on the other hand, capitalizes on the fact that units close to the threshold are for all intents and purposes randomly assigned. On the other hand, the difference-in-difference approach capitalizes on the very different assumption of parallel trends. 
+
+## Forward and reverse causal inference {#abductive_analysis}
+
+Statistical methods for causal and policy analysis are more focused on "effects of causes" (*forward causal questions*) than on "causes of effects" (*reverse causal inference*). This has led some researchers to dismiss the search for causes as "cocktail party chatter" that is outside the real of science. But the search for causes can also be understood within traditional statistical frameworks as a part of model checking and hypothesis generation. It can make sense to ask *questions* about the causes of effects, but the answers to these questions will be in terms of effects of causes. 
+
+When statistical and econometric methodologists write about causal inference, they generally focus on forward causal questions. We are taught to answer questions of the type "What if?" rather than "Why?" Causal quetsions are typically framed in terms of manipulations: if $x$ were changed b y one unit, how much would $y$ be expected to change? But reverse causal questions are important too. In many ways, it's the reverse causal questions that motivate  research, including the experiments and observational studies that we use to answer the forward questions. 
+
+*An example: political campaigns*
+
+What is the effect of money on elections? To be answered, the question needs to be made more precise by defining the treatments and outcome. For example, suppose a challenger in a give congressional election race is given a $100 dollar donation. How much will this change her expected vote share? It's not easy to get an accruate answer to to this question, but the causal quantity is well defined.
+
+Now a *reverse causal question*: Why do incumbents running for reelection to Congress get so much more funding than challengers? Many possible answers have been suggested, including the idea that people like to support a winner; that incumbents have a higher name recognition; that certain people give money in exchange for political favors; and that incumbents are generally of higher political "quality" than challengers and thus get more support of all types. Various studies could be perforemd to evaluate these different hypotheses, all of which could be true to a different extent. 
+
+Reverse causal reasoning involves asking questions and searching for new variables that might not yet be in our model. We can frame reverse causal questions as model checking:
+
+- What we see is some pattern in the world that needs an explanation. What does it mean to "need an explantion"? It means that existing explanations (or models) don't do the job. These models might be implicit. For example, if we ask "Why do incumbents get more contributions than challengers?" we are comparing to an *implicit model* in which contributions are unrelated to incumbency status.
+
+In sum, *why* questions fit into statistics and policy analysis, not as inferential questions to be answered with estimates or confidence intervals, but as the identification of statistical anomalies that motivate improved models. 
+
+**Relation to formal models of causal inference**
+
+Let $y_i$ be the outcome of interest for unit $i$, and $w_i$ the characteristics of those units that the researcher knows or expects to be related to the outcome. There are also other characteristics $u_i$ that the researcher feels should not affect the outcome. Thus, one would expect that in populations with a homogeneous $w_i$, there's no association between $y_i$  and $u_i$:
+
+$$
+y_i \perp u_i \mid w_i
+$$
+
+Here, $u_i$ may be the location of individuals, or a binary characteristic (e.g. male versus female), or a subpopulation indicator. The key is that the reseacher interprests this variable as an attribute that should not be correlated with the outcome in homogeneous subpopulations. 
+
+However, suppose the data rejects this hypothesis we find a substantial association between $u_i$ and $y_i$, even after adjusting for differenes in $w_i$. Such a finding is consistent with two alternative models in which there's no causal link between $u_i$ and $y_i$.
+
+1. *Omitted cause*. There is a *cause* $x_i$, such that the potential outcome given the cause is not associated with $u_i$, possibly after conditioning on $w_i$.
+
+    $$y_i (x) \perp u_i \mid w_i$$
+    
+    Thus, the association between $y_i$ and $u_i$ is the result of a causal effect of $x_i$ on $y_i$, and an association between the cause $x_i$ and the attribute $u_i$.
+
+2. *Omitted attribute*. The reseacher omitted an important *attribute* $v_i$, such that
+
+    $$y_i \perp u_i \mid v_i, w_i$$
+
+Consider the finding that taller individuals command higher wages in the labor market. Standard economic models suggest that wages should be related to productivity, rather than hegith, and such an association might thus be viewed as an anomaly. (1) Maybe childhood nutrition affects both adult height and components of productivity. (2) Maybe health is a characteristic of adult individuals that serves as a natural predictor of productivity. The point is that the finding that height itself is correlated with earnings is the starting point for an analysis that explores the causes of earnings (i.e. alternative models for earnings determination) that would reproduce the correlation between height and earnings without the implication that intervening in height would change earnings. 
+
+In sum, one of the main virtues of the potential outcome framework is that it motivates us to be explicit about interventions and outcomes in forward causal inference. Similarly, one of the main virtues of reverse causal thinking is that it motivates us to be explicit about what we consider to be problems with our model. Reverse causal questions arise from anomalies (i.e. aspects of our data that are not readily explained) that lead us to improve our models and generate new hypothesis that are able to reproduce the patterns we see in the world. 
+
+
+# Causal graphs and confounding
+
+Add stuff from McElreath: [here](https://youtu.be/l_7yIUqWBmE).
+
+Add stuff from Miguel's course.
+
+Do simulations. The purpose of these simulations is (obviously) *not* studying the real world, but rather to study
+
+**The four elemental confounds**
+
+ADD IMAGE HERE
+
+1. The Fork: $z$ is a common *cause* of $x$ and $y$.
+
+2. The Pipe: post-treatment bias.
+
+3. The Collider: $z$ is a common *result* of $x$ and $y$.
+
+    It's also worth considering that we sometimes condition on a collider unknowingly, for example through *sampling bias*! More generally, unmeasured variables *can* create colliders.
+
+4. The Descendant: conditioning on $a$ is like conditioning on $z$.
+
+There's a framework that unites all these examples: **the back-door criterion**. That is, confounding cause by the of open back-door paths from $x$ to $y$.
+
+Note that the arrows are about causation, they are not about statistical information flow. Information can flow *against* the arrows, but causation (in the real world) only flows *with* the arrows.
+
+Note: We can use the `impliedConditionalIndependencies()` from the [**`daggity`**](https://cran.r-project.org/web/packages/dagitty/index.html) package to see the implied conditional independencies (i.e. $d$-separation) in a DAG.
+
+Thus, experiments are not necessary for estimating causality. Experiments are great, but they are sometimes impractical or unethical; and then there's the question of *external validity* stemming from the fact that interventions usually affect many variables at once.
+
+Futhermore, note that simple DAGs don't fix *residual confounding* (e.g. misclassification, measurement error, and missingness). These issues can be accomodated using DAGs and, more importantly, they will sometimes tell us that trying to estimate causality is futile in some settings.
+
+
+
+# BART for causal inference
+
+Best performing methods flexibly model the response surface. 2016 competition
+
+
+[**dbarts**](https://cran.r-project.org/web/packages/dbarts/index.html)
+
+[**bartCause**](https://github.com/vdorie/bartCause)
