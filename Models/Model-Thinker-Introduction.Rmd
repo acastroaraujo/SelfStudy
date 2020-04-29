@@ -447,17 +447,11 @@ Finally, note that we only assessed the "uniformity assumption", we didn't cover
 
 ****
 
-- Scott's discussion about how models reveal "the conditionality of truth" is highly reminescent on Elster's discussion of proverbs and  [*mechanisms*](https://www.amazon.com/dp/1107416418/).
+- Scott's discussion about how models reveal "the conditionality of truth" is highly reminescent of Jon Elster's discussion of proverbs and  mechanisms.
 
 - Scott focuses on an ensemble of models that tackle a problem from different perspectives. At times he refers to *a lattice of models*.
 
-- On the other hand, BDA3 emphasizes model checking and expansion, thus generating *a sequence of models* that tries to improve upon the previous one. 
+- On the other hand, Andrew Gelman emphasizes model checking and expansion, thus generating *a sequence of models* that tries to improve upon the previous one. 
 
-- Scott's ensemble view *might* be considered from a Bayesian perspective. I don't know enough about this yet. 
-
-    However, see: [Using Stacking to Average Bayesian Predictive Distributions](http://www.stat.columbia.edu/~gelman/research/published/stacking_paper_discussion_rejoinder.pdf).
-    
-- At points, it seems like rule-based models will help make accurate short-term predictions. And optimization-based models will help make long-term predictions, subject to conditions of equilibrium (or cycles). But I wouldn't bet any money on this interpretation.
-
-- Also, this is the first time I've seen Lucas' critique described as a variant of Campbell's law, which makes sense.
+- This is the first time I've seen Lucas' critique described as a variant of Campbell's law.
 
