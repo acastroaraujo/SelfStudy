@@ -344,8 +344,10 @@ Infinite mixtures are great for building complicated probability distributions (
 For example:
 
 $$
-w \sim \text{exponential}(\lambda = 1) \\
-x \sim \text{normal}(\mu = 0.5, \ \sigma^2 = w)
+\begin{align}
+&w \sim \text{exponential}(\lambda = 1) \\
+&x \sim \text{normal}(\mu = 0.5, \ \sigma^2 = w)
+\end{align}
 $$
 
 ```{r}
@@ -385,29 +387,36 @@ ggplot(data.frame(x = c(0, 10)), aes(x)) +
   guides(color = guide_legend(guide = "legend", nrow =  1, label.position = "bottom", keywidth = 1))
 ```
 
-To generate a gamma-Poisson mixture (or negative binomial), we use a hierarchical model:
+To generate a __gamma-Poisson mixture__ we use a hierarchical model:
 
 1. Generate a set of parameters $\mathbf \lambda$ from a gamma distribution.
 
 2. Use these to generate a set of Poisson random variables, one for each $\lambda_i$
 
+$$
+\begin{align}
+&\lambda \sim \text{gamma}\bigg(\alpha = 10, \ \beta = \frac{3}{2}\bigg) \\
+&k_i \sim \text{poisson}(\lambda_i)
+\end{align}
+$$
+
 ```{r, fig.width=7}
 lambda <- rgamma(1e5, shape = 10, rate = 3/2)
-gp <- rpois(length(lambda), lambda)
+k <- rpois(length(lambda), lambda)
 
-ggplot() + geom_bar(aes(gp), fill = "steelblue", color = "white", width = 1/4) +
-  labs(caption = "gamma-Poisson distribution") + 
+ggplot() + geom_bar(aes(k), fill = "steelblue", color = "white", width = 1/4) +
+  labs(caption = "gamma-Poisson distribution\nnegative binomial distribution") + 
   scale_x_continuous(breaks = 0:25)
 ```
 
+This distribution can be mathematically simplified as follows:
 
-ADD mathematical derivation of the negative binomial.
+$$
+\Pr(K = k) = \underbrace{\binom{k + \alpha - 1}{k}}_\text{binomial coefficient} 
+\bigg(\frac{\beta}{\beta + 1}\bigg)^\alpha \bigg(1 - \frac{\beta}{\beta + 1}\bigg)^k
+$$
 
-
-
-
-
-
+Note that this distribution has formal similarities with the binomial distribution, which explains why some people call it the __negative binomial distribution__. However, calling it a __gamma-Poisson distribution__ is more indicative of its generating mechanism.
 
 
 ## references
