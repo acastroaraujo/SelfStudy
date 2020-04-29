@@ -1,0 +1,2329 @@
+---
+title: "Notes - Bayesian Data Analysis"
+author: "Andrés Castro Araújo"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    theme: lumen
+    toc: yes
+    toc_float: 
+      collapsed: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 4, fig.height = 3, fig.align = "center"
+                      )
+
+## Packages
+library(tidyverse)
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+## Extra functions and settings
+plot_settings <- function() {
+  par(mar = c(3, 3, 3, 1), mgp = c(2, 0.5, 0), tck = -0.02, 
+    family = "Avenir", cex = 0.8, pch = 20)
+}
+
+rgb_mod <- function(color = "black", alpha = 0.8) {
+  if (color == "black") {
+    return(enquote(rgb(red = 0, green = 0, blue = 0, alpha = alpha)))
+  } 
+  if (color == "blue") {
+    return(enquote(rgb(red = 0, green = 0.6, blue = 0.8, alpha = alpha)))
+  } else
+  if (color == "red") {
+    return(enquote(rgb(red = 1, green = 0.271, blue = 0, alpha = alpha)))
+  }
+}
+
+make_table <- function(df, digits = 3, caption = "") {
+  knitr::kable(df, "html", digits = digits, caption = caption) %>% 
+  kableExtra::kable_styling(full_width = FALSE, 
+                            bootstrap_options = "bordered")
+}
+
+options(digits = 3)
+```
+
+TURN THIS THING INTO SMALLER NOTEBOOKS
+
+****
+
+Taken from: 
+
+- Andrew Gelman; John Carlin; Hal Stern; David Dunson; Aki Vehtari; & Donald Rubin. **Bayesian Data Analysis.** Chapman and Hall/CRC, 2013 
+
+    Also see [here](https://github.com/avehtari/BDA_R_demos) for extra code examples.
+
+- Andrew Gelman's [Bayesian Statistics](http://www.stat.columbia.edu/~gelman/bda.course/bda_course_outline.pdf) course  (Fall 2018)
+
+    + The course covers a lot of the BDA textbook, with the exception of part III (i.e. *advanced computation*). 
+    
+    + It also covers drafts of a new textbook: *Bayesian Statistics Using Stan*
+    
+- Richard McElreath. **Statistical Rethinking**. Taylor & Francis Group, CRC Press, 2015. [AM I REALLY USING THIS, IF NOT, REMOVE]
+
+- PUT LINKS TO EXTENDED EXAMPLES HERE (E.G. CANCER RATES, BIOASSAY, 8 SCHOOLS, ETC)
+
+****
+
+## Introduction
+
+****
+
+- *Bayesian inference* is the process of fitting a probability model to a set of data and summarizing the result by a probability distribution on the parameters of the model and on unobserved quantities such as predictions for new observations.
+
+- All models are approximations (even the ones we *want* to fit).
+
+- The process of *Bayesian Data Analysis* can be idealized by dividing it into the following three steps:
+
+    1. Setting up a *full probability model* -- a joint probability distribution for all observable and unobservable quantities in a problem. The model should be consistent with knowldege about the underlying scientific problem and the data collection process.
+    
+        Major existential question: *just exactly where do our models come from?*
+    
+    2. Conditioning on observed data: calculating and interpreting the appropriate *posterior distribution* -- the conditional probability distribution of the unobserved quantities of ultimate interest, given the observed data.
+    
+        Note. This step involves a lot of computational challenges, but hopefully `Stan` will take care of that for you.
+    
+    3. Evaluating the fit of the model and the implications of the resulting posterior distribution: how well does the model fit the data, are the substantive conclusions reasonable, and how sensitive are the results to the modeling assumptions in step 1? In response, one should alter or expand the model, and then repeat the three steps. 
+    
+        Note. The question "Does it make sense?" is somewhat vague. If it doesn't make sense, it's because *you* have extra information about the problem. Not surprisingly, this step involves a delicate balance of technique and judgement, guided by the applied context of the problem.
+        
+- Bayesian thinking facilitates a common-sense interpretation of statistical conclusions. For example, a Bayesian (*probability*) interval for an unknown quantity can be directly regarded as having a high probability of containing the unknown quantity; in contrast, a frequentist (*confidence*) interval may strictly be interpreted only in relation to a sequence of similar inferences that might be made in repeated practice (i.e. an imaginary re-sampling of data).
+
+- **McElreath:** Bayesian models treat “randomness” as *a property of information*, not of the world. Nothing in the real world is actually random (leaving aside controversial interpretations of quantum physics). Presumably, if we had more information, we could exactly predict everything. We just use randomness to describe our uncertainty in the face of incomplete knowledge. From the perspective of our model, the coin toss is “random,” but it’s really the model that is random, not the coin.
+
+    Frequentist statistics treat model parameters as fixed and the data as random. Here, probabilities are the *long-term frequency properties* of things we can measure repeatedly. Frequentists procedures (e.g. the calculation of confidence intervals) relate to this long-term behavior. As such, we end up thinking in convoluted ways: “if we were to measure this again an infinite number of times, then the actual parameter value will fall within this interval 95% of the time”. 
+
+- The central feature of Bayesian inference --*the direct quantification of uncertainty*-- means that there is no impediment in principle to fitting models with many parameters and complicated multilayered probability specifications. 
+
+- From Gelman (2011): "Progress in statistical methods is uneven. In some areas the currently most effective methods happen to be Bayesian, while in other realms other approaches might be in the lead. The openness of research communication allows each side to catch up: any given Bayesian method can be interpreted as a classical estimator or testing procedure and its frequency properties evaluated; conversely, non-Bayesian procedures can typically be reformulated as approximate Bayesian inferences under suitable choices of model. These processes of translation are valuable for their own sake and not just for communication purposes. Understanding the frequency properties of a Bayesian method can suggest guidelines for its effective application, and understanding the equivalent model corresponding to a classical procedure can motivate improvements or criticisms of the model which can be translated back into better understanding of the procedures."
+
+****
+
+### Notation for statistical inference
+
+****
+
+**Estimands**
+
+We distinguish between two kinds of *estimands* (i.e. unobserved quantities for which statistical inferences are made):
+ 
+1. Potentially observable quantities, such as future observations of a process,
+
+2. Quantities that are not directly observable; i.e. parameters that govern the hypothetical process leading to the observed data. 
+
+    The distinction between these two kinds of estimands is not always precise. But it's  useful as a way of understanding how a statistical model for a particular problem fits into the real world. 
+    
+**Parameters, data, and predictions**
+
+- $\boldsymbol \theta$: the unobservable vector quantities or population *parameters* of interest.
+
+- $\mathbf y$: the observed data.
+
+- $\mathbf{\widetilde y}$: the unknown, but potentially observable quantities (e.g. counterfactuals for causal inference, future predictions, missing data, etc)
+
+Note: in this notebook I will mostly use bold face for vectors and matrices (e.g. $\mathbf x$ and $\mathbf A$). Also, when using matrix notation, vectors are considered column vectors. For example, $\mathbf a^\top \mathbf a$ is a scalar.
+
+**Observational units and variables**
+
+Data are gathered on each of of a set of $n$ objects (or *units*), and we can write the data as a vector $\mathbf y = (y_1, \dots, y_n)$. If several variables are measured on each unit, then $y_i$ is actually a vector, and the entire dataset $\mathbf y$ is actually a matrix (usually with $n$ rows). The $y$ variables are called the "outcomes" and are considered "random" (i.e. we allow for the possibility that the observed values could have been otherwise, due to the sampling process and/or the natural variation of the population).
+
+**Exchangeability**
+
+The usual starting point of a statistical analysis is the (often tacit) assumption that the $n$ values $y_i$ may be regarded as *exchangeable*. This means that we express uncertainty as a joint probability density $p(y_1, \dots, y_n)$ that is *invariant to permutations of the indexes*. A non-exchangeable model would be appropriate if information relevant to the outcome were conveyed in the unit indexes rather than by explanatory variables. 
+This idea is fundamental to statistics: we commonly model data from an exchangeable distribution as independently and identically distributed ($iid$) given some unknown parameter vector $\theta$ with distribution $p(\theta)$.
+
+**Explanatory variables (or covariates or predictors)**
+
+We do not bother to model some observations as random. These are the *explanatory variables* or *covariates*, which we label $x$. We use $\mathbf X$ to denote the entire set of explanatory variables for all $n$ units. Thus, if there are $k$ covariates, then $\mathbf X$ is an $n \times k$ matrix.
+
+The notion of exchangeability can be extended to require the distribution of the $n$ values of $(x, y)_i$ to be unchanged by arbitrary permutations of the indexes. 
+
+**Multilevel models**
+
+Multilevel models (also called *hierarchical models*) are used when information is available on several different levels of observational units. In this setting, it's possible to speak of exchangeability at each level of units. 
+
+For example, suppose two medical treatments are applied to patients in several different cities. It's then reasonable to treat patients *within* each city as exchangeable, and to treat results from different cities as themselves exchangeable. 
+
+Note that we should also include predictors at the different levels. 
+
+**Probability notation**
+
+Bayesian inferences about a parameter $\theta$ (or unobserved data $\widetilde y$) are made in terms of *probability* statements, conditional on the observed value of $y$.
+
+Note that when write $p(\theta \mid y)$ or $p(\tilde y \mid y)$, we are also implicitly conditioning on the known values of any $x$ covariates. 
+
+Also, keep in mind that $p(\theta \mid y$) is usually expressed in some textbooks as $\Pr(\Theta = \theta \mid Y = y)$ or $f_\Theta(\theta \mid Y = y)$ or $f_{\Theta \mid Y}(\theta \mid y)$, or something like that. 
+
+**Bayes rule**
+
+The joint probability distribution for $\theta$ and $y$ can be written as a product of other two distributions commonly referred to as the *prior distribution* $p(\theta)$ and the *sampling distribution* (or *data distribution*) $p(y \mid \theta)$.
+
+$$
+\underbrace{\overbrace{p(\theta \mid y)}^\text{posterior density} = \frac{p(\theta, y)}{p(y)} = \frac{p(\theta)\ p(y\mid \theta)}{ \int_\Theta p(\theta)\ p(y \mid \theta)d\theta}}_\text{Baye's rule}
+$$
+
+Alternatively, we can omit the denominator and get an *unnormalized posterior distribution*:
+
+$$
+p(\theta \mid y) \propto p(\theta)\ p(y\mid \theta)
+$$
+
+**Prediction**
+
+To make inferences about an *unknown observable* (i.e. predictive inferences), we follow a similar logic. 
+
+Before the data $y$ are considered, the distribution is as follows:
+
+$$
+p(y) = \int p(y, \theta)d\theta = \int p(\theta)\ p(y\mid \theta)d\theta
+$$
+
+This is the *marginal distribution of $y$*, but a more informative name is the *prior predictive distribution of $y$*. It's *prior* because it is not conditioned on a previous observations, and *predictive* because it's the distribution for a quantity that is observable (in theory). 
+
+After $y$ has been observed, we can predict an unknown observable $\tilde y$ from the same process. The distribution of $\tilde y$ is called the *posterior predictive distribution*.
+
+$$
+\begin{align}
+p(\tilde y \mid y) &= \int p(\tilde y, \theta \mid y)d\theta 
+&\text{law of total probability} \\ &=
+\int p(\tilde y \mid \theta, y)\ p(\theta \mid y)d\theta 
+&\text{product rule} \\ &=
+\int p(\tilde y \mid \theta) \ p(\theta\mid y) d\theta
+&\text{conditional independence}
+\end{align}
+$$
+
+- The second and third lines display the posterior predictive distribution as an average of conditional predictions over the posterior distribution of $\theta$.
+
+- The last line follows from the assumed *conditional indepedence* of $y$ and $\tilde y$ given $\theta$. 
+
+$$
+\tilde y \perp y \mid \theta \ \longrightarrow \ p(\tilde y \mid y, \theta) = p(\tilde y \mid \theta)
+$$
+
+**Likelihood**
+
+Using Bayes' rule with a chosen probability model means that *$y$ only affects the posterior inference through $p(y \mid \theta)$*, which is called the *likelihood function* when regarded as a function of $\theta$ for fixed $y$.
+
+*Likelihood and odds ratios*
+
+The ratio of the posterior density $p(\theta \mid y)$ evaluated at the points $\theta_1$ and $\theta_2$ under a given model is called the *posterior odds* for $\theta_1$ compared to $\theta_2$. Usually, we use this to compare discrete parameters in which $\theta_2$ is the complement of $\theta_1$. This alternative representation of probabilities takes a particularly simple form:
+
+$$
+\frac{p(\theta_1 \mid y)}{p(\theta_2 \mid y)} =
+\underbrace{\left(\frac{p(\theta_1)}{p(\theta_2)}\right)}_\text{prior odds}
+\underbrace{\left(\frac{p(y \mid \theta_1)}{p(y \mid \theta_2)}\right)}_\text{likelihood ratio}
+$$
+
+****
+
+### Example: spell checking
+
+In this example, the goal is inference about a particular discrete quantity (and not about a parameter that describes an entire population).
+
+****
+
+Classification of words is a problem of managing uncertainty. Suppose you encounter the word "radom". It could be a typo of "random", "radon", or less likely some other word (like "hello", "dog", "statistics", etc). It could also be the intentional typing of the word "radom" (e.g. "Radom" is the name of a medium-sized city in Poland).
+
+What is the probability that "radom" actually means "random"?
+
+If we label $y$ as the data and $\theta$ as the word that the person was intending to type, then we have the following description:
+
+$$
+\Pr(\theta \mid y = \text{radom}) \propto p(\theta)\ p(y = \text{radom} \mid \theta)
+$$
+
+Here, $\boldsymbol \theta = \{\text{random, radon, radom}, \dots\}$, and so the actual posterior is calculated as follows:
+
+$$
+p(\theta_1 \mid \text{radom}) = \frac{p(\theta_1)\ p(\text{radom}\mid \theta_1)}{\sum_{\Theta} p(\theta_i)\ p(\text{radom}\mid \theta_i)}
+$$
+
+For simplicity, we consider only three possibilities for the intended word.
+
+$$
+\boldsymbol \theta = \{\theta_1 = \text{random}, \theta_2 = \text{radon}, \theta_3 = \text{radom}\}
+$$
+
+**Prior distribution**
+
+The prior probabilities can most simply come from the frequencies of these words in some large database (or corpus). Ideally, a database that is adapted to the problem at hand (e.g. it makes a big difference if the corpus comes from "statistics articles" or from "polish newspapers").
+
+Here are the probabilities supplied by researchers at Google.
+
+```{r, echo=FALSE}
+theta <- c("random", "radon", "radom")
+prior <- c(7.60e-5, 6.05e-6, 3.12e-7)
+
+data_frame("$\\boldsymbol \\theta$" = theta, 
+           "$p(\\boldsymbol \\theta)$" = prior) %>% 
+  make_table(digits = 10)
+```
+
+Note that frequency interpretation of probability can usually be *constructed*, and that this is an extremely useful tool in statistics.
+
+**Likelihood**
+
+The likelihoods $p(y \mid \theta_i)$ can come from some modeling of spelling and typing errors (e.g. perhaps we reach to some of the authors to inquire about questionable words). Anyways, here are some conditional probabilities from Google's model of spelling and typing errors:
+
+```{r, echo=FALSE}
+likelihood <- c(0.00193, 0.000143, 0.975)
+
+data_frame("$\\boldsymbol \\theta$" = theta, 
+           "$p(\\boldsymbol \\theta)$" = prior,
+           "$p(\\text{radom} \\mid \\boldsymbol \\theta)$" = likelihood) %>% 
+  make_table(digits = 10)
+```
+
+Note. *This likelihood function is* not *a probability distribution*. It is a set of conditional probabilities of a particular outcome from three different probability distributions, corresponding to three different possibilities for the unknown parameter $\boldsymbol \theta$. 
+
+**Posterior distribution**
+
+We multiply the two columns above and then renormalize the result to get posterior probabilities.
+
+```{r}
+prior*likelihood / sum(prior*likelihood)
+```
+
+```{r, echo=FALSE}
+posterior <- prior*likelihood / sum(prior*likelihood)
+data_frame("$\\boldsymbol \\theta$" = theta, 
+           "$p(\\boldsymbol \\theta)$" = prior,
+           "$p(\\text{radom} \\mid \\boldsymbol \\theta)$" = likelihood,
+           "$p(\\boldsymbol \\theta \\mid \\text{radom})$" = round(posterior, 3)) %>% 
+  make_table(digits = 10)
+
+```
+
+Thus, conditional on the mode, the typed word "radom" is about twice as likely to be correct as to be a typographical error for "random", and it is very unlikely to be a mistaken instance of "radon". A fuller analysis would include possibilities beyond just these three words, but the basic idea would still be the same.
+
+**Decision making, model checking, and model improvement**
+
+Two directions to go from here.
+
+1. Accept the results as they are.
+
+2. Question the results, "radom" does look like a typo and the estimated probability of it being correct is too high.
+
+    This path implies either that the model doesn't fit the data or that we have additional information not included in the model so far. Note that, in this example, the prior probabilities are highly context dependent. For example, in the textbook, the word "random" is very frequent, "radon" appears in an example, whereas "radom" is entirely absent. Thus, our surprise at the high probability of "radom" represents additional knowledge relevant to the particular problem. 
+    
+    If we label the contextual information as $x$, then the Bayesian calculation becomes
+    
+    $$p(\theta \mid x, y) \propto p(\theta \mid x)\ p(y \mid \theta, x)$$
+
+    We can simplify the last term to $p(y \mid \theta)$, sot that the probability of any particular error does not depend on context. This is not a perfect assumption, but could reduce the burden of modeling and computation.
+
+****
+
+### Review of probability theory
+
+****
+
+**Chain rule (or product rule):**
+
+$$
+p(x,y,z)= p(x)p(y \mid x) p(z \mid x, y)
+$$
+
+**Marginalization:**
+
+$$
+p(x) = \sum_y p(x, y) \hspace{0.5cm} \text{or }\ \ 
+\int_y (p,y)dy
+$$
+
+**Independence:**
+
+$$
+\begin{align}
+&x \perp y \Longleftrightarrow p(x, y) = p(x)\ p(y) \\\\
+&x \perp y \mid z \Longleftrightarrow p(x, y \mid z) = p(x \mid z)\ p(y \mid z)
+\end{align}
+$$
+
+We use standard notations for **mean** and **variance**:
+
+$$
+\begin{align}
+E(x) = \int x\ p(x)dx \hspace{1cm} 
+\textsf{var}(x) &= \int \left(x - E(x)^2\right) p(x)dx \\ &= E\left(x-E(x)^2\right)
+\end{align}
+$$
+
+For a vector parameter $\mathbf x$, the expression for the mean remains the same, and the covariance matrix is defined as follows:
+
+$$
+\textsf{var}(\mathbf x) = \int \left(\mathbf x - E(\mathbf x)\right)(\mathbf x - E(\mathbf x))^\top p(\mathbf x) d(\mathbf x)
+$$
+
+This notation is slightly imprecise, because $E(x)$ and $\textsf{var}(x)$ are really functions of the distribution function $p(x)$, and of the variable $x$. Also, keep in mind that, when looking at expectations, any variable that does not appear explicitly as a conditioning variable is assumed to be integrated out. For example, $E(x \mid v)$ refers to the conditional expectation of $x$ with $v$ held fixed; in other words, the conditional expectation as a function of $v$. Whereas $E(x)$ is the expectation of $x$, averaging over $v$ (as well as $x$). 
+
+It is often useful to express the mean and variance of random variable $x$ in terms of the conditional mean and variance, given some related quantity $v$.
+
+$$
+E(x) = E\left(E(x \mid v) \right)
+$$
+
+Here, the inner expectation averages over $x$ (conditional on $v$), and the outer expectation averages over $v$. This identity is also known as the **law of iterated expectations** (or Adam's law), which is easily derived by writing the expectation in terms of joint distribution of $x$ and $v$.
+
+$$
+\begin{align}
+E(x) &= \int \int x\ p(x, v)dxdv \\ &=
+\int \int x p(x \mid v)dx \ p(v)dv \\ &=
+\int E(x \mid v)\ p(v) d(v)
+\end{align}
+$$
+
+The corresponding result for the variance includes two terms, the mean of the conditional variance and the variance of the conditional mean:
+
+$$
+\textsf{var}(x) = E(\textsf{var}(x \mid v)) + \textsf{var}(E(x \mid v)) 
+$$
+
+This is also known as the **law of total variance** (or Eve's law). This result can be derived by expanding the right-hand side of the previous formula using the definition of a variance, and then doing some algebra.
+
+Note that both identities also hold in case $\mathbf x$ is an $n$-vector, in which case $E(\mathbf x)$ is a vector and $\textsf{var}(\mathbf x)$ is a matrix.
+
+$$
+\underset{n\times 1}{E(\mathbf x)} = \pmatrix{E(x_1)\\ \vdots \\ E(x_n)} = \pmatrix{
+\int x_1 p(x_1)dx_1\\ \vdots \\ \int x_n p(x_n)dx_n} = \boldsymbol \mu
+$$
+
+$$
+\underset{n \times n}{\textsf{var}(\mathbf x)} = E\left((\mathbf x - \boldsymbol \mu) (\mathbf x - \boldsymbol \mu)^\top\right)
+$$
+
+**Linear algebra**
+
+If $\mathbf x$ is an $n$-vector of random variables, then any quadtratic form of $\mathbf x$ is said to be built on a symmetric matrix $\mathbf A$. For example, 
+
+For example, the sum of squares is built on an identity matrix:
+
+$$
+\sum_{i = 1}^n \boldsymbol \epsilon_i^2 = \boldsymbol \epsilon^\top \mathbf I\boldsymbol \epsilon
+$$
+
+Note that if $y$ is a linear combination of $b_1$, $b_2$, $b_3$, such that $y = b_1 x_1 + b_2 x_2 + b_3 x_3$, we can express this more generally in matrix form:
+
+$$
+\underset{n \times 1}{\mathbf y} = \underset{n \times 3}{\mathbf X}\ \ \underset{3 \times 1}{\boldsymbol \beta}
+$$
+
+This is a $3 \times 3$ variance-covariance matrix: 
+
+$$
+\begin{align}
+&\textsf{var}(\mathbf X) = \textsf{var}\pmatrix{\mathbf x_1 \\ \mathbf x_2 \\ \mathbf x_3} = \underset{3 \times 3}{\boldsymbol \Sigma} = \pmatrix{\sigma_{  \mathbf x_1}^2 &\sigma_{  \mathbf x_1} \sigma_{  \mathbf x_2}\rho_{1,2} &  \sigma_{  \mathbf x_1}\sigma_{  \mathbf x_3}\rho_{1,3} \\ \sigma_{  \mathbf x_2}\sigma_{  \mathbf x_1}\rho_{2,1} & \sigma_{  \mathbf x_2}^2  & \sigma_{  \mathbf x_2} \sigma_{  \mathbf x_3}\rho_{2,3} \\ \sigma_{  \mathbf x_3}\sigma_{  \mathbf x_1}\rho_{3,1}& \sigma_{  \mathbf x_3}\sigma_{  \mathbf x_2}\rho_{3,2}&\sigma_{  \mathbf x_3}^2} \\ \\ \\ \hspace{1cm} &\text{where }\ \rho_{  \mathbf x_i   \mathbf x_j} = \frac{\text{cov}(  \mathbf x_i,   \mathbf x_j)}{\sigma_{  \mathbf x_i} \sigma_{  \mathbf x_j}}
+\end{align}
+$$
+
+And because $y$ is a linear combination of the columns in $\mathbf X$ with some other vector $\boldsymbol \beta$, we obtain the following variance:
+
+$$
+\begin{align}
+&\underbrace{\textsf{var}(\mathbf y)}_\text{scalar} = \textsf{var}(\mathbf X \boldsymbol \beta)
+\beta_1^2 \sigma_{\mathbf x_1}^2 + \beta_2^2 \sigma_{\mathbf x_2}^2 + \beta_3^2 \sigma_{\mathbf x_3}^2 + 2 \sum_{i <j} \beta_i \beta_j \sigma_{\mathbf x_i} \sigma_{\mathbf x_j} \rho_{ij} \\ \\
+&\text{where }\ \mathbf y \ \text{ is an } n\text{-vector of outcomes}
+\end{align}
+$$
+
+This formula can be expressed in matrix notation as follows:
+
+$$ 
+\textsf{var}(\mathbf y) = \textsf{var}(\mathbf X \boldsymbol \beta) = \boldsymbol \beta^\top \boldsymbol \Sigma \boldsymbol \beta
+$$
+
+****
+
+#### Transformations
+
+****
+
+**Transformation of variables**
+
+Often we are more interested in the probability distribution of some function of $x$.  To find functions of a random variable $X$, we first re-express it in terms of $f^{-1}(x)$ (i.e. we find the inverse of the function). Then we calculate the new probability distribution as follows:
+
+$$
+\begin{align}
+&p(y) = p (x) \left| \frac{d x}{dy} \right| \\ \\
+&\text{where we re-express } x \text{ in terms of } y
+\end{align}
+$$
+
+*Log-normal example*
+
+Let $X \sim \textsf{normal}(0, 1)$ and $Y = e^X$, and we need to find the probability density function that corresponds to $Y$. First, we re-express $X$ in terms of $Y$: $\log(y) = x$. Note that whereas the support for $x$ is $(-\infty, \infty)$, the support for $y$ is $(0, \infty)$.
+
+$$
+\begin{align}
+&p(y ) = \boldsymbol \varphi (x) \frac{1}{e^x} = \boldsymbol \varphi (\log y) \frac{1}{y}
+\end{align}
+$$
+
+```{r}
+log_normal <- function(y) dnorm(log(y)) / y
+```
+
+```{r, fig.width=10, echo=FALSE}
+plot_settings()
+curve(log_normal(x), from = -2, to = 10, n = 1e3,
+      main = "log-normal pdf",
+      xlab = "y", ylab = "density")
+```
+
+*The $n$-dimensional generalization*
+
+Suppose we want to use the joint probability distribution of a random vector $\mathbf x$ to get the joint probaility distribution of the transformed vector $\mathbf y = f(\mathbf x)$. The approach is analogous to the one-dimensional version, but it involves a multivariate generalization of the derivative called *Jacobian matrix* and it's determinant (which is analogous to the abosolute value operation, and is denoted with the same symbol $| \mathbf A |$). We use determinants to measure how multidimensional spaces change when applying functions (i.e. it can be interpreted as a "scaling factor").
+
+The approach is as follows:
+
+$$
+\begin{align}
+&p(\mathbf y) = p(\mathbf x) \left| \frac{\partial \mathbf x}{\partial \mathbf y} \right| \hspace{1cm}
+\text{where }\ \left| \frac{\partial \mathbf x}{\partial \mathbf y} \right| =
+\det \pmatrix{ \frac{\partial x_1}{\partial y_1} & \frac{\partial x_1}{\partial y_2} & \dots & \frac{\partial x_1}{\partial y_n} \\ \vdots &&& \vdots \\ \frac{\partial x_n}{\partial y_1} & \frac{\partial x_n}{\partial y_2} & \dots & \frac{\partial x_n}{\partial y_n}} \\ \\
+&\text{and all } x_i \text{ are expressed in terms of } y_i
+\end{align}
+$$
+
+Sometimes it helps to know that $\left| \frac{\partial \mathbf x}{\partial \mathbf y} \right| = \left| \frac{\partial \mathbf y}{\partial \mathbf x} \right|^{-1}$
+
+**Convolutions**
+
+A *convolution* is a sum of independent random variables. If $X$ and $Y$ are independent random variables, then the probability density function of their sum ($Z = X + Y$) is as follows:
+
+$$
+\begin{align}
+p(z) &= \int_{-\infty}^\infty p_Y(t-x)p_X (x)dx \\\\ &=
+\int_{-\infty}^\infty p_Y(y)p_X (t-y)dy
+\end{align}
+$$
+
+We can obtain these formulas by using the previous approach and adding a redundant component to the transformation, such that we map from $\mathbb R^2$ to $\mathbb R^2$, and then integrate out the redundant component:
+
+$$
+\pmatrix{x \\ y} \mapsto \pmatrix{z\\ w}  \hspace{0.5cm} \text{ where } z = x+y\ \text{ and }\ w = y
+$$
+
+Thus, we have the following: 
+
+$$
+p(z, w) = p(x, y) \left| \frac{\partial (x,y)}{\partial (z, w)} \right|
+$$
+
+But here we have a special situation. In general, for convolutions, the absolute Jacobian determinant is always 1:
+
+$$
+\det \pmatrix{\frac{\partial x}{\partial z} & \frac{\partial x}{\partial w} \\ \frac{\partial y}{\partial z} & \frac{\partial y}{\partial w}} = \det \pmatrix{1 & 0 \\ 1 & 1} = 1
+$$
+
+Therefore, we obtain the previous formula as follows: 
+
+$$
+\begin{align}
+p(z, w) &= p(x, y) \\ \\ &= p(x) p(y) \\\\\ &= p_X(z - w) p_Y(w) \\ \\ p(z) &= \int_{-\infty}^\infty
+p_X(z-w) p_Y(w) dw
+\end{align}
+$$
+
+*Triangle example*
+
+Let $X, Y \sim \textsf{uniform}(0, 1)$. According to the convolution formula, we have the following:
+
+$$
+p(z) = \int_{-\infty}^\infty p_X(z - y)p_Y(y) dy 
+$$
+
+Note that $z$ has a new support, between 0 and 2. 
+
+The integrand will be 1 if and only if $0 < z - y < 1$ and $0 < y < 1$. In other words, the constraint is $\textsf{max}(z-1, 0) < x < \textsf{min}(z, 1)$: 
+
+$$
+p(z) = \begin{cases} 
+  \int_0^z  dy  = z &\text{for }\ 0 < z \leq 1 \\ \\
+  \int_{z-1}^1dy = 2 - z &\text{for }\ 1 < z < 2
+\end{cases}
+$$
+
+```{r, echo=FALSE}
+constraint <- function(z) {
+  if (0 < z & z <= 1) {z}
+  else if (1 < z & z < 2) {2 - z}
+  else {0}
+}
+constraint <- Vectorize(constraint)
+plot_settings()
+curve(constraint(x), from = 0, to = 2, col = "skyblue",
+      xlab = "z", ylab = "density") 
+```
+
+****
+
+#### Special distributions
+
+****
+
+**Multivariate normal distribution**
+
+There is more structure to a multivariate normal distributions than just a collection of normal marginal distributions. A random $n$-vector $\mathbf x$ is said to have a multivariate normal distribution if every linear combination of $x_i$ has a normal distribution, such that
+
+$$
+a_1x_1 + a_2x_2 + \dots + a_nx_n \sim \textsf{normal}(\mu, \sigma)
+$$
+
+In such a scenario, every variable $x_i$ is normally distributed. However, it is possible that every $x_i$ is normally distributed and that $\mathbf x$ is *not* a multivariate normal. Linear independence between each $x_i$ is also needed for $\mathbf x$ to be a multivariate normal: this means that the correlation $\rho$ between each $x_i$ cannot be $-1$ or $1$.
+
+We say that an $n$-vector $\mathbf x$ of random variables, with a mean vector $\mathbf \mu$ and a covariance matrix $\boldsymbol \Sigma$, such that:
+
+$$
+\begin{align}
+&\mathbf x \sim \textsf{mvnormal}(\boldsymbol \mu, \boldsymbol \Sigma) \\ \\
+&p(\mathbf x \mid \boldsymbol \mu, \boldsymbol \Sigma) = \frac{1}{
+(2 \pi)^{\frac{n}{2}} |\boldsymbol \Sigma|^{\frac{1}{2}}} \exp \left(
+- \frac{1}{2 } (\mathbf x - \boldsymbol \mu) \boldsymbol \Sigma^{-1} (\mathbf x - \boldsymbol \mu)^\top \right)
+\end{align}
+$$
+
+Note that $\boldsymbol \Sigma^{-1}$ stands for the *inverse* of the variance-covariance matrix (also known as *precision matrix*); and $|\boldsymbol \Sigma|$ stands for the absolute value of the determinant of $\boldsymbol \Sigma$.
+
+R doesn't have built-in multivariate density functions, but the [**mvtnorm**](https://CRAN.R-project.org/package=mvtnorm) package can take care of this. For example, let's say we want to draw random samples from a bivariate distribution such that
+
+$$
+\begin{align}
+&\mu_1 = 20 \hspace{0.5cm} \mu_2 = 30 \\
+&\sigma_1^2 = 10 \hspace{0.5cm} \sigma_2^2 = 20 \\
+&\rho = -0.8
+\end{align}
+$$
+
+```{r, echo=FALSE, fig.width=10, fig.height=3}
+library(mvtnorm)
+plot_settings(); par(mfrow = c(1, 2), cex = 0.6)
+
+mu <- c(x1 = 20, x2 = 30)
+rho <- -0.8
+sigma <- matrix(c(10, sqrt(10*20)*rho, sqrt(10*20)*rho, 20), ncol = 2)
+data <- rmvnorm(n = 1000, mu, sigma)
+plot(x2 ~ x1, data, col = rgb_mod("blue", alpha = 0.3),
+     xlab = expression(x[1]), ylab = expression(x[2]))
+
+x <- seq(10, 30, length.out = 100)
+y <- seq(20, 40, length.out = 100)
+Z <- matrix(0,nrow = 100,ncol = 100)
+
+for (i in 1:100) {
+  for (j in 1:100) {
+    Z[i,j] <- dmvnorm(c(x[i], y[j]),
+                      mean = mu, sigma = sigma)
+  }
+}
+contour(x, y, Z,
+     xlab = expression(x[1]), ylab = expression(x[2]))
+points(mu[1], mu[2], col = "tomato")
+```
+
+The variables $x_1$ and $x_2$ are independent when $\rho = 0$, and thus $\boldsymbol \Sigma$ is diagonal.
+
+```{r, echo=FALSE, fig.width=10, fig.height=3}
+plot_settings(); par(mfrow = c(1, 2), cex = 0.6)
+mu <- c(x1 = 20, x2 = 30)
+sigma <- matrix(c(10, 0, 0, 20), ncol = 2)
+data <- rmvnorm(n = 1e3, mu, sigma)
+
+plot(x2 ~ x1, data, col = rgb_mod("blue", alpha = 0.3),
+     xlab = expression(x[1]), ylab = expression(x[2]))
+x <- seq(10, 30, length.out = 100)
+y <- seq(20, 40, length.out = 100)
+Z <- matrix(0,nrow = 100,ncol = 100)
+
+for (i in 1:100) {
+  for (j in 1:100) {
+    Z[i,j] <- dmvnorm(c(x[i], y[j]),
+                      mean = mu, sigma = sigma)
+  }
+}
+contour(x, y, Z,
+     xlab = expression(x[1]), ylab = expression(x[2]))
+points(mu[1], mu[2], col = "tomato")
+```
+
+
+**Multinomial distribution**
+
+The Multinomial distribution is a generalization of the Binomial (it allows for more than just two possible outcomes). Here, each of $n$ observations is independently placed into one of $k$ possible outcomes (or categories). An object is placed into category $j$ with probability $p_j$, where the $p_j$ sum to one (i.e. they form a *simplex*).
+
+$$
+\begin{align}
+&x_1 + x_2 + \dots + x_k = n \\\\
+&p_1 + p_2 + \dots + p_k = 1 \\\\
+&\mathbf x \sim \textsf{multinomial}(n, \mathbf p)
+\end{align}
+$$
+
+The probability mass function for the multinomial is very similar to the binomial distribution:
+
+$$
+\left(\frac{n!}{n_1!n_2!\dots n_k!}\right) p_1^{n_1} p_2^{n_2}\dots p_k^{n_k}
+$$
+
+Note that the marginal distribution of each element corresponds to a binomial distribution, for example:
+
+$$
+x_1 \sim \textsf{binomial}(n, p_1)
+$$
+
+We also get the so-called *multinomial lumping* when we merge some categories in $\mathbf x$. For example:
+
+$$
+x_i + x_j \sim \textsf{binomial}(n, p_i + p_j) \\\\
+$$
+
+*Multinomial conditioning*. Suppose we observe $x_1$, and we wish to update our distribution for the remaining categories:
+
+$$
+p(x_2, \dots, x_k \mid x_1) = \frac{p(x_2, \dots, x_k)}{p(x_1)}
+$$
+
+Given that there are $n_1$ objects in category $1$, the remaining $n-n_1$ categories must fall into categories $2$ through $k$.
+
+$$
+p(x_j \mid x_1) = \frac{p_j}{p_2 + p_3 + \dots + p_k} = p^\prime_j
+$$
+
+Thus, the updated probabilities are proportional to the original probabilities $(p_2, \dots , p_k)$. Then, if $\mathbf x \sim \textsf{multinomial}(n, \mathbf p)$, we obtain the following:
+
+$$
+(x_2, \dots, x_k \mid x_1) \sim \textsf{multinomial}(n- n_1, (p^\prime_2, \dots, p^\prime_k))
+$$
+
+Finally, we know that components within a multinomial random vector are dependent because they are constrained by $x_1 +\dots + x_k = n$. This means that $\textsf{cov}(x_i, x_j) \neq 0$.
+
+$$
+\textsf{cov}(x_i, x_j) = −n\ p_i\ p_j \hspace{0.5cm} \text{for } i \neq j
+$$
+
+Finally, we can generate random draws from the multinomial distribution using the `rmultinom()` function:
+
+```{r}
+N <- 10
+P <- c(x1 = 0.1, x2 = 0.5, x3 = 0.2, x4 = 0.2)
+rmultinom(10, size = N, P)
+```
+
+Similarly, we can use `dmultinom()` to obtain the joint probability density function of $\mathbf x$, given $\mathbf p$.
+
+```{r}
+X <- c(5, 2, 1, 8)
+dmultinom(X, size = sum(X), P)
+```
+
+**Beta**
+
+YOU ARE HERE
+
+
+**Gamma**
+
+YOU ARE HERE
+
+****
+
+## Single-parameter probability models
+
+Description
+
+****
+
+### Binomial distributions
+
+The aim is to estimate an unknown population proportion which results from a sequence of independent (or exchangeable) "Bernoulli trials". In other words, the data is $y_1, \dots, y_n$, where $y_i = \{0, 1\}$.
+
+| Distribution  | Parameters  | *p.m.f.*  | Mean  | Variance  | M.G.F.  | Support  |
+|:-----:|:-----------:|:---------:|:-----:|:---------:|:-------:|:-------:|
+| Bernoulli | $p$ | $\underset{\text{if } y = 1}{p} \text{ or } \underset{\text{if } y = 0}{1-p}$ | $p$ | $p(1-p)$  | $pe^t + (1-p)$  | $y \in \{0, 1\}$
+| Binomial  | $p, n$  | $\binom{n}{y} p^y(1-p)^{n-y}$ | $np$  | $np(1-p)$ | $(pe^t + 1- p)^n$ | $y \in \{0, 1, 2, ..., n\}$
+
+*An example: estimating the probability of a female birth*
+
+The binomial sampling is as follows:
+
+$$
+p(y \mid \theta) = \textsf{binomial}(y \mid n, \theta) = \binom{n}{y} \theta^y (1 - \theta)^{n-y}
+$$
+
+Note that the dependence on $n$ has been suppressed from the left-hand side; in other words, $n$ is considered fixed in this example. But all the probabilities discussed here are assumed to be conditional on $n$.
+
+Let $y$ be the number of girls in $n$ recorded births. By applying the binomial model, we are assuming that the $n$ births are conditionally independent given $\theta$, with the probability of a female birth equal to $\theta$ for all cases. This assumption is motivated by the exchangeability that may be judged to arise when we have no other predictive information that might affect the sex of the newborn baby (e.g. twins).
+
+Lets further assume, for simplicity, that the prior distribution for $\theta$ is uniform on the interval $[0,1]$. Thus, the posterior density for $\theta$ is as follows (where the binomial coefficient $\binom{n}{y}$ is taken out):
+
+$$
+p(\theta \mid y)  \propto \theta^y(1- \theta)^{n-y}
+$$
+
+Note that the unnormalized posterior density of $p(\theta \mid y)$ corresponds to the unnormalized **beta distribution**, which is often used as a conjugate prior for binomial, Bernoulli, and geometric likelihoods.
+
+$$
+\begin{align}
+&\theta \sim \textsf{beta}(\alpha, \beta) \hspace{0.5cm} \text{ for }\ \alpha = 1 \ \text{ and }\ \beta = 1 \\\\
+&\theta \mid y \sim \textsf{beta}(\alpha^\prime, \beta^\prime) \\ \\ 
+&p(\theta \mid y) =  \frac{\theta^{\alpha^\prime -1} (1-\theta)^{\beta^\prime -1}}{\textsf B(\alpha^\prime, \beta^\prime)} \hspace{0.5cm} \text{where }\ \textsf B(\alpha^\prime, \beta^\prime) = \frac{\Gamma(\alpha^\prime + \beta^\prime)}{\Gamma(\alpha^\prime)\Gamma(\beta^\prime)}\\ \\ 
+&p(\theta \mid y) \propto \theta^{\alpha^\prime-1} (1-\theta)^{\beta^\prime -1} \\\\
+&\text{ for }\ \alpha^\prime = 1 + y \ \text{ and }\ \beta^\prime = 1 + n - y
+\end{align}
+$$
+
+We can graph this unnormalized posterior density as follows, for different values of $n$ and $y$ (but the same proportion of "success"):
+
+```{r, fig.width=10, echo=FALSE}
+unnorm_beta <- function(n, y, theta) theta^y*(1 - theta)^(n - y)
+
+plot_settings(); par(mfrow = c(2, 2), yaxt = "n", cex = 0.6)
+
+curve(unnorm_beta(5, 3, theta), xname = "theta",
+      xlab = expression(paste("p(", theta, "|y)")), 
+      ylab = "",
+      main = "n = 5,   y = 3")
+
+curve(unnorm_beta(20, 12, theta), xname = "theta",
+      xlab = expression(paste("p(", theta, "|y)")), 
+      ylab = "",
+      main = "n = 20,   y = 12")
+
+curve(unnorm_beta(100, 60, theta), xname = "theta",
+      xlab = expression(paste("p(", theta, "|y)")), 
+      ylab = "",
+      main = "n = 100,   y = 60")
+
+curve(unnorm_beta(1000, 600, theta), xname = "theta",
+      xlab = expression(paste("p(", theta, "|y)")), 
+      ylab = "",
+      main = "n = 1000,   y = 600")
+```
+
+When Pierre Laplace first calculated these probabilities, he observed 241,945 girl births and 251,527 boy births. Thus, he calculated that the probability that the proportion of female births is 0.5 or more was approximately $1.15 \times 10^{-42}$.
+
+```{r}
+pbeta(0.5, shape1 = 241945 + 1, shape2 = 251527 + 1, 
+      lower.tail = FALSE)
+```
+
+Also note that the mean of $\theta$ is estimated to be $\frac{y+1}{n+2}$, which is a compromise between the prior mean $\frac{1}{2}$ and the sample proportion $\frac{y}{n}$. But also that as $n$ gets larger, the prior starts becoming irrelevant.
+
+**The posterior is a compromise between data and prior information**
+
+Because the process of Bayesian inferences involves passing from a prior distribution to a posterior distribution, we can expect than some general relationships should hold between these two distributions.
+
+For example, the posterior distribution will be less variable than the prior distribution. This is a result of the "law of total variance".
+
+$$
+\begin{align}
+&\textsf{var}(\theta) = E(\textsf{var}(\theta \mid y)) + \textsf{var}(E(\theta \mid y)) \\ \\ 
+&\textsf{var}(\theta) < E(\textsf{var}(\theta \mid y))
+\end{align}
+$$
+
+This means that *the posterior variance is on average smaller than the prior variance*, by an amount that depends on the variation in the posterior means over the distribution of possible data.
+
+From the law of iterated expectations, we also have the following:
+
+$$
+E(\theta) = E(E(\theta \mid y))
+$$
+
+This means that the prior mean of $\theta$ is the average of all possible posterior means over the distribution of possible data.
+
+These two relationships only describe *expectations.* It's perfectly possible for things to be different in particular cases. 
+
+**Informative priors**
+
+Typically, the prior distribution should include all plausible values of $\theta$, but the distribution doesn't have to be realistically concentrated around the true value (i.e. the *population interpretation* of prior distributions) because very often the information about $\theta$ contained in the data will far outweigh any reasonable prior probabiilty specification. 
+
+In the above example, the uniform prior distribution for $\theta$ means that *a prior* we are just as likely to observe only girl births or only boy birhts. Bayes' original justification for the uniform prior distribution was appealing because inference is expressed entirely in terms of the *observable* quantities $y$ and $n$. Laplace's justification for using uniform prior densities appears to have been the so-called "principle of insuficcient reason", which claims that a uniform specification is appropriate if nothing is known about $\theta$. However, this approach has many weaknesses; e.g., a density that is flat or uniform in one parameterization will not be in another. 
+
+*How to choose better priors in the binomial example?*
+
+Suppose we want to use the beta distribution as a prior for the previous example. It's easy to see that the *hyperparameters* (i.e. the parameters of the prior distribution) $\alpha$ and $\beta$ correspond to "$\alpha - 1$ prior succeses" and "$\beta - 1$ prior failures" in the binomial distribution. And because the beta prior is indexed by only two hyperparameters, we can specify a particular prior distribution by fixing two features of the distribution (e.g. the mean and the variance) and then doing a little math.
+
+For now, lets focus on understanding what *conjugacy* means.
+
+$$
+\begin{align}
+p(\theta \mid y) &\propto \theta^y (1-\theta)^{n-y} \ \theta^{\alpha - 1}(1-\alpha)^{\beta - 1} \\ &=
+\theta^{y + \alpha -1}(1- \theta)^{n + \beta - y - 1} \\ &=
+\textsf{beta}(\theta \mid  \alpha + y,\ \beta + n - y)
+\end{align}
+$$
+
+When the posterior distribution follows the same paremetric form as the prior distribution, we say it has a conjugate prior. Thus, the beta prior distribution is a conjugate family for the binomial likelihood. This is very convenient from a mathematical standpoint. 
+
+$$
+\underbrace{E(\theta \mid y) = \frac{\alpha + y}{\alpha + \beta + n}}_\text{posterior mean} \hspace{1.5cm}
+\underbrace{E(\theta) = \frac{\alpha}{\alpha + \beta}}_\text{prior mean}
+$$
+
+We like conjugate priors because the results can be put in analytic form, they are often a good approximation, and they simplify the computations. That being said, in most complicated models, the use of conjugate prior distributions is usually impossible.
+
+**Note.** Another way to look at the this problem is by noting that $\alpha + \beta$ encode the amount of prior information available. *In some sense, $\alpha + \beta - 2$ is equivalent to the number of prior observations.*
+
+The following graphs show different densities as a function of  different values of $\alpha$ and $\beta$:
+
+```{r, fig.width=10, fig.height=4, echo=FALSE}
+prior_obs <- c(100, 50, 5, 1)
+plot_settings(); par(mfrow = c(2, 2))
+
+for (i in seq_along(prior_obs)) {
+curve(dbeta(x, prior_obs[i], prior_obs[i]),
+      xlab = expression(paste("p(", theta,")")),
+      ylab = "",
+      ylim = c(0, 11))
+text(0.2, 8, paste("n = ", prior_obs[i]*2 - 2))
+text(0.8, 8, expression(paste(alpha, " = ", beta, " = ")))
+text(0.91, 8.1, paste(prior_obs[i]))
+}
+```
+
+
+****
+
+**Note on how to calculate the expectation of a beta distribution.**
+
+PUT MATH HERE.
+
+
+
+
+
+****
+
+### Normal distributions
+
+****
+
+The normal distribution is fundamental to most statistical modeling, mainly because the central limit theorem justifies using the normal likelihood in many statistical problems (as an approximation to a less analytically convenient actual likelihood). And even when the normal distribution doesn't provide a good model fit, it can still used as a component in more complicated models (e.g. Gaussian processes).
+
+**A normal distribution with known variance**
+
+Consider a single observation $y$ from a normal distribution, parameterized by a mean $\theta$ and a known variance $\sigma^2$. The sampling distribution is then as follows:
+
+$$
+p(y \mid \theta) = \frac{1}{\sqrt{2 \pi \sigma}} \exp \left(
+- \frac{1}{2 \sigma^2} (y - \theta)^2
+\right)
+$$
+
+If we consider it a function of $\theta$, the likelihood is an exponential of a quadratic form, and so the family of conjugate prior densities looks like this:
+
+$$
+p(\theta) = e^{A \theta^2 + B \theta + C}
+$$
+
+This can be parameterized as follows:
+
+$$
+\begin{align}
+&\theta \sim \textsf{normal}(\mu_0,\ \tau_0^2) \\ \\
+&p(\theta) \propto \exp \left( - \frac{1}{2\tau_0^2} (\theta - \mu_0)^2 \right) 
+\end{align}
+$$
+
+This implies that the posterior distribution for $\theta$ is also the exponential of a quadratic form, and thus also normal. The following involves some algebra, but it will help show how the posterior density is a compromise between prior and data.
+
+$$
+\begin{align}
+p(\theta \mid y) &\propto \exp \left(- \frac{1}{2} \left( \frac{(y-\theta)^2}{\sigma^2} + \frac{(\theta - \mu_0)^2}{\tau_0^2} \right) \right) \\ \\ &= \exp \left(-\frac{1}{2\tau_1^2} (\theta - \mu_1)^2
+\right)
+\end{align}
+$$
+
+Here, $\tau_0^2$ is the posterior variance, which has a nice interpretation in terms of its inverse (also known as **precision**). *The posterior precision $\tau_1$ equals the prior precision plus the data precision.* 
+
+$$
+\frac{1}{\tau_1^2} = \frac{1}{\tau_0^2} + \frac{1}{\sigma^2}
+$$
+
+And the posterior $\mu_1$ can be expressed as the weighted average of the prior meam $\mu_0$ and the data point $y$. 
+
+$$
+\mu_1 = \frac{\frac{1}{\tau_0^2}\mu_0 + \frac{1}{\sigma^2} y}{\frac{1}{\tau_0^2} + \frac{1}{\sigma^2}}
+$$
+
+Alternatively, we can think of $\mu_1$ as the prior mean adjusted toward the observed $y$:
+
+$$
+\mu_1 = \mu_0 + (y -\mu_0) \frac{\tau_0^2}{\tau_0^2 + \sigma^2}
+$$
+
+Or as the data being "shrunk" towards the prior mean:
+
+$$
+\mu_1 = y - (y - \mu_0) \frac{\sigma^2}{\sigma^2 + \tau_0^2}
+$$
+
+- If $\tau_0^2 = 0$, we say that the prior distribution is infinitely more precise than the data, and so the posterior mean shrinks toward the prior mean $\mu_0$
+
+- If $\sigma^2 = 0$, we say that the data are perfectly precise, and thus the posterior mean shrinks entirely toward the observed value. 
+
+**The posterior predictive distribution**
+
+Assuming the the future observation $\tilde y$ is conditionally independent of the past data (given $\theta$), we can see that the posterior predictive distribution is also normal. 
+
+$$
+\begin{align}
+p(\tilde y \mid y) &= \int p(\tilde y \mid \theta)\ p(\theta \mid y) d\theta \\ &\propto \int \exp \left( - \frac{1}{2 \sigma^2} (\tilde y - \theta)^2 \right) \exp \left(- \frac{1}{2 \tau_0^2} (\theta - \mu_1)^2 \right)
+\end{align}
+$$
+
+Usint the law of iterated expectations and the law of total variance, we can prove that the posterior predictive distribution of $\tilde y$ has mean equal to $\mu_1$ (the posterior mean of $\theta$) and two components of variance: the predictive variance $\sigma^2$ from the model, and the variance $\theta_1^2$ due to posterior uncertainty in $\theta$.
+
+$$
+\begin{align}
+&E(\tilde y \mid y) = \mu_1 \\ \\
+&\textsf{var}(\tilde y \mid y) = \underbrace{E(\sigma^2 \mid y)}_{\sigma^2} + \underbrace{\textsf{var}(\theta \mid y)}_{\tau_1^2}
+\end{align}
+$$
+
+This development can be extended to a model with multiple (and exchangeable) observations, where we have $\mathbf y = y_1, \dots, y_n$.
+
+$$
+\begin{align}
+p(\theta \mid \mathbf y) &\propto p(\theta)\ \prod_{i=1}^n p(y_i \mid \theta)
+\\ \\ &\propto 
+\exp \left(- \frac{1}{2} \left(\frac{1}{\tau_0^2}(\theta - \mu_0)^2 + \frac{1}{\sigma^2} \sum_{i=1}^n (y_i -\theta)^2 \right) \right) 
+\end{align}
+$$
+
+This expression can be further simplified by showing that the posterior distribution depends on $y$ only through the sample mean (i.e. that $\bar y$ is a *sufficient statistic* in this model). 
+
+Thus we obtain the very simple expression in which, if $n$ is large, the posterior distribution is largely determined by $\sigma^2$ and $\bar y$.
+
+$$
+\mu_n = \frac{\frac{1}{\tau_0^2} \mu_0 + \frac{n}{\sigma^2} \bar y}{\frac{1}{\tau_0^2} + \frac{n}{\sigma^2}} \hspace{2cm}
+\frac{1}{\tau_n^2} = \frac{1}{\tau_0^2} + \frac{n}{\sigma^2}
+$$
+
+****
+
+**In class example**. 
+
+Suppose we have the following model block in Stan:
+
+```
+y ~ normal(0, 1);
+y ~ normal(0, 10);
+```
+
+This looks like we have *duplicate priors*, but what's really going on is that we are adding two pieces of information to the log posterior density. If we figure out that the product of the two normal densities is itself normal, we can see that the above code should be roughly equivalent to this:
+
+```
+y ~ normal(0, sigma = "a little less than one");
+```
+
+This is a common a source of confusion: *adding two random variables is different from adding two pieces of information to the log posterior density*.
+
+$$
+\mu_n = 0 \hspace{1cm} \frac{1}{\tau_n^2} = \frac{1}{1} + \frac{1}{10}\ \longrightarrow\ \tau_n^2 = \frac{10}{11}
+$$
+
+Which means that the code above can be more succintly expressed as follows:
+
+```
+y ~ normal(0, sqrt(10 / 11));
+```
+
+****
+
+### Other
+
+****
+
+**Normal distribution with known mean but unknown variance**
+
+This model doesn't have many direct applications, but its often used as a building block for more complicated models (e.g. the normal distribution with both parameters unknown). This is also a good example for understanding the estimation of scale parameters.
+
+****
+
+$$
+\begin{align}
+&y \sim \textsf{normal}(\theta, \sigma) \hspace{0.5cm} \text{where } \theta \text{ is known} \\\\
+&p(y \mid \sigma) \propto \sigma^{-n/2} \exp\left(- \frac{n\ v}{2 \sigma^2} \right) \\\\
+&v = \frac{1}{n} \sum_{i=1}^n (y_i - \theta)^2 \hspace{0.5cm} \text{is the }\textit{sufficient statistic}
+\end{align}
+$$
+
+The conjugate prior density is the **inverse-gamma**:
+
+$$
+p(\sigma^2) \propto (\sigma^2)^{-(\alpha + 1)} e^{-\beta / \sigma^2}
+$$
+
+A convenient parameterization is as a **scaled inverse-$\chi^2$** distribution with scale $\sigma_0^2$ and $v_0$ degrees of freedom; that is, the prior distribution of $\sigma^2$ is taken to be the distribution of $\frac{\sigma_0^2v_0}{X}$, where $X$ is a $\chi^2_{ν0}$ random variable. 
+
+```{r}
+## To get a simulation draw y from the inv-chisq distribution, first draw X from
+## chisq distribution and then let y = v*s^2 / X
+
+scaled_inv_chisq <- function(N, df, scale) {
+  return(df * scale^2 / rchisq(N, df))
+}
+```
+
+For example:
+
+```{r, fig.width=10, echo=FALSE, fig.height=3}
+plot_settings()
+hist(scaled_inv_chisq(1e4, df = 100, scale = 5),
+    main = "scaled inverse chi-sq", xlab = expression(sigma^2),
+    probability = TRUE, breaks = 30)
+text(x = 35, y = 0.04, "df = 100")
+text(35, 0.08, "scale = 5")
+```
+
+The resulting posterior density for $\sigma^2$ is:
+
+$$
+\begin{align}
+p(\sigma^2 \mid y) &\propto p(\sigma^2)\ p(y \mid \sigma^2) \\\\
+&\propto \left(\frac{\sigma_0^2}{\sigma^2}\right)^{\frac{v_0}{2} +1} \exp\left(- \frac{v_0 \sigma_0^2}{2 \sigma^2} \right)\ \ \underbrace{\sigma^{-n/2} \exp\left(- \frac{n\ v}{2 \sigma^2} \right)}_\text{likelihood} \\\\
+\end{align}
+$$
+
+A little more math will lead to the following statement:
+
+$$
+\sigma^2 \mid y \sim \textsf{inv-}\chi^2 \left(v_0 + n, \frac{v_0 \sigma^2 + nv}{v_0 + n}
+\right)
+$$
+
+Here, the scale is equal to the degrees-of-freedom-weighted
+average of the prior and data scales; and degrees of freedom equal to the sum of the prior and data degrees of freedom. *The prior distribution can be thought of as providing the information equivalent to $ν_0$ observations with average squared deviation $\sigma_0^2$*.
+
+****
+
+**Poisson model**
+
+The Poisson distribution is used for modeling the number of times an event occurs in an interval of time or space. It has only one parameter $\lambda$, the *rate* parameter, which can be interpreted as the average number of events that occur per interval. Thus, $\lambda$ is also the mean. Note that the number of events $y$ is discrete.
+
+****
+
+$$
+\begin{align}
+&y \sim \textsf{poisson}(\lambda) \\ \\
+&p(y \mid \lambda) = \frac{\lambda^y e^{-\lambda}}{y!} \\ \\
+&\text{for }\ y = 0, 1, 2, \dots
+\end{align}
+$$
+
+For an $n$-vector $\mathbf y$ of independent and identically distributed observations, the likelihood is as follows:
+
+$$
+\begin{align}
+p(\mathbf y \mid \lambda) &= \prod_{i = 1}^n \frac{1}{y_i !} \lambda^{y_i} e^{-\lambda} \\ \\ &\propto \lambda^{t(y)} e^{-n\lambda} \hspace{1cm}
+\overbrace{\text{where }\ t(y) = \sum_{i = 1}^n y_i}^\text{the sufficient statistic}
+\end{align}
+$$
+
+In this case, the conjugate prior distribution is called the **gamma distribution** with parameters $\alpha$ and $\beta$. 
+
+$$
+p(\lambda) \propto e^{-\beta \lambda} \lambda^{\alpha - 1}
+$$
+
+And because in this case we have $\frac{n}{n}\ t(y) = n \bar y$, we get the following posterior distribution: 
+
+$$
+\lambda \mid y \sim \textsf{gamma}(\alpha + n \bar y, \beta + n)
+$$
+
+**Poisson model parameterized in terms of rate and exposure**
+
+It's almost always a bad idea to model data with a fixed parameter $\lambda$. Instead, we include an exposure variable $x_i$, such that
+
+$$
+y_i \sim \textsf{poisson}(x_i \lambda)
+$$
+
+In epidemiology, $\lambda$ is usually called the *rate* and $x_i$ the exposure for the $i$th unit. Note that the $y_i$'s are no longer exchangeable, but the pairs $(x, y)_i$ are. Following the same rationale used previously, we have the following model:
+
+$$
+\begin{align}
+&p(y \mid \lambda) \propto \lambda^{\left(\sum_{i=1}^n y_i\right)} e^{-\left(\sum_{i=1}^n x_i \right) \lambda} \\\\
+&\lambda \sim \textsf{gamma}(\alpha, \beta) \\\\
+&\lambda \mid y \sim \textsf{gamma} \left(\alpha + \sum_{i=1}^n y_i, \ \beta + \sum_{i=1}^n x_i \right)
+\end{align}
+$$
+
+**The negative binomial distribution**
+
+With conjugate families, the known form of the prior and posterior densities can be used to find the marginal distribution $p(y)$ using this simple formula:
+
+$$
+p(y) = \frac{p(y \mid \theta)\ p(\theta)}{p(\theta \mid y)}
+$$
+
+Thus, the Poisson model for *a single observation* $y$ has the following **prior predictive distribution**:
+
+$$
+\begin{align}
+p(y) &= \frac{\textsf{poisson}(y \mid \lambda)\ \textsf{gamma}(\lambda \mid \alpha, \beta)}{\textsf{gamma}(\lambda \mid \alpha + y, \beta + 1)}
+\end{align}
+$$
+
+which reduces to:
+
+$$
+p(y) = {\alpha + y - 1 \choose y} \left( \frac{\beta}{\beta + 1}\right)^\alpha \left(\frac{1}{\beta + 1}\right)^y
+$$
+
+This is also known as the **negative binomial** distribution:
+
+$$
+y \sim \textsf{neg-binom}(\alpha, \beta)
+$$
+
+In this case, the negative binomial distribution arises as a **mixture** of Poisson distributions with rates $\boldsymbol \lambda$ following a gamma distribution.
+
+****
+
+Add exponential
+
+****
+
+Here, maybe add the simulation from homework assignment?
+
+****
+
+### Example: cancer rates
+
+**An example: informative prior distribution for cancer rates**
+
+This example shows the role of priors for a large set of inferences, each based on different data but with a common prior distribution. It also introduces hierarchical modeling.
+
+****
+
+As it turns out, the counties in the Great Plains (i.e. middle USA) exhibited the *highest* kidney cancer rates during the 1980s. Before speculating about the reasons why, it should also be noted that some of these counties also contain the *lowest* kidney cancer death rates. So we need to explain why these areas have both the highest and lowest rates. 
+
+The issue is **sample size**. Some small counties (e.g. 1000 people) will have zero deaths (the maximum likelihood estimate will be 0%); others will have 1 or two deaths, which will immediately give them some of the highest rates. 
+
+*Bayesian inference*
+
+Thus, we need a model-based approach to estimate the true underlying rates. For each county $j$, we estimate the following model:
+
+$$
+y_j \sim \textsf{poisson}\underbrace{(10n_j}_\text{exposure} \theta_j)
+$$
+
+where $y_j$ is the number of kideny cancer deaths in county $j$ during 1980-1989; $n_j$ is the population of the county; and $\theta_j$ is the underlying rate in units of death per person per year. 
+
+Note that this can also be thought of as $j$ different models (one for each county). Th subscript $j$ indicates that these are different parameters, estimated from their own data. 
+
+The prior distribution for each $\theta_j$ follows a **gamma distribution** with parameters $\alpha = 20$ and $\beta = 430,000$, which are estimated from the data (more on this later).
+
+$$
+\begin{align}
+&\theta_j \mid y_j \sim \textsf{gamma}(\underbrace{20 + y_j}_\alpha, \underbrace{430,000 + 10n_j}_\beta) \\ \\
+&E(\theta_j \mid y_j) = \frac{20 + y_j}{430,000 + 10n_j} \\ \\
+&\textsf{var}(\theta_j \mid y_j) = \frac{20 + y_j}{(430,000 + 10n_j)^2}
+\end{align}
+$$
+
+The posterior mean can be viewed as the weighted average of the raw estimate $\frac{y_j}{10 n_j}$ and the prior mean $\frac{\alpha}{\beta} = 4.65 \times 10^{-5}$. Note that the variance is inversely proportional to the exposure parameter $n_j$.
+
+**Inference for a small county**. The relative weighting of prior information and data depends on the population size $n_j$. Thus, in the case of a small county with $n_j = 1000$ we have the following:
+
+- If $y_j = 0$, the raw death rate is zero, but the posterior is higher:
+
+$$
+\frac{20}{440,000} = 4.55 \times 10^{-5}
+$$
+
+- If $y_j = 1$, the raw death rate is 1 per 1000 per 10 years or $10^{-4}$. This is about twice as high as the national mean. The posterior is obviously lower than that:
+
+$$
+\frac{21}{440,000} = 4.77 \times 10^{-5}
+$$
+
+- If $y_j = 2$, the raw death rate is extremely high, at about $2 \times 10^{-4}$ per person-yer. But the posterior mean is still pretty low:
+
+$$
+\frac{22}{440,000} = 5 \times 10^{-5}
+$$
+
+At such small population sizes, the data are dominated by the prior distribution.
+
+The prior predictive distribution for $y_j$, in a county with $n_j = 1000$, is determined by the "negative binomial distribution". We get this marginal distribution of $y_j$ by averaging over the prior distribution of $\theta_j$.
+
+$$
+y_j \sim \textsf{neg-binom} \left( \alpha, \frac{\beta}{10n_j} \right)
+$$
+
+It is perhaps even simpler to simulate directly the predictive distribution of $y_j$ as follows:
+
+i. draw (say) 500 values of $θ_j$ from the $\textsf{gamma}(20, 430,000)$; 
+
+```{r}
+N <- 500
+theta <- rgamma(N, 20, 4.3e5)
+```
+
+ii. for each of these, draw one value $y_j$ from the Poisson distribution with parameter $10,000 θ_j$. 
+
+```{r}
+y <- rpois(N, lambda = theta*10e3)
+```
+
+```{r, echo=FALSE}
+table(y) %>% t() %>% make_table()
+```
+
+**Inference for a large county**. Consider a large county with $n_j = 1$ million. How many cancer deaths $y_j$ migh we expect to see in a ten-year period? As before, we simulate $\theta_j$'s from the $\textsf{gamma}(20, 430,000)$ and then draw $y_j$'s from a $\textsf{poisson}(10^6 \theta_j)$.
+
+```{r}
+y <- rpois(N, lambda = theta*10e6)
+```
+
+```{r, fig.width=10, fig.height=3, echo=FALSE}
+data_frame("1,000,000" = y) %>% 
+  ggplot(aes(x = `1,000,000`)) + 
+  geom_histogram(color = "black", fill = "skyblue", bins = 15) +
+  labs(x = "y", title = "Simulation: n = 1,000,000") +
+  theme_classic(base_family = "Avenir")
+```
+
+**How to estimate the prior from the data?** 
+
+At this point, we must address where we get the $\textsf{gamma}(\alpha = 20, \beta = 430,000)$ distribution from. The two parameters $\alpha$, $\beta$ are estimated from the data to match the distribution of the observed cancer death rates $\frac{y_j}{10n_j}$. This might seem inappropriate at first view, but it follows the same logic behind the hierarchical modeling approach. 
+
+Under the model, the observed count $y_j$ for any county $j$ comes from the predictive distribution $p(y_j)$, which we have already established to be negative binomial. We can then get the observed mean and variance, and *solve* for $\alpha$ and $\beta$:
+
+$$
+\begin{align}
+&E\left(\frac{y_j}{10n_j}\right) = \frac{\alpha}{\beta} \\\\
+&\textsf{var}\left(\frac{y_j}{10n_j}\right) = \frac{\alpha}{10n_j\beta} + \frac{\alpha}{\beta^2}
+\end{align}
+$$
+
+This method of constructing priors --by matching moments-- is somewhat sloppy and will be difficult to apply in general.
+
+****
+
+## Multiparameter probability models
+
+Virtually every practical problem in statistics involves more than one unknown or unobservable quantity. It is in dealing with such problems that the simple conceptual framework of the Bayesian approach reveals its principal advantages over other methods of inference.
+
+Achieving this aim is straightforward. We first require the *joint* posterior distribution of *all* unknowns, and then we integrate this distribution over the unknowns that are not of immediate interest to obtain the desired marginal distribution of the particular parameters we are interested in. Or equivalently, using simulation, we draw samples from the joint posterior distribution and then look at the parameters of interest and ignore the values of the other unknowns.
+
+****
+
+### Nuissance parameters
+
+****
+
+In many problems there is no interest in making inferences about many of the unknown parameters, although they are required in order to construct a realistic model. Parameters of this kind are often called *nuisance parameters*. A classic example is the scale of the random errors in a measurement problem.
+
+Suppose $\boldsymbol \theta$ hast two parts, $\theta_1$ and $\theta_2$, and that we are only interested (at least for the moment) in inference for $\theta_1$. In other words, $\theta_2$ may be considered a "nuissance" parameter.
+
+For example:
+
+$$
+y \mid \mu, \sigma^2 \sim \textsf{normal}(\mu, \sigma^2)
+$$
+
+Here, $\theta_1 = \mu$ and $\sigma^2 = \theta_2$.
+
+The objective is to calculate $p(\theta_1 \mid y)$, which is derived from the *joint posterior density*:
+
+$$
+p(\theta_1, \theta_2 \mid y) \propto p(y \mid \theta_1, \theta_2)\
+p(\theta_1, \theta_2)
+$$
+
+Thus, we can express $p(\theta_1 \mid y)$ by using integration and the product rule for joint densities:
+
+$$
+\begin{align}
+p(\theta_1 \mid y) &= \int p(\theta_1, \theta_2 \mid y)d\theta_2 \\ &= \int p(\theta_1 \mid \theta_2, y)\ p(\theta_2 \mid y) d\theta_2
+\end{align}
+$$
+
+This shows that the posterior distribution we are interested in, $p(\theta_1 \mid y)$, is a *mixture* of conditional distributions. In other words, we obtain $p(\theta_1 \mid y)$ by averaging (or "mixing") the conditional distributions; in this setting, $p(\theta_2 \mid y)$ is a weighting function for the different possible values of $\theta_2$. The weights depend on the posterior density of $\theta_2$ and thus on a combination of evidence from data and prior model.
+
+(Note that $\theta_2$ can include a discrete component representing different possible sub-models).
+
+*We rarely evaluate the integral explicitly*, but it suggests an important practical strategy for both constructing and computing with multiparameter models. Posterior distributions can be computed by **marginal and conditional simulation**, first drawing $\theta_2$ from its marginal posterior distribution and then $\theta_1$ from its conditional posterior distribution, given the drawn value of $\theta_2$. *In this way, the integration embodied in the previous equation is performed indirectly.*
+
+****
+
+### The multinomial model
+
+****
+
+The multinomial sampling distribution is used to describe data for which each observation is one of $k$ possible outcomes. If $\mathbf y$ is the vector of counts of the number of observations of each outcome, then we have the following:
+
+$$
+p(\mathbf y \mid \boldsymbol \theta) \propto \prod_{j = 1}^k \theta_j^{y_j} \hspace{1cm} \text{where }\ \sum_{j=1}^k \theta_j = 1
+$$
+
+We are also implicitly conditioning on the number of observations, such that $\sum_{j=1}^k y_j = n$. 
+
+Notice that the *conjugate prior distribution* is a multivariate generalization of the beta distribution known as the **Dirichlet**, with a vector of paramaters $\boldsymbol \alpha$ (usually interpreted as "prior sample sizes").
+
+$$
+\begin{align}
+&\theta_1, \dots, \theta_k \sim \textsf{dirichlet}(\alpha_1, \dots, \alpha_k)\\\\
+&p(\boldsymbol \theta) = \frac{1}{\textsf{B}(\boldsymbol \alpha)} \prod_{j=1}^k \theta_j^{\alpha_j - 1} \propto 
+\prod_{j=1}^k \theta_j^{\alpha_j - 1} \\\\
+&\boldsymbol \theta \mid \mathbf y \sim \textsf{dirichlet}(\alpha_1 + y_1, \dots, \alpha_k + y_k)
+\end{align}
+$$
+
+As in the binomial distribution, there are several plausible non-informative Dirichlet prior distributions. A uniform density is obtained by setting $\alpha_j = 1$ for all $j$; this distribution assigns equal density to any vector $\mathbf \theta$ satisfying $\sum_{j=1}^k \theta_j = 1$.
+
+****
+
+### The multivariate normal model
+
+****
+
+The basic model to be discussed concerns an observable vector $\mathbf y$ of $d$ components, with the multivariate normal distribution:
+
+
+PUT MORE STUFF HERE.
+
+
+****
+
+### Biossay experiment example
+
+NOTE: Give this example its own notebook, and expand.
+
+****
+
+In the development of drugs and other chemical compounds, *acute toxicity tests* or bioassay experiments are commonly performed on animals. Such experiments proceed by administering various dose levels of the compound to batches of animals. The animals' responses are typically characterized by a dichotomous outcome: for example, alive or dead, tumor or no tumor. An experiment of this kind gives rise to data of the form
+
+$$
+(x_i, n_i, y_i) \hspace{0.3cm} \text{for }\ i = 1, \dots, k,
+$$
+
+where $x_i$ represents the $i$th of $k$ dose levels (often measured on a logarithmic scale) given to $n_i$ animals, of which $y_i$ subsequently respond with positive outcome. 
+
+For example:
+
+```{r, echo=FALSE}
+x <- c(-0.8, -0.30, -0.05, 0.73)
+n <- rep(5, 4)
+y <- c(0, 1, 3, 5)
+
+data_frame("Dose $x_i$ (log g/ml)" = x, 
+           "Number of animals $n_i$" = n, 
+           "Number of deaths $y_i$" = y) %>% 
+  make_table()
+```
+
+It makes sense to model this as a binomial distribution.
+
+$$
+y_i \mid \theta_i \sim \textbf{binomial}(n_i, \theta_i)
+$$
+
+Here, $\theta_i$ is the probability of death for animals, given dose $x_i$. (Note that the independence assumption relies on laboratory conditions which make contagious diseases between the $i$ groups impossible).
+
+A simple model for the dose-response relation is a *logistic regression model*, which uses a transformation of the $\theta$'s:
+
+$$
+\textbf{logit}(\theta_i) = \alpha + \beta x_i
+$$
+
+The **likelihood** will become this:
+
+$$
+\begin{align}
+&p(y_i \mid n_i, \theta_i) \propto \theta^{y_i}\ (1-\theta)^{n_i-y_i} \\ \\
+&p(y_i \mid n_i, x_i, \alpha, \beta) \propto \left(\textsf{logit}^{-1}(\alpha + \beta x_i)\right)^{y_i} \left( 1 - \textsf{logit}^{-1}(\alpha + \beta x_i)\right)^{n_i - y_i}
+\end{align}
+$$
+
+In other words, the likelihood model is entirely characterized by the parameters $\alpha$ and $\beta$, whose joint posterior distribution is as follows:
+
+$$
+\begin{align}
+p(\alpha, \beta \mid \mathbf y, \mathbf n, \mathbf x) &\propto p(\alpha, \beta \mid \mathbf n, \mathbf x)\  p(\mathbf y\mid \alpha, \beta, \mathbf n, \mathbf x) \\ \\ &\propto
+p(\alpha, \beta)\ \prod_{i = 1}^k p(y_i \mid \alpha, \beta, n_i, x_i)
+\end{align}
+$$
+
+Note that $p(\alpha, \beta \mid \mathbf n, \mathbf x)$ becomes $p(\alpha, \beta)$ because we consider the sample sizes $n_i$ and dose levels $x_i$ to be fixed.
+
+The **prior distribution** considered in this example is a simple uniform distribution; that is, $p(\alpha, \theta) \propto 1$. To use the "grid approximation" approach, it's useful to have a general idea of where $(\alpha, \beta)$ might be, so we use can use standard maximum likelihood estimate for the existing data, using the `glm()` function in R.
+
+```{r, echo=FALSE}
+df <- data_frame(x = sort(rep(x, 5)), 
+                 y = c(rep(0, 5), 
+                       rep(0, 4), 1,
+                       rep(1, 3), rep(0, 2),
+                       rep(1, 5)))
+glm(y ~ x, df, family = binomial("logit")) %>% 
+  arm::display()
+```
+
+```{r}
+df <- data_frame(
+  x = c(-0.8, -0.30, -0.05, 0.73),
+  n = rep(5, 4),
+  y = c(0, 1, 3, 5)
+)
+
+## Make grid
+A = seq(-4, 10, length.out = 80)
+B = seq(-10, 40, length.out = 80)
+theta_grid <- expand.grid(alpha = A, beta = B)
+
+## Log-likelihood function
+log_likelihood <- function(df, a, b) {
+  df["y"]*(a + b*df["x"]) - df["n"]*log1p(exp(a + b*df["x"]))
+}
+
+## Apply function to grid
+output_matrix <- apply(df, 1, log_likelihood, theta_grid$alpha, theta_grid$beta) 
+
+## Add every row, and exponentiate to get unnormalized posterior density
+theta_grid <- theta_grid %>% 
+  mutate(log_p = rowSums(output_matrix),
+         p = exp(log_p))
+```
+
+```{r, fig.height=3, fig.width=4, echo=FALSE}
+## Contour plot
+ggplot(theta_grid, aes(alpha, beta)) +
+  geom_raster(aes(fill = p), show.legend = FALSE) +
+  geom_contour(aes(z = p), color = "black", bins = 5, alpha = 0.5) +
+  theme_classic(base_family = "Avenir") +
+  scale_fill_distiller(direction = 1, palette = "greens") +
+  labs(x = expression(alpha), y = expression(beta)) +
+  scale_x_continuous(breaks = seq(-4, 10, by = 2))
+```
+
+**Sampling from the joint posterior distribution**
+
+```{r}
+## Normalize
+theta_grid <- mutate(theta_grid, p = p / sum(p))
+sum(theta_grid$p)
+
+head(theta_grid)
+```
+
+We sample 1000 random draws $(\alpha^s, \beta^s)$ from the posterior distribution using the following procedure:
+
+**First**. Compute the marginal posterior distribution of $\alpha$ by numerically summing over $\beta$ in the discrete distribution computed on the grid.
+
+```{r}
+m_alpha <- theta_grid %>% 
+  group_by(alpha) %>% 
+  summarize(p = sum(beta*p))
+
+## normalize
+m_alpha <- mutate(m_alpha, p = p / sum(p))
+```
+
+```{r, fig.width=8, echo=FALSE}
+plot_settings()
+plot(p ~ alpha, data = m_alpha, type = "l",
+     xlab = expression(alpha), ylab = "density")
+```
+
+**Second**. For $s = 1, \dots, 1000$:
+
+- Draw $\alpha^s$ from the discretely computed $p(\alpha \mid y)$. And then draw $\beta^s$ from the discrete conditional probability $p(\beta \mid \alpha, y$, given the just-sampled value of $\alpha$.
+
+```{r}
+N <- 1000
+     
+samp_alpha <- with(m_alpha, 
+                   sample(alpha, size = N, replace = TRUE, prob = p))
+
+samp_beta <- with(theta_grid[theta_grid$alpha %in% samp_alpha, ],
+                  sample(beta, size = N, replace = TRUE, prob = p))
+
+data_frame(alpha = samp_alpha, beta = samp_beta) %>% 
+  ggplot(aes(alpha, beta)) +
+  geom_jitter(alpha = 0.5) +
+  coord_cartesian(ylim = c(-10, 40), xlim = c(-4, 10)) +
+  labs(x = expression(alpha), y = expression(beta))
+```
+
+    
+- Draw $\beta^s$ from the discrete conditional distribution $p(\beta, \mid \alpha, y)$, given the just-sampled value of $\alpha$.
+    
+- For each of the sampled $\alpha$ and $\beta$, add a uniform random jitter centered at zero with a width equal to the sampling grid.
+    
+Note that there are many problems with the two-dimensional grid approximation. There can be difficulty finding the correct location and scale for the grid points. A grid that is defined on too small an area may miss important features of the posterior distribution that fall outside the grid. A grid defined on a large area with wide intervals between points can miss important features that fall between the grid points. It is also important to avoid overflow and underflow operations when computing the posterior distribution. Thus, it is usually a good idea to compute the logarithm of the unnormalized posterior distribution and subtract off the maximum value before exponentiating.
+
+**The posterior distribution of the LD50**
+
+A parameter of common interest in bioassay studies is the LD50—the dose level at which the probability of death is 50%. In our logistic model, a 50% survival rate means that
+
+$$
+\textbf{logit}^{-1} (\alpha + \beta x_i) = 0.5, \hspace{1cm} \textbf{logit}(0.5) = 0
+$$
+
+Doing this is trivial, once we have our simulation draws from the posterior distribution. 
+
+In the context of this example, LD50 is a meaningless concept if $\beta \leq 0$, in which case increasing the dose does not cause the probability of death to increase. If we were certain that the drug could not cause the tumor rate to decrease, we should constrain the parameter space to exclude values of $\beta$ less than 0. 
+
+```{r, fig.width=8}
+## Sample LD50 conditional on beta > 0
+index <- samp_beta > 0
+samp_LD50 <- -samp_alpha[index] / samp_beta[index]
+
+plot_settings()
+hist(samp_LD50, xlim = c(-2, 2), 
+     probability = TRUE, breaks = 20,
+     xlab = "LD50")
+```
+
+
+
+
+
+****
+
+## Asymptotics
+
+This chapter discusses asymptotic theory. It outlines the fundamental connections between Bayesian and other approaches to statistical inference
+
+****
+
+### Normal approximations to the posterior distribution
+
+Here, we make use of **Taylor series expansions**, according to which any function $f$ can be approximated using a sum of polynomials:
+
+$$
+\begin{align}
+f(x) &\approx f(a) + f^{(1)}(a)(x-a) + \frac{f^{(2)}(a)}{2!}(x - a)^2  +  \dots + \frac{f^{(n)}(a)}{n!}(x - a)^n + \dots \\\\ &\approx
+\sum_{j = 0}^\infty \frac{f^{(j)}(a)}{j!}(x-a)^j
+\end{align}
+$$
+
+Here, $a$ indicates where along the $x$-axis do we want to center our approximation. 
+
+****
+
+If the posterior distribution $p(\theta \mid y)$ is unimodal and roughly symmetric, it's convenient to approximate it by a normal distribution; that is, the logarithm of the posterior density is approximated by a quadratic function of $\theta$.
+
+A Taylor series expansion of $\log p(\boldsymbol \theta \mid \mathbf y)$ centered at the posterior mode $\boldsymbol{\hat \theta}$ gives:
+
+$$
+\log p(\boldsymbol \theta \mid \mathbf y) = \log p(\boldsymbol{\hat \theta} \mid \mathbf y) + \frac{1}{2}(\boldsymbol \theta - \boldsymbol{\hat \theta})^\top \left(\nabla^2 \log p(\boldsymbol \theta \mid y)\right)_{\boldsymbol \theta = \boldsymbol{\hat \theta}} + \dots
+$$
+
+where the first derivative term in the expansion is zero because we are taking the derivative at the mode. In the next section we'll show that the remainding higher order terms fade in importance relative to the quadratic term when $\boldsymbol \theta$ is close to $\boldsymbol{\hat \theta}$ and $n$ is large.
+
+Thus, considering the above equation as a function of $\boldsymbol \theta$, the first term is a constant, whereas the second term is proportional to the logarithm of a normal density, yielding the following approximation:
+
+$$
+\begin{align}
+&p(\boldsymbol \theta \mid \mathbf y) \approx \textsf{normal}(\boldsymbol{\hat \theta}, I(\boldsymbol{\hat \theta})^{-1}) \\\\
+&I(\boldsymbol \theta) = \underbrace{- \frac{d^2}{d\boldsymbol \theta^2} \log p(\boldsymbol \theta \mid \mathbf y)}_{2^{\text{nd}}\text{ derivative or Hessian matrix}}
+\end{align}
+$$
+
+If the mode $\boldsymbol{\hat \theta}$ is in the interior of the parameter space, then the matrix $I(\boldsymbol{\hat \theta})$ is positive definite.
+
+PUT EXAMPLE
+
+***
+
+### Large-sample theory
+
+***
+
+Put stuff about *true* $f(y)$ and $p(y \mid \theta_0)$
+
+The coefficient in the quadratic term the approximation to the log posterior can be replaced with:
+
+$$
+\left[\frac{d^2}{d\boldsymbol \theta^2} \log p(\boldsymbol \theta \mid \mathbf y)\right]_{\theta=\hat \theta} = 
+\left[\frac{d^2}{d\boldsymbol \theta^2} \log p(\boldsymbol \theta) \right]_{\theta=\hat \theta} + \sum_{i = 1}^n \left[\frac{d^2}{d\boldsymbol \theta^2} \log p(y_i \mid \boldsymbol \theta)\right]_{\theta=\hat \theta}
+$$
+
+And thus, as $n \to \infty$, the likelihood will dominate over the prior distribution; so we can just use the likelihood alone to obtain the mode and curvature for the normal approximation. 
+
+One consequence of this result is that in problems with large sample sizes we need not work especially hard to formulate a prior distribution that accurately reflects all available information. But when sample sizes are small, the prior distribution is a critical part of the model specification.
+
+Note that these results won't hold in some circumstances:
+
+- *Underidentified models and nonidentified parameters.* For example, with flat likelihoods or incomplete data.
+
+- *Number of parameters increasing with sample size.*
+
+- *Aliasing*. This happens when the posterior is bimodal (or even multimodal); this will happen in most mixture models. 
+
+    In general, the problem of aliasing is eliminated by restricting the parameter space so that no duplication appears.
+    
+- *Unbounded likelihoods.*
+
+- *Improper posterior distributions* (usually the result of uniform priors).
+
+- *Prior distributions that exclude the point of convergence.*
+
+- *Convergence to the edge of parameter space.*
+
+Finally, keep in mind that the normal approximation can hold for essentially all the mass of the posterior distribution but still not be accurate in the tails. 
+
+****
+
+## Hierarchical models
+
+Many statistical applications involve multiple parameters that can be regarded as related or connected in some way by the structure of the problem, implying that a joint probability model for these parameters should reflect their dependence. For instance, we might be interested in modeling observed data $y_{ij}$ (in which units are indexed by $i$ and groups are indexed by $j$) and coming up with estimates for the group parameters $\theta_j$. If we have reason to believe that the $\theta_j$'s are related to each other, we can view them as a sample from a common *population distribution*. It is natural to model such a problem hierarchically, with observable outcomes modeled conditionally on certain parameters, which themselves are given a probabilistic specification in terms of further parameters, known as *hyperparameters.*
+
+In other words, rather than try to estimate each $\theta_j$ separately, it makes more sense to try to estimate the population distribution from all the data, and then use this combined information to help estimate each $\theta_j$.
+
+Why should we use these kinds of models?
+
+- Simple nonhierarchical models are usually inappropriate: with few parameters, they generally *underfit* large datasets, whereas with many parameters, they tend to *overfit*.
+
+- Hierarchical models can fit the data well, while at the same time using a population distribution to structure some dependence into the parameters, thereby avoiding problems of overfitting. In fact, it is often reasonable to fit hierarchical models with more parameters than there are data points.
+
+****
+
+### Constructing a parameterized prior distribution
+
+This section considers the problem of constructing a prior distribution using hierarchical principles but without fitting a formal probability model for the hierarchical structure. This treatment is not fully Bayesian because (for the purpose of simplicity in exposition) we work with a point estimate, rather than a complete joint posterior distribution, for the hyperparameters (the parameters of the population distribution). 
+
+****
+
+Suppose the immediate aim of a study is to estimate $\theta$, the probability of tumor in a population of laboratory rats that receive a zero dose of the drug (a control group). The data show that 4 out of 14 rats developed a tumor. 
+
+- We assume a binomial model for the number of tumors given $\theta$. 
+
+- For convenience, we assume conjugate prior on $\theta$, so that:
+
+$$
+\begin{align}
+&\theta \sim \textsf{beta}(\alpha, \beta) \\\\
+&\theta \mid y \sim \textsf{beta}(\alpha + 4, \beta + 10)
+\end{align}
+$$
+
+But we also have historical data on previous experiments on similar groups of rats. In this example, the historical data are a set of observations of tumor incidence in 70 groups of rats. In other words, we have 70 different estimates of $\theta_j$, plus this new one. 
+
+$$
+y_j \sim \textsf{binomial}(n_j, \theta_j)
+$$
+
+Schematically, we have the following structure:
+
+```{r, echo=FALSE, out.width="60%"}
+knitr::include_graphics("figures/rat_tumor_example.png")
+```
+
+The observed sample mean and standard deviation of the 70 values $\frac{y_j}{n_j}$ are $0.136$ and $0.103$. If we set the mean and standard deviation of the population distribution to these values, we can solve for $\alpha = 1.4$ and $\beta = 8.6$ (just as with the Ebola example). 
+
+Note that this is *not* a Bayesian calculation because it is not based on any specified full probability model. What's important about this example is the idea that we *can* actually estimate the parameters of the population distribution. 
+
+Using the simple estimate of the historical population distribution as a prior distribution for the current experiment yields a $\textsf{beta}(5.4, 18.6)$ posterior distribution for $\theta_{71}$. 
+
+[PUT PLOT COMPARING RAW DATA TO POSTERIOR]: the posterior mean is 0.223, and the standard deviation is 0.083. 
+
+The prior information has resulted in a posterior mean substantially lower than the crude proportion,
+$4/14 = 0.286$, because the weight of experience indicates that the number of tumors in the current experiment is unusually high.
+
+Note the assumption we have just made. We assumed that $\theta_{71}$ and $\theta_1, \dots, \theta_{70}$ come from the same common distribution. This assumption would be invalidated, for example, if we learned that the current data was gathered in a new laboratory, or that the type of rat used in these experiments has changed over time, etc. In sum, *we have assumed exchangeability*.
+
+**The logic of combining information**
+
+Despite many problems we can think of (e.g. using the data twice), it makes sense to try and estimate the population distribution from all the data, and thereby to help estimate each $\theta_j$, rather than to estimate all 71 $\theta_j$ values separately. After all, the $\theta_j$'s *are* related (at least in this example).
+
+****
+
+### Exchangeability and hierarchical models
+
+This section discusses how to construct a hierarchical prior distribution in the context of a fully Bayesian analysis. 
+
+****
+
+Exchangeability means you don't have enough information to distinguish the group parameters ($\theta_j$'s) from each other, *not* that they are the same! In other words, if we have no information about each parameter --other than the data-- that allows us to distinguish between them, we assume certain symmetry among the parameters in their prior distribution:
+
+- the parameters $(\theta_1, \dots, \theta_J)$ are *exchangeable* in their joint distribution if $p(\theta_1, \dots, \theta_J)$ is invariant to permutations of the indexes $(1, \dots, J)$: "in practice, ignorance implies exchangeability". 
+
+This idea is crucial for creating a joint probability model for all parameters $\boldsymbol \theta$.
+
+The simplest form of an exchangeable distribution has each of the parameters $\theta_j$ as an independent sample from a prior (or population) distribution governed by some unknown parameter vector $\boldsymbol \phi$:
+
+$$
+p(\boldsymbol \theta \mid \boldsymbol \phi) = \prod_{j=1}^J p(\theta_j \mid \boldsymbol \phi)
+$$
+
+And because, in general, $\boldsymbol \phi$ is unknown, our distribution for $\boldsymbol \theta$ must average over our uncertainty in $\boldsymbol \phi$:
+
+$$
+p(\boldsymbol \theta) = \int \left(\prod_{j=1}^J p(\theta_j \mid \boldsymbol \phi) \right) p(\boldsymbol \phi)d\boldsymbol \phi
+$$
+
+This form, *the mixture of independent identical distributions*, is usually all that we need to capture exchangeability in practice. (Note that we have applied the both "product rule" and "marginalization").
+
+A related theoretical result, *de Finetti’s theorem*, states that in the limit as $J \to \infty$, any suitably well-behaved exchangeable distribution on $(\theta_1, \dots, \theta_J)$ can be expressed as a mixture of independent and identical distributions. This theorem doesn't hold when $J$ is finite. For example, consider the probabilities of a given die landing on each of its six faces. The probabilities $\theta_1, \dots , \theta_6$ are exchangeable, but the six parameters $θ_j$ are constrained to sum to 1 and so cannot be modeled with a mixture of independent identical distributions; nonetheless, they can be modeled exchangeably.
+
+**Introducing data**
+
+$$
+p(\mathbf y, \boldsymbol \theta) = \int \left(\prod_{j=1}^J p(y_j \mid \theta_j)\ p(\theta_j \mid \boldsymbol \phi) \right) p(\boldsymbol \phi)d\boldsymbol \phi
+$$
+
+And because the most common population model is Gaussian, we have the following:
+
+$$
+p(\mathbf y, \boldsymbol \theta) = \int \int \left(\prod_{j=1}^J p(y_j \mid \theta_j)\ \textsf{normal}(\theta_j \mid \mu, \tau) \right) p(\mu) p(\sigma)d \mu\ d \tau
+$$
+
+Incidentally, this will help us see that how a uniform prior places too much probability on higher values of $\tau$ and how this means "no pooling" among the $\theta_j$'s:
+
+$$
+\begin{align}
+&\underset{\tau \to \infty}{\textsf{normal}}(\theta_j \mid \mu, \tau) \approx \textsf{uniform}(\theta_j) \\\\
+&\prod_{j = 1}^J p(y_j \mid \theta_j)\ \textsf{normal}(\theta_j \mid \mu, \tau) \propto \prod_{j = 1}^J p(y_j \mid \theta_n)
+\end{align}
+$$
+
+**Exchangeability when additional information is available on the units**. Often, observations are not fully exchangeable, but can be *partially* or *conditionally exchangeable*:
+
+- If observations can be grouped, we may make hierarchical model, where each group has its own submodel, but the group properties are unknown. If we assume that group properties are exchangeable, we can use a common prior distribution for the group properties.
+
+- If $y_i$ has additional information $x_i$ so that $y_i$ are not exchangeable anymore but $(y_i, x_i)$ are still exchangeable, then we can make a joint model for $(y_i, x_i)$ or a conditional model for $y_i \mid x_i$.
+
+*Objections to exchangeable models*
+
+In virtually *any* statistical application, it is natural to object to exchangeability on the grounds that the units actually differ. This, however, does *not* invalidate exchangeability. While it's true that the $θ_j$'s might differ, it might be perfectly acceptable to consider them as if drawn from a common distribution. In fact, *with no information available to distinguish them, we have no logical choice but to model the $\theta_j$'s exchangeably.*
+
+Objecting to exchangeability for "modeling ignorance" is no more reasonable than objecting to an independent and identically distributed model for samples from a common population, objecting to regression models in general, or, for that matter, objecting to displaying points in a scatterplot without individual labels. As with regression, the valid concern is not about exchangeability, but about encoding relevant knowledge as explanatory variables where possible.
+
+**The full Bayesian treatment of the hierarchical model**
+
+Returning to the problem of inference, the key "hierarchical" part of these models is that $\phi$ is not known and thus has its own prior distribution, $p(\phi)$. The appropriate Bayesian posterior distribution is of the vector $(\phi, \boldsymbol \theta)$. 
+
+The joint prior distribution is as follows:
+
+$$
+p(\boldsymbol{\phi, \theta}) = p(\boldsymbol{ \theta \mid \phi})\ p(\boldsymbol \phi)
+$$
+
+And the joint posterior is as follows:
+
+$$
+\begin{align}
+p(\boldsymbol{\phi, \theta} \mid \mathbf y) &\propto
+p(\boldsymbol{\phi, \theta})\  p(\mathbf y \mid \boldsymbol{\phi, \theta}) \\\\ &\propto 
+p(\boldsymbol{\phi, \theta})\  p(\mathbf y \mid \boldsymbol \theta)
+\end{align}
+$$
+
+Note that the latter simplification holds because the data distribution, $p(\mathbf y \mid \boldsymbol{\phi, \theta})$, depends only on $\boldsymbol \theta$: *the hyperparameters $\boldsymbol \phi$ affects $\mathbf y$ only through $\boldsymbol \theta$*. 
+
+
+
+
+In order to create a joint probability distribution for (φ, θ), we must assign a prior distribution to φ. 
+
+
+In most real problems, one should have enough substantive
+knowledge about the parameters in φ at least to constrain the hyperparameters into a finite
+region, if not to assign a substantive hyperprior distribution. As in nonhierarchical models,
+it is often practical to start with a simple, relatively noninformative, prior distribution on φ
+and seek to add more prior information if there remains too much variation in the posterior
+distribution.
+
+
+Talk about improper vs proper, generative vs non-generative...
+
+
+
+
+
+
+
+
+
+### Estimating exchangeable parameters from a normal model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Look for why bias isn't that interesting....
+
+
+### long example
+
+ADD TO HOMEWORK ASSINGMENT LATER, the same as with the cancer poisson example thing.
+
+
+## Model checking
+
+****
+
+Here, we discuss methods of assessing the sensitivity of posterior inferences to model assumptions and checking the fit of a probability model to data and substantive information. Model checking allows an escape from the tautological aspect of formal approaches to Bayesian inference, under which all conclusions are conditional on the truth of the posited model.
+
+In other words, *are there aspects of the data that are not captured well by the data? What aspects of reality are not captured our model?*
+
+****
+
+Bayesian prior-to-posterior inferences assume the whole structure of a probability model and can yield misleading inferences when the model is poor.
+
+Typically, we discuss this as a problem of sensitivity to the prior distribution, but in practice the likelihood model is typically just as suspect. Here, we use "model" to encompass the *sampling distribution*, the *prior distribution*, any *hierarchical structure*, and issues about what information is included (i.e. predictor variables in a regression).
+
+*Judging model flaws by their practical implications*
+
+We do not like to ask, "Is our model true or false?", since probability models in most data analyses will not be perfectly true. Rather, the more relevant question is, "Do the model’s deficiencies have a noticeable effect on the substantive inferences?" In other words, are the convenient distributional assumptions we incorporate in the model too terrible?
+
+Remember: if we have a reason to believe that posterior inferences are wrong, then it's likely that we have additional information about the problem at hand that is *not* being incorporated into the model (maybe for reasons of convenience or "objectivity"). Thus, there's room for creating a more accurate probability model for the parameters and data collection process. 
+
+**External validation**
+
+We can check a model by making predictions about future data, and then actually collecting those data and comparing them to the predictions. Posterior means should be correct on average, 50% intervals should contain the true values half the time, and so forth. However, we often need to check the model *before* obtaining new data or waiting for the future to happen. Thus, we use methods that approximate external validation using the data we already have.
+
+### Posterior predictive checking
+
+The intuition is simple: *if the model fits, then replicated data generated under the model should look similar to observed data.* And any systematic differences between the simulations and the data indicate potential failings of the model.
+
+**Notation**
+
+- Let $y$ be the observed data and $\boldsymbol \theta$ be the vector of parameters (including all the hyperparameters if the model is hierarchical).
+
+- We define $y^\text{rep}$ as the replicated data that could have been observed, or, to think predictively, as the data we would see tomorrow if the "experiment" (or "process") that produced $y$ today were replicated with the same generative model and the same value of $\boldsymbol \theta$ that produced the observed data.
+
+- We distinguish between $y^\text{rep}$ and $\widetilde y$, our general notation for predictive outcomes: $\widetilde y$ is any future observable value or vector of observable quantities, whereas $y^\text{rep}$ is *specifically a replication* just like $y$. For example, if the model has explanatory variables, $x$, they will be identical for $y$ and $y^\text{rep}$, but $\widetilde y$ may have its own explanatory variables, $\widetilde x$.
+
+$$
+p(\mathbf y^\text{rep} \mid \mathbf y) = \int p(\mathbf y^\text{rep} \mid \boldsymbol \theta) p(\boldsymbol \theta \mid \mathbf y)d\boldsymbol \theta
+$$
+
+- We define **test quantities** as the aspects of the data we wish to check (e.g. the *mean*, certain *quantiles*, outliers through *min* and *max*, and so forth). A test quantity (or *discrepancy measure*) $T(y, \theta)$ is a scalar summary of parameters *and* data used as a standard for comparing data to predictive simulations. Test quantities play the role in Bayesian model checking that test statistics play in classical testing. Thus, we use the notation $T(y)$ for classical *test statistics*.
+
+- Lack of fit of the data with respect to the posterior predictive distribution can be measured by the **tail-area probability** (or $p$-value) of the test quantity, and computed using posterior simulations of $(\theta, y^\text{rep})$.
+
+**Classical $p$-values**
+
+The classical $p$-value for the test statistic $T(y)$ is as follows:
+
+$$
+p_C = \Pr\left(T(y^\text{rep}) \geq T(y^\text{rep}) \mid \theta\right)
+$$
+
+Here, the probability is taken over the distribution of $y^\text{rep}$ with $\theta$ fixed. Test statistics are classically derived in a variety of ways but generally represent a summary measure of discrepancy between the observed data and what would be expected under a model with a particular value of $\theta$. This value may be a "null" value, corresponding to a "null hypothesis", or a point estimate such as the maximum likelihood value. A point estimate for $\theta$ must be substituted to compute a $p$-value in classical statistics.
+
+**Posterior predictive $p$-values**
+
+In the Bayesian approach, test quantities are generally functions of the unknown parameters *and* the data, because the test quantity is evaluated over draws from the posterior distribution of the unknown parameters. The Bayesian $p$-value is defined as the probability that the replicated data could be more extreme than the observed data, as measured by the test quantity:
+
+$$
+p_B = \int \int \mathbb I_{\left[T(y^\text{rep},\ \theta) \geq T(y,\ \theta)\right]}\ p(y^\text{rep} \mid \theta)\ p(\theta \mid y)dy^\text{rep}d\theta
+$$
+ 
+Here, $\mathbb I$ is an indicator function. Note that in this formula, we have used the property of the predictive distribution that $p(y^\text{rep} \mid \theta, y) = p(y^\text{rep} \mid \theta)$. 
+
+In practice, we usually compute the posterior predictive distribution using simulation. If we already have $S$ simulations from the posterior density of $\theta$, we just draw one $y^\text{rep}$ from the predictive distribution for each simulated $\theta$; we now have $S$ draws from the joint posterior distribution, $p(y^\text{rep} \mid \theta)$. Then, the posterior predictive check is the comparison between the realized test quantities, $T(y, \theta^s)$, and the predictive test quantities, $T(y^{\text{rep } s}, \theta^s)$. 
+
+In **R**: `mean(predicted_test_quantities > realized_test_quantities)`
+    
+Note that contrasting $y^\text{rep}$ and $y$ using different test quantities (e.g. *mean*, *min*, *max*, etc) could show that a model can be adequate for some purposes but inadequate for others
+    
+In contrast to the classical approach, Bayesian model checking does not require special methods to handle "nuisance parameters"; by using posterior simulations, we implicitly average over all the parameters in the model.
+
+**Choosing test quantities**
+
+The procedure for carrying out a posterior predictive model check requires specifying a test quantity and an appropriate predictive distribution for the replications $y^\text{rep}$ (which involves deciding which if any aspects of the data to condition on). If $T(y)$ does not appear to be consistent with the set of values $T(y^{\text{rep } 1}), \dots, T (y^{\text{rep } S})$, then the model is making predictions that do not fit the data. 
+
+Note that if the test quantity depends on $\theta$ as well as $y$, then the test quantity and its replication ($T(y, \theta)$ and $T(y^{\text{rep }s}, \theta^s)$) are unknowns that can be represented by $S$ simulations. Thus, the comparison can be displayed either as a scatter plot of the values $T(y, \theta^s)$ vs $T(y^{\text{rep }s}, \theta^s)$, or as a histogram of the differences $T(y, \theta^s) - T(y^{\text{rep }s}, \theta^s)$. Under the model, the scatteplot should be symmetric about the 45º line and the histogram should include $0$.
+
+This point is worth further emphasis: *posterior predictive $p$-values can be computed for a variety of test quantities in order to evaluate more than one possible model failure.* Ideally, the test quantities $T$ will be chosen to reflect aspects of the model that are relevant to the scientific purposes to which the inference will be applied. 
+
+**Interpretation**
+
+A model is suspect if a discrepancy is of practical importance and its observed value has a tail-area probability near 0 or 1, indicating that the observed pattern would be unlikely to be seen in replications of the data if the model were true. An extreme $p$-value implies that the model cannot be expected to capture this aspect of the data. 
+
+Major failures of the model, typically corresponding to extreme tail-area probabilities (less than 0.01 or more than 0.99), can be addressed by expanding the model appropriately. Lesser failures might also suggest model improvements or might be ignored in the short term if the failure appears not to affect the main inferences. In some cases, even extreme $p$-values may be ignored if the misfit of the model is substantively small compared to variation within the model. 
+
+The $p$-value measures "statistical significance," not "practical significance." The relevant goal is not to answer the question, "Do the data come from the assumed model?" (to which the answer is almost always *no*), but to quantify the discrepancies between data and model, and assess whether they could have arisen by chance, under the model's own assumptions.
+
+Bayesian tests do not rely on the construction of *pivotal quantities* (functions of the data and parameters, whose *distributions* don't depend on the model parameters, e.g. $z$-scores) or on *asymptotic results*, and are therefore applicable in general settings. 
+
+**$u$-values**
+
+A $u$-value is any function of the data $y$ that has a $\textsf{uniform}(0, 1)$ sampling distribution. This value is *not* a Bayesian quantity, in that it cannot be interpreted as a posterior probability statement about an underlying truth. (In contrast, the $p$-value really is a statement, conditional on the model, about what might be expeted in future replications).
+
+The $p$-value is to the $u$-value as the posterior interval is to the confidence interval.
+
+- In the special case that the parameters $\theta$ are known (or estimated to a very high precision) or in which the test statistic $T(y)$ is *ancillary* (that is, if it depends only on observed data and if its distribution is independent of the parameters of the model) with a continuous distribution, the posterior predictive $p$-value $\Pr(T (y^\text{rep} > T(y)\mid y)$ has a distribution that is uniform if the model is true. 
+
+- More generally, when posterior uncertainty in $\theta$ propagates to the distribution of $T(y \mid \theta)$, the distribution of the $p$-value, if the model is true, is more concentrated near the middle of the range: the $p$-value is more likely to be near 0.5 than near 0 or 1. (To be more precise, the sampling distribution of the p-value has been shown to be "stochastically less variable" than uniform.)
+
+**Marginal predictive checks**
+
+We can choose to focus on replicated data from the joint posterior predictive distribution, but there is also an alternative: *to compute the probabiilty distribution for each marginal prediction $p(\widetilde y_i \mid y)$ separately and then compare these separate distributions to the data in order to find outliers or check overall calibration*. 
+
+In other words, a tail-area probability can be computed for each marginal posterior predictive distribution:
+
+$$
+p_i = \Pr\left(T (y_i^\text{rep}) \leq T(y_i) \mid y\right)
+$$
+
+If $y_i$ is scalar and continuous, a natural test quantity is just $T(y_i) = y_i$.
+
+In the 8-schools example, consider the marginal prediction for each of the existing schools using $p(\widetilde y_i \mid y)$. If the population prior is noninformative or weakly informative, the center of the posterior will be close to $y_i$, and the separate $p$-values ($p_i$) will tend to concentrate near 0.5. (In the extreme case of no pooling, the separate $p_i$ will be exactly 0.5).
+
+But if we consider the marginal prediction for *new* schools $p(\widetilde y_i \mid y)$ for $i = 9, \dots$ then the $p_i$'s have distributions closer to $\textsf{uniform}(0, 1)$.
+
+A related approach is to replace predictive distributions with cross-validation predictive distributions, for each data point:
+
+$$
+p_i = \Pr\left(y_i^\text{rep} \leq y_i \mid y_{-i}\right)
+$$
+
+**Graphical posterior predictive checks**
+
+- The basic idea of graphical model checking is to display the data alongside simulated data from the fitted model, and to look for systematic discrepancies between real and simulated data. These discrepancies can be used to further improve the model.
+
+- Some might object to revising the prior distribution based on the fit of the model to the data. It is, however, consistent with common statistical practice, in which a model is iteratively altered to provide a better fit to data.
+
+ADD EXAMPLE FROM HW 9
+
+****
+
+## Evaluate, compare, expand
+
+- *Cross Validation* means leaving out some part of the observed sample, fitting the model on the part you didn't leave out, and then predicting the left out part. Doing this over many leave-out sets provides a very good approximation of out-of-sample accuracy.
+
+    Leave-one-out cross validation (LOO) is the better option for doing this, but it's the most computationally expensive. Pareto-smoothed importance sampling LOO (PSIS-LOO) is an alternative approximation for LOO.
+
+- Information Criteria provides an estimate of Kullback–Leibler divergence, in theory. Under some strict conditions:
+
+$$
+\begin{align}
+&\textsf{AIC} = D_\text{training} + 2 k \approx ED_\text{testing} \\\\
+&\text{where } k \text{ is the parameter count}
+\end{align}
+$$
+
+- Nowadays, we use the Widely Applicable Information Criterion (WAIC) developed by Sumio Watanabe.
+
+- *Note that model comparison is agnostic with respect to causal inference*
+
+****
+
+The previous section discusses discrepancy measures for checking the fit of model to data. This section seeks not to check models but to compare them and explore directions for improvement. Even if all of the models being considered have mismatches with the data, it can be informative to evaluate their predictive accuracy and consider where to go next. The challenge we focus on here is the estimation of the predictive model accuracy *without overfitting*.
+
+We shall use a simple linear regression as a running example: Douglas Hibbs' "bread and peace" model for electoral forecasting. For simplicity, we predict $y$ (vote share) solely from $x$ (economic performance), using a linear regression, $y \sim \textsf{normal}(a + b x, \sigma^2)$, with a noninformative prior distribution, $p(a, b, \log \sigma) \propto 1$. Although these data form a time series, we are treating them here as a simple regression problem.
+
+```{r, echo=FALSE}
+hibbs <- read.table("http://www.stat.columbia.edu/~gelman/arm/examples/ElectionsEconomy/hibbs.dat", header = TRUE)
+
+ggplot(data = hibbs, aes(x = growth, y = inc.party.vote)) + 
+  geom_smooth(method = "lm", alpha = 0.1, color = "red") +
+  geom_text(aes(label = year), size = 3) +
+  theme_classic(base_family = "Avenir") + 
+  labs(title = "Forecasting the election from the economy", 
+       x = "Avg recent growth in personal income (%)",
+       y = "Incumbent party's vote share (%)")
+```
+
+The posterior distribution for linear regression with a conjugate prior is normal-inverse-$\chi^2$. This distribution is most conveniently factored as $p(a, b, \sigma^2 \mid y) = p(\sigma^2  \mid y)\ p(a, b \mid \sigma^2, y)$.
+
+- The marginal posterior distribution of the variance parameter is:
+
+$$
+\begin{align}
+&\sigma^2\mid y \sim \textsf{inv-}\chi^2(n - J, s^2) \\\\
+&s^2 = \frac{1}{n - J} (\mathbf y - \mathbf X \boldsymbol{\hat \beta})^\top (\mathbf y - \mathbf X \boldsymbol{\hat \beta}) \\\\ &\text{and } \mathbf X \text{ is the } n\times J \text{ matrix of predictors}:\ n =15,\ J = 2
+\end{align}
+$$
+
+- The conditional posterior distribution of the vector of coefficients $\boldsymbol \beta =(a, b)$ is:
+
+$$
+\begin{align}
+&\boldsymbol \beta \mid \sigma^2, y \sim \textsf{normal}\left(\boldsymbol{\hat \beta},\ V_\beta \sigma^2\right) \\\\
+&\boldsymbol{\hat \beta} = \left(\mathbf X^\top \mathbf X\right)^{-1} \mathbf X^\top \mathbf y  \\\\ 
+&V_\beta = \left(\mathbf X^\top \mathbf X\right)^{-1}
+\end{align}
+$$
+
+- The estimates are as follows:
+
+$$
+V_\beta =  \pmatrix{0.21 & -0.07 \\ -0.07 & 0.04} \hspace{1cm} \boldsymbol{\hat \beta} = \pmatrix{45.9 \\ 3.2} \hspace{1cm} s= 3.6
+$$
+
+### Measures of predictive accuracy
+
+Sometimes we care about this accuracy for its own sake, as when evaluating a forecast. In other settings, predictive accuracy is valued for comparing different models rather than for its own sake. We begin by considering different ways of defining the accuracy or error of a model's predictions, then discuss methods for estimating predictive accuracy or error from data.
+
+
+**Point prediction**
+
+
+
+**Probabilistic prediction**
+
+
+
+****
+
+We are interested in out-of-sample predictive performance
+
+****
+
+
+## Missing data
+
+****
+
+- For a Bayesian model to generalize, it must account for potential differences between observed data and the population.
+
+****
+
+100 people get a treatment, and another 100 people receive a control. How much missing data do we have? Approximately 7.5 billion people!
+
+Setting 1. You have a big sample size, a good measurment protocol, perform an experiment... a perfect experiment. What could go wrong??
+
+$\to$ **interactions**
+
+$$
+\begin{align}
+&y_i = a + bx_i + cz_i + dx_iz_i + \epsilon_i \\\\
+&TE = c + dx_i
+\end{align}
+$$
+
+You can only impute data using assumptions (e.g. MAR). By definition, MAR is untestable. So if you want to test MAR, you need additional sources of information. Paradox: people don't check for the adequacy of multiple imputation (which is a lot more uncertain than, say, functional form).
+
+Diagnostics for Multivariate Imputations (Abayomi, Gelman)
+
+
+
+
+
+**Question:** A survey is performed in which respondents are asked several questions, including their citizenship status and their preferred candidate in an upcoming election. Suppose that citizens are more likely than noncitizens to respond to the electoral preference question, and also suppose (for simplicity) that the probability of response to the electoral preference question depends only on citizenship. Are the data missing at random? Explain (in one sentence).
+
+**Answer**: It's only MAR if citizenship is in the model! MAR isnt' just a property of the data, but also of the model.
+
+
+
+
+
+## Decision Analysis
+
+****
+
+- What happens after the data analysis, after the model has been built and the inferences computed, and after the model has been checked and expanded as necessary so that its predictions are consistent with observed data? 
+
+- This chapter discusses the use of Bayesian inference in applied decision analysis, illustrating with examples from social science, medicine, and public health. 
+
+****
+
+**Bayesian decision theory in different contexts**
+
+When explicitly balancing the costs and benefits of decision options under uncertainty, we use Bayesian inference in two ways: 
+
+1. A decision will typically depend on predictive
+quantities (e.g. the probability of recovery under a given medical treatment) which in turn depend on unknown parameters such as regression coefficients and population frequencies. We use posterior inferences to summarize our uncertainties about these parameters, and hence about the predictions that enter into the decision calculations.
+
+2. Within a decision analysis, we might use Bayesian inference to determine the conditional distribution of relevant parameters and outcomes, given information observed as a result of an earlier decision. This will help understand the expected value of information; i.e. is it "worth it" to keep gathering more information?
+
+**Elements of Bayesian inference and decision trees**
+
+1. *Enumerate the space of all possible decisions $d$ and outcomes $x$.* In a business context, $x$ might be dollars; in a medical context, lives or life-years. More generally, outcomes can have multiple attributes and would be expressed as vectors (which can include observables $\tilde y$ as well as unknown parameters $\theta$).
+
+2. *Determine the probability distribution of $x$ for each decision option $d$*: $p(x \mid d)$. Note that decisions don't have probability distributions (i.e. $p(d)$ doesn't exist), but that all probabilities must be conditional on $d$.
+
+3. Define a utility function $U(x)$ mapping outcomes onto the real numbers. In simple problems, utility might be identified with a single continuous outcome of interest $x$, such
+as years of life, or net profit. If the outcome $x$ has multiple attributes, the utility function must make a tradeoff between different "goods".
+
+4. Compute the expected utility $E(U(x)\mid d)$ as a function of the decision $d$, and choose the decision with highest expected utility. In a decision tree --in which a sequence of two or more decisions might be taken-- the expected utility must be calculated at each decision point, conditional on all information available up to that point.
+
+A full decision analysis includes all four of these steps, although we sometimes only get to step 2 and leave the rest to decision makers.
+
+Note that **model selection** can be also formulated as a decision problem: is the predictive performance of an expanded model significantly better? Often this decision is made informally, but a more formal decision can be made, for example, if there are data collection costs and cost of measuring less relevant explanatory variables may overcome the benefits of getting better predictions.
+
+### Examples
+
+****
+
+**Example 1. Using regression predictions: incentives for telephone surveys**
+
+- A meta-analysis --fit from historical data using hierarchical linear regression-- to estimate predicted costs and benefits for a new situation.
+
+- From a decision-making point of view, this example is interesting because regression coefficients that are not "statistically significant" (that is, that have high posterior probabilities of being positive or negative) are still highly relevant for the decision problem, and we cannot simply set them to zero.
+
+****
+
+*Background*
+
+Giving incentives to survey participants tends to increase response rates. But we also have to consider:
+
+- Do the benefits of incentives outweigh the costs?
+
+- If an incentive is given, how and when should it be offered, whom should it be offered to, what form should it take, and how large should its value be?
+
+In this example, we have 39 survey experiments and 101 experimental conditions (i.e. some surveys had more than one treatment-incentive). By taking the differences, $z_i = y_i - y_0$ we obtain 62 observations (differences $i$). Note the hierarchical structure of the data: the 62 differences are nested in 39 surveys. 
+
+*Setting up a Bayesian meta-analysis*
+
+We start with a binomial model relating the number of respondents, $n_i$, to the number of persons contacted, $N_i$ (thus, $y_i = n_i / N_i$), and the population response probabilities $\pi_i$:
+
+$$
+n_i \sim \textsf{binomial}(N_i, \pi_i)
+$$
+
+To model the probabilities $\pi_i$ in terms of the predictors $\mathbf X$, we use a linear model (which is acceptable because the response probabilities are far from 0 and 1):
+
+$$
+\pi_i \sim \textsf{normal}(\mathbf X_i \boldsymbol \beta + \alpha_{j[i]}, \sigma^2)
+$$
+
+Here, $\alpha_j$ are random effects for each survey (the underlying response rates vary greatly) and $\sigma$ represents the lack f fit of the linear model. 
+
+(Also, adding the $\alpha$'s allows us to incorporate the original 101 conditions).
+
+Finally, we model the survey-level random effects $\alpha_j$ using a normal distribution:
+
+$$
+\alpha_j \sim \textsf{normal}(0, \tau^2)
+$$
+
+There is no loss of generality in assuming a zero mean for the $\alpha_j$'s if a constant term is included in the set of predictors $\mathbf X$. Everything else has a flat prior.
+
+*Inferences*
+
+The detailed results are not provided, but some findings include:
+
+- an extra $10 in incentive is expected to increase the response rate by 3-4 percentage points; 
+
+- cash incentives increase the response rate by about 1 percentage point relative to noncash; 
+
+- prepaid incentives increase the response rate by 1-2 percentage points relative to postpaid; 
+
+- and incentives have a bigger impact (by about 5 percentage points) on high-burden surveys compared to low-burden surveys.
+
+- The *within-study standard deviation* $\sigma$ is around 3 or 4 percentage points, indicating the accuracy with which differential response rates can be predicted within any survey.
+
+- The between-study standard deviation $\tau$ is about 18 percentage points, indicating that the overall response rates vary greatly, even after accounting for the survey-level predictors.
+
+The authors then use this model to make inferences about the costs and response rates for the Social Indicators Survey: a cost of \$4.49 per interview for a 1.5% increase in response rate.
+
+****
+
+**Example 2. Multistage decision making: medical screening**
+
+- This is a classic problem of the "value of information," balancing the risks of the screening test against the information that might lead to a better treatment decision.
+
+****
+
+Decision analysis becomes more complicated when there are two or more decision points, with later decisions depending on data gathered after the first decision has been made. Such decision problems can be expressed as **trees**, alternating between "decision" and "uncertainty" nodes.
+
+*A single decision point*
+
+A 95-year-old man with an apparently malignant tumor in the lung must decide between the three options of radiotherapy, surgery, or no treatment. The following assumptions are made about his condition and life expectancy (in practice, these probabilities and life expectancies are based on extrapolations from the medical literature):
+
+i. There's a 90% chance that the tumor is malignant.
+
+ii. If the man *does not* have lung cancer, his life expectancy is 34.8 months.
+
+iii. If the man *does* have lung cancer:
+
+    + with radiotherapy, his life expectancy is 16.7 months;
+    
+    + with surgery, there's a 35% chance he will die immediately, his life expectancy will be 20.3 months if he survives;
+    
+    + with no treatment, his life expectancy is 5.6 months.
+    
+The treatments themselves cause considerable discomfort for slightly more than a month. We shall determine the decision that maximizes the patient's *quality-adjusted life expectancy*, which is defined as the expected length of time the patient survives, minus a month if he goes through one of the treatments.
+
+- *Treatment 1 (radiotherapy)*
+
+$$
+(0.9)(20.3)(0.65) + (0.35)(0) +
+(0.1)(34.8) - 1 = 17.5 \text{ months}
+$$
+
+- *Treatment 2 (surgery)*
+
+$$
+(0.35)(0) + (0.65)[(0.1)(34.8) + (0.9)(20.3) - 1] = 13.5 \text{ months}
+$$
+
+- *Treatment 3 (no treatment)*
+
+$$
+(0.9)(5.6) + (0.1)(34.8) = 8.5 \text{ months}
+$$
+
+*Adding a second decision point*
+
+The problem becomes more complicated when we consider a fourth decision option, which is to perform a test to see if the cancer is truly malignant (i.e. get more data). This test is called *bronchospy*:
+
+- it has a 70% chance of detecting the lung cancer if the tumor is malignant;
+
+- a 2% chance of falsely finding cancer when there's not;
+
+- and a 5% chance that complications from the test itself will kill the patient.
+
+Should the patient choose bronchoscopy?
+
+First, let's update the probability of having cancer (currently 0.9) using Bayes' rule, vigen the test result $T$:
+
+$$
+\Pr(\text{cancer} \mid T) = \frac{\overbrace{{\Pr(\text{cancer})}}^{\text{prior} = 0.9}\ \overbrace{\Pr(T \mid \text{cancer})}^{0.7}}
+{\Pr(\text{cancer})\ \Pr(T \mid \text{cancer}) + \underbrace{\Pr(\text{no cancer})}_{0.1}\ + \underbrace{\Pr(T \mid \text{no cancer})}_{0.02}}
+$$
+
+If the test is *positive*, then the patients updated probability of cancer is $\frac{(0.9)(0.7)}{(0.9)(0.7)+(0.1)(0.02)} = 0.997$. Given this new information, we get new quality-adjusted life expectancies:
+
+- radiotherapy: $15.8$ months.
+
+- surgery: $12.6$ months.
+
+- no treatment: $5.7$ months.
+
+If the test is *negative*, then the patients updated probability of cancer is $\frac{(0.9)(0.3)}{(0.9)(0.3)+(0.1)(0.98)} = 0.734$. Given this new information, we get new quality-adjusted life expectancies:
+
+- radiotherapy: $20.5$ months.
+
+- surgery: $15.1$ months.
+
+- no treatment: $13.4$ months.
+
+At this point, we realize that bronchoscopy is not a good idea, since whichever way the treatment goes, it will not affect the decision taken. We can further adjust the estimates by accounting for the 5% chance that the test is fatal, although at this point it's not really necessary for the purposes of decision-making.
+
+- Test is positive for cancer: $(0.95)(15.8) = 15$ months.
+
+- Test is negative for cancer: $(0.95)(20.5) = 19.5$ months.
+
+
+
