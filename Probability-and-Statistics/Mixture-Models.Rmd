@@ -206,7 +206,7 @@ EM <- function(x, k) {
     # Calculate weights (assuming we know lambda, mu, and sigma)
     
     w <- map(1:k, function(k) lambda[[k]] * dnorm(x, mu[[k]], sigma[[k]]))
-    denominator <- reduce(w, `+`)
+    denominator <- rowSums(do.call(cbind, w))
     weights <- do.call(cbind, w) / denominator 
     
     # M Step ------------------------------------------------------------------

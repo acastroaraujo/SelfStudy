@@ -532,7 +532,7 @@ $$
 
 **Vector length**
 
-The **length** (or **magnitude**) of any vector $\mathbf{a}$ is denoted by $\|\mathbf{a}\|$. This tells us "how big" a vector is. 
+The **length** (or **magnitude** or **norm**) of any vector $\mathbf{a}$ is denoted by $\|\mathbf{a}\|$. This tells us "how big" a vector is. 
 
 - In one dimension, this is straightforward: the scalar 5 has "length 5". 
 
@@ -551,11 +551,9 @@ $$
 
 Some people refer to the length (or size) of a vector as its **modulus**.
 
-Note: The term *length* should be avoided, since it is also often used to refer to the dimension of the vector (the number of elements it contains).
+_Note: In my opinion, the term *length* should be avoided, since it is also often used to refer to the dimension of the vector (the number of elements it contains)._
 
-See more about the magnitude of vectors in the section on [**Euclidean norm and distance**](#Euclidean_norm).
-
-### The angle between two vectors {#angle_intro}
+### The angle between two vectors
 
 Another way of understanding the dot product of $\mathbf{a}$ and $\mathbf{b}$ is with the following formula: 
 
