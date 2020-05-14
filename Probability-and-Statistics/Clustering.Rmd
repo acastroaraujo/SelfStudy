@@ -17,7 +17,18 @@ knitr::opts_chunk$set(echo = TRUE, comment = "", fig.align = "center",
                       fig.width = 5, fig.height = 3)
 
 library(tidyverse)
-theme_set(theme_minimal(base_family = "Avenir Next Condensed", base_line_size = 0))
+theme_set(
+    theme_minimal(base_family = "Avenir Next Condensed", base_line_size = 0) +
+    theme(plot.title = element_text(face = "bold"))
+  )
+
+library(ggraph)
+library(patchwork)
+custom_dendrogram_plot <- function(hclust_obj) {
+  ggraph(hclust_obj, "dendrogram") + 
+    geom_edge_elbow(width = 0.1) + 
+    theme_void(base_family = "Avenir Next Condensed")
+}
 ```
 
 
@@ -128,11 +139,12 @@ Here's a selection of choices:
     
     
     dist_jaccard(x, y)
+    dist_jaccard(x, x)
     ```
 
 - __Edit, Hamming__. This distance is the simplest way to compare character sequences. It simply counts the number of character substitutions between two character strings. This distance only applies to same length sequences. If you also allow for deletions and insertions, you end up with something called __Levenshtein distance__.
 
-    The algorithm for calculating the minimum edit distance (i.e. minimum edit operations like _insertion_, _deletion_, and _substitution_) is implemented by giving each operation a "cost" and using _dynamic programming_. Here's an R implementation of the algorithm. For more information, see [Jurafsky & Martin (forthcoming)](https://web.stanford.edu/~jurafsky/slp3/).
+    The algorithm for calculating the minimum edit distance (i.e. minimum edit operations like _insertion_, _deletion_, and _substitution_) is implemented by giving each operation a "cost" and using _dynamic programming_. Here's an R implementation of the algorithm. For more information on this implementation see Jurafsky & Martin [-@jurafsky2008speech].
     
     ```{r}
     dist_levenshtein <- function(a, b) {
@@ -154,8 +166,10 @@ Here's a selection of choices:
       }
       return(D[length(a) + 1, length(b) + 1])
     }
+    ```
     
-    dist_levenshtein("andres", "andrea") ## delete + insert = 2 || substitute = 2
+    ```{r}
+    dist_levenshtein("andres", "andrea") # substitution cost = 2
     dist_levenshtein("intention", "purpose")
     ```
 
@@ -253,7 +267,7 @@ A common implemenation of such a method is available in the __`dbscan`__ package
 _An example_
 
 ```{r}
-n <- 300
+n <- 150
 theta <- runif(n, 0, 2 * pi) 
 r <- rnorm(n, 10)
 non_blob_data <- bind_rows(
@@ -295,55 +309,154 @@ This nested (or hierarchical) organization is usually portrayed with __dendrogra
 knitr::include_graphics("figures/dendrogram_ordering.png")
 ```
 
+>When creating a hierarchical clustering by aggregation, we will need more than just the distances between all pairs of individual objects: we also need a way to calculate distances between the aggregates. There are different choices of how to define them, based on the object-object distances, and each choice results in a different type of hierarchical clustering.
 
-###### 5.6.1 How to compute (dis)similarities between aggregated clusters?
+In other words, we need to choose how to calculate the distance _between_ newly formed clusters.
 
+- __Single linkage (or minimal jump)__. This method computes the distance between clusters as the _smallest_ distance between any two points in the two clusters.
 
-!!!!!
+$$
+\textsf{dist}(C_1, C_2) = \min_{i \in C_1  \ , \ j \in C_2} \textsf{dist}(i, j) 
+$$
 
+- __Complete linkage (or maximal jump)__. This method computes the distance between clusters as the _largest_ distance between any two points in the two clusters.
 
+$$
+\textsf{dist}(C_1, C_2) = \max_{i \in C_1  \ , \ j \in C_2} \textsf{dist}(i, j) 
+$$
 
+- __Average linkage__. This method computes the distance between clusters as the _average_ distance between any two points in the two clusters.
 
+$$
+\textsf{dist}(C_1, C_2) = \frac{1}{|C_1||C_2|}\sum_{i \in C_1} \sum_{j \in C_2} \textsf{dist}(i, j) 
+$$
 
+- __Centroid linkage__. This method computes the distance between clusters as the distance between the centroids of each cluster.
 
-```{r}
-dendrogram <- as.dendrogram(hclust(dist(iris[, 1:4])))
+- __Ward's method__ minimizes the variance _within_ clusters and maximizes variance _between_ clusters.
 
+Here I show how the methods produce different groupings for two different types of data.
 
-unclass(dendrogram) %>% View
+```{r, echo=FALSE}
+single_link_non_blob <- non_blob_data %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "single") 
+  
+p1 <- single_link_non_blob %>% 
+  custom_dendrogram_plot() 
 
+p2 <- ggplot(non_blob_data, aes(x, y)) + 
+  geom_point(aes(color = factor(cutree(single_link_non_blob, 2))), show.legend = FALSE)
 
+single_link_faithful <- datasets::faithful %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "complete") 
+  
+p3 <- single_link_faithful %>% 
+  custom_dendrogram_plot() 
 
-library(ggraph)
-ggraph(dendrogram, layout = "dendrogram") + 
-  geom_edge_bend() 
+p4 <- ggplot(datasets::faithful, aes(waiting, eruptions)) + 
+  geom_point(aes(color = factor(cutree(single_link_faithful, 2))), show.legend = FALSE) 
+
+(p1 + p2) / (p3 + p4) + 
+  plot_annotation(title = "single-linkage") &
+  theme(plot.title = element_text(face = "bold"))
 ```
 
+```{r, echo=FALSE}
+complete_link_non_blob <- non_blob_data %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "complete") 
+  
+p1 <- complete_link_non_blob %>% 
+  custom_dendrogram_plot() 
 
+p2 <- ggplot(non_blob_data, aes(x, y)) + 
+  geom_point(aes(color = factor(cutree(complete_link_non_blob, 2))), show.legend = FALSE)
 
+complete_link_faithful <- datasets::faithful %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "complete") 
+  
+p3 <- complete_link_faithful %>% 
+  custom_dendrogram_plot() 
+
+p4 <- ggplot(datasets::faithful, aes(waiting, eruptions)) + 
+  geom_point(aes(color = factor(cutree(complete_link_faithful, 2))), show.legend = FALSE) 
+
+(p1 + p2) / (p3 + p4) + 
+  plot_annotation(title = "complete-linkage") &
+  theme(plot.title = element_text(face = "bold"))
+```
+
+```{r, echo=FALSE}
+ward_link_non_blob <- non_blob_data %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "ward.D") 
+  
+p1 <- ward_link_non_blob %>% 
+  custom_dendrogram_plot() 
+
+p2 <- ggplot(non_blob_data, aes(x, y)) + 
+  geom_point(aes(color = factor(cutree(ward_link_non_blob, 2))), show.legend = FALSE)
+
+ward_link_faithful <- datasets::faithful %>% 
+  dist(method = "euclidean") %>% 
+  hclust(method = "ward.D") 
+  
+p3 <- ward_link_faithful %>% 
+  custom_dendrogram_plot() 
+
+p4 <- ggplot(datasets::faithful, aes(waiting, eruptions)) + 
+  geom_point(aes(color = factor(cutree(ward_link_faithful, 2))), show.legend = FALSE) 
+
+(p1 + p2) / (p3 + p4) + 
+  plot_annotation(title = "Ward's method") 
+```
+
+_Note. When we think that the clusters are about the same size, using average linkage or Ward's method of minimizing the within class variance produces best results. The single-linkage method produces results that are more inline with the previously shown dbscan method._
 
 ## validation
 
-## references
+All of these clustering methods will always find groups in data, even if there are none. 
+
+A usual criterion is the _within-groups sum of squared distances (WSS)_. We ask: _to ask to what extent does it maximize the between group differences while keeping the within-group distances small?_
+
+$$
+\text{WSS}_k = \sum_{\ell=1}^k \sum_{x_i \in C_l} \textsf{dist}(x_i, \bar x_\ell)^2
+$$
+
+Here, $k$ is the number of clusters; $C_\ell$ is the set of objects in the $\ell$-th cluster; and $\bar x_\ell$ is the center of mass (the average point) in the $\ell$-th cluster. 
+
+>Stated as it is, the WSS is however not a sufficient criterion: the smallest value of WSS would simply be obtained by making each point its own cluster. The WSS is a useful building block, but we need more sophisticated ideas than just looking at this number alone.
+
+One common idea is to look at $\text{WSS}_k$ as a function of $k$ and look for a pronounced decrease, which we interpret as a sort of sweet spot for $k$.
+
+For example:
 
 ```{r}
-rnorm(10)
+wss <- function(X, k) {
+  kmeans(X, centers = k)$tot.withinss
+}
+
+wss_values <- map_dbl(1:10, wss, X = datasets::faithful)
+
+tibble(k = factor(1:10), wss = wss_values) %>% 
+  ggplot(aes(k, wss)) + 
+  geom_col() 
 ```
 
+### bootstrap validation
 
+Another approach involves taking bootstrap samples of the original data and comparing the different clusterings we get each time. Note that this is not as straightfoward as it may seem because of the "label switching" problem.
 
-```{css}
-
-
-
-```
-
+There are many ways of doing this, and I'll come back here when I figure out the best approach.
 
 
 
-```
-This time I <em>really</em> mean it!
-```
+## references
+
+
 
 
 
